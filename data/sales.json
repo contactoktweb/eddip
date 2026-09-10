@@ -1,0 +1,56 @@
+[
+  {
+    "id": "VEN-1028",
+    "student": "Sebastián Martínez",
+    "course": "Derecho de Policía",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-15",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1027",
+    "student": "Laura Gómez",
+    "course": "Gestión Documental",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-15",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1026",
+    "student": "Carlos Rodríguez",
+    "course": "Derechos Humanos",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-14",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1025",
+    "student": "Natalia Pérez",
+    "course": "Seguridad de Instalaciones",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-13",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1024",
+    "student": "Andrés Torres",
+    "course": "Liderazgo",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-12",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1023",
+    "student": "Diana Moreno",
+    "course": "Administración Pública",
+    "value": 45000,
+    "method": "Bold",
+    "date": "2026-08-11",
+    "status": "Aprobado"
+  }
+]

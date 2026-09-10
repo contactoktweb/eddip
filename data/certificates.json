@@ -1,0 +1,38 @@
+[
+  {
+    "code": "EDDIP-2026-000145",
+    "student": "Sebastián Martínez",
+    "courseSlug": "derecho-de-policia",
+    "course": "Derecho de Policía",
+    "hours": 40,
+    "date": "15 de agosto de 2026",
+    "status": "Válido"
+  },
+  {
+    "code": "EDDIP-2026-000139",
+    "student": "Sebastián Martínez",
+    "courseSlug": "derechos-humanos",
+    "course": "Derechos Humanos",
+    "hours": 40,
+    "date": "02 de agosto de 2026",
+    "status": "Válido"
+  },
+  {
+    "code": "EDDIP-2026-000128",
+    "student": "Laura Gómez",
+    "courseSlug": "gestion-documental",
+    "course": "Gestión Documental",
+    "hours": 40,
+    "date": "23 de julio de 2026",
+    "status": "Válido"
+  },
+  {
+    "code": "EDDIP-2026-000112",
+    "student": "Carlos Rodríguez",
+    "courseSlug": "seguridad-de-instalaciones",
+    "course": "Seguridad de Instalaciones",
+    "hours": 40,
+    "date": "12 de julio de 2026",
+    "status": "Válido"
+  }
+]

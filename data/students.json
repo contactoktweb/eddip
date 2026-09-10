@@ -1,0 +1,92 @@
+[
+  {
+    "id": "st-001",
+    "name": "Sebastián Martínez",
+    "email": "sebastian@demo.eddip.com",
+    "courses": 3,
+    "progress": 78,
+    "certificates": 1,
+    "registeredAt": "2026-02-11"
+  },
+  {
+    "id": "st-002",
+    "name": "Laura Gómez",
+    "email": "laura@demo.eddip.com",
+    "courses": 4,
+    "progress": 52,
+    "certificates": 2,
+    "registeredAt": "2026-03-12"
+  },
+  {
+    "id": "st-003",
+    "name": "Carlos Rodríguez",
+    "email": "carlos@demo.eddip.com",
+    "courses": 5,
+    "progress": 91,
+    "certificates": 3,
+    "registeredAt": "2026-04-13"
+  },
+  {
+    "id": "st-004",
+    "name": "Natalia Pérez",
+    "email": "natalia@demo.eddip.com",
+    "courses": 2,
+    "progress": 33,
+    "certificates": 0,
+    "registeredAt": "2026-05-14"
+  },
+  {
+    "id": "st-005",
+    "name": "Andrés Torres",
+    "email": "andres@demo.eddip.com",
+    "courses": 3,
+    "progress": 64,
+    "certificates": 1,
+    "registeredAt": "2026-06-15"
+  },
+  {
+    "id": "st-006",
+    "name": "Juliana Castro",
+    "email": "juliana@demo.eddip.com",
+    "courses": 4,
+    "progress": 84,
+    "certificates": 2,
+    "registeredAt": "2026-07-16"
+  },
+  {
+    "id": "st-007",
+    "name": "Felipe Vargas",
+    "email": "felipe@demo.eddip.com",
+    "courses": 5,
+    "progress": 46,
+    "certificates": 3,
+    "registeredAt": "2026-08-17"
+  },
+  {
+    "id": "st-008",
+    "name": "Diana Moreno",
+    "email": "diana@demo.eddip.com",
+    "courses": 2,
+    "progress": 72,
+    "certificates": 0,
+    "registeredAt": "2026-01-18"
+  },
+  {
+    "id": "st-009",
+    "name": "Miguel Rojas",
+    "email": "miguel@demo.eddip.com",
+    "courses": 3,
+    "progress": 58,
+    "certificates": 1,
+    "registeredAt": "2026-02-19"
+  },
+  {
+    "id": "st-010",
+    "name": "Paula Sánchez",
+    "email": "paula@demo.eddip.com",
+    "courses": 4,
+    "progress": 88,
+    "certificates": 2,
+    "registeredAt": "2026-03-20"
+  }
+]

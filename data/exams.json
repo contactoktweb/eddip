@@ -1,0 +1,119 @@
+[
+  {
+    "courseSlug": "derecho-de-policia",
+    "title": "Evaluación final — Derecho de Policía",
+    "passingScore": 70,
+    "questions": [
+      {
+        "id": "q1",
+        "text": "¿Qué función cumple un principio dentro del análisis de una actuación?",
+        "options": [
+          "Reemplazar toda norma aplicable",
+          "Orientar la decisión y evaluar su razonabilidad",
+          "Eliminar la necesidad de justificar la actuación",
+          "Determinar automáticamente una sanción"
+        ],
+        "correct": 1
+      },
+      {
+        "id": "q2",
+        "text": "¿Qué debe identificarse antes de determinar una respuesta institucional?",
+        "options": [
+          "Únicamente la preferencia del funcionario",
+          "Hechos, contexto y norma aplicable",
+          "Solo el resultado esperado",
+          "La opinión de terceros sin relación con el caso"
+        ],
+        "correct": 1
+      },
+      {
+        "id": "q3",
+        "text": "La proporcionalidad permite analizar principalmente:",
+        "options": [
+          "Si una medida guarda relación adecuada con la situación",
+          "Si una actuación es más rápida",
+          "Si el documento tiene más páginas",
+          "Si intervienen varias personas"
+        ],
+        "correct": 0
+      },
+      {
+        "id": "q4",
+        "text": "¿Por qué es importante identificar la competencia?",
+        "options": [
+          "Para conocer qué autoridad puede actuar y con qué alcance",
+          "Para evitar registrar la actuación",
+          "Para reemplazar la norma",
+          "Para omitir la motivación"
+        ],
+        "correct": 0
+      },
+      {
+        "id": "q5",
+        "text": "Una actuación correctamente documentada favorece:",
+        "options": [
+          "Menor transparencia",
+          "Trazabilidad y control",
+          "Ausencia de responsabilidad",
+          "Eliminación de procedimientos"
+        ],
+        "correct": 1
+      },
+      {
+        "id": "q6",
+        "text": "¿Cuál de estos elementos hace parte de un análisis ordenado de caso?",
+        "options": [
+          "Hechos, norma, competencia y principios",
+          "Solo intuición",
+          "Únicamente el resultado",
+          "Preferencias personales"
+        ],
+        "correct": 0
+      },
+      {
+        "id": "q7",
+        "text": "La razonabilidad se relaciona con:",
+        "options": [
+          "La coherencia de la decisión frente a los hechos y finalidad",
+          "El número de funcionarios",
+          "La longitud del informe",
+          "La hora del día"
+        ],
+        "correct": 0
+      },
+      {
+        "id": "q8",
+        "text": "Antes de una evaluación final es recomendable:",
+        "options": [
+          "Omitir los módulos incompletos",
+          "Revisar conceptos clave y dudas",
+          "Responder al azar",
+          "Evitar leer las lecciones"
+        ],
+        "correct": 1
+      },
+      {
+        "id": "q9",
+        "text": "La convivencia se analiza en relación con:",
+        "options": [
+          "Derechos, deberes y condiciones para la vida en comunidad",
+          "Solo sanciones",
+          "Únicamente documentos internos",
+          "Solo actividades privadas"
+        ],
+        "correct": 0
+      },
+      {
+        "id": "q10",
+        "text": "Una medida debe estar:",
+        "options": [
+          "Justificada y relacionada con el caso",
+          "Basada solo en costumbre",
+          "Libre de cualquier fundamento",
+          "Definida por azar"
+        ],
+        "correct": 0
+      }
+    ]
+  }
+]
