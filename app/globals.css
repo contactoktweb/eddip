@@ -1711,12 +1711,6 @@ body {
   pointer-events: none;
 }
 
-.premium-footer a,
-.premium-footer span {
-  display: revert;
-  margin: 0;
-}
-
 .premium-footer-grid {
   display: grid;
   grid-template-columns: 1.45fr 1fr 1.15fr 1fr 1.35fr;
@@ -1772,27 +1766,7 @@ body {
   line-height: 1.6;
   color: #94a3b8;
   max-width: 280px;
-  margin: 0 0 16px;
-}
-
-.footer-cert-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  background: rgba(15, 89, 223, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  border-radius: 20px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #7dd3fc;
-  margin-bottom: 22px;
-  line-height: 1.2;
-}
-
-.footer-cert-badge svg {
-  color: #38bdf8;
-  flex-shrink: 0;
+  margin: 0 0 20px;
 }
 
 .footer-social {
@@ -1807,17 +1781,23 @@ body {
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   color: #f1f5f9;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
 .social-icon-btn svg {
   display: block;
+  margin: auto;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .social-icon-btn:hover {
@@ -1939,11 +1919,19 @@ body {
   height: 40px;
   border-radius: 10px;
   background: rgba(37, 111, 238, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.2);
   color: #38bdf8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.help-icon-bubble svg {
+  display: block;
+  margin: auto;
 }
 
 .footer-help-title {
@@ -1970,6 +1958,7 @@ body {
   border-radius: 50%;
   background: #10b981;
   box-shadow: 0 0 8px #10b981;
+  display: inline-block;
 }
 
 .footer-help-desc {
@@ -1980,22 +1969,29 @@ body {
 }
 
 .footer-contact-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px;
   width: 100%;
-  padding: 11px 18px;
+  padding: 12px 18px;
   border-radius: 12px;
   background: linear-gradient(135deg, #0f59df 0%, #073b9d 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.25s ease;
   box-shadow: 0 4px 14px rgba(15, 89, 223, 0.25);
-  margin-top: 4px;
+  margin-top: 6px;
+  box-sizing: border-box;
+}
+
+.footer-contact-btn svg {
+  display: block;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .footer-contact-btn:hover {

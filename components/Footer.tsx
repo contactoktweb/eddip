@@ -14,10 +14,6 @@ export function Footer() {
           <p>
             Plataforma de educación online especializada para profesionales que transforman el mundo.
           </p>
-          <div className="footer-cert-badge">
-            <Icon name="shield" size={15} />
-            <span>Certificados con Código QR Verificable</span>
-          </div>
           <div className="footer-social" aria-label="Redes sociales">
             <a
               href="https://facebook.com"
