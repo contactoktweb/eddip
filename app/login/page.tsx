@@ -18,7 +18,7 @@ export default function LoginPage() {
 
             <div className="auth-art-inner">
               <div className="auth-art-brand">
-                <Logo />
+                <Logo light />
               </div>
 
               <div className="auth-art-badge">

@@ -2415,6 +2415,13 @@ body {
   margin-bottom: 8px;
 }
 
+.brand-light,
+.brand-light .brand-word,
+.auth-art .brand,
+.auth-art .brand-word {
+  color: #ffffff !important;
+}
+
 .auth-art-badge {
   display: inline-flex;
   align-items: center;
