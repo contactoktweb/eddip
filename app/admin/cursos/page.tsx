@@ -1,3 +1,31 @@
 'use client';
-import Link from 'next/link'; import {useMemo,useState} from 'react'; import {useDemo} from '@/app/providers'; import {money} from '@/lib/data'; import {Icon} from '@/lib/icons';
-export default function AdminCourses(){const {courses}=useDemo();const [q,setQ]=useState('');const filtered=useMemo(()=>courses.filter(c=>c.title.toLowerCase().includes(q.toLowerCase())),[courses,q]);return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Catálogo</span><h1>Cursos</h1><p>Gestiona la oferta académica visible en la plataforma.</p></div><Link className="btn btn-primary" href="/admin/cursos/nuevo"><Icon name="plus"/> Nuevo curso</Link></div><div className="catalog-controls"><div className="search-box"><Icon name="search"/><input placeholder="Buscar curso..." value={q} onChange={e=>setQ(e.target.value)}/></div><select className="select"><option>Todos los estados</option><option>Publicado</option><option>Borrador</option></select></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Curso</th><th>Categoría</th><th>Estudiantes</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{filtered.map(c=><tr key={c.id}><td><div className="table-title">{c.title}</div><small>{c.durationHours} h · {c.level}</small></td><td>{c.category}</td><td>{c.students}</td><td>{money(c.price)}</td><td><span className="badge status-ok">Publicado</span></td><td><div className="table-actions"><Link className="icon-btn" href={`/cursos/${c.slug}`} title="Ver"><Icon name="search" size={16}/></Link><button className="icon-btn" title="Editar"><Icon name="edit" size={16}/></button></div></td></tr>)}</tbody></table></div></div>}
+import Link from 'next/link';
+import { useDemo } from '@/app/providers';
+import { Icon } from '@/lib/icons';
+import { AdminCourseTable } from '@/components/admin/AdminCourseTable';
+
+export default function AdminCoursesPage() {
+  const { courses, deleteCourse } = useDemo();
+
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Oferta Académica</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Gestión de cursos y contenidos</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Administra los programas formativos, edita lecciones, módulos y publica nueva oferta educativa.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <Link className="btn btn-primary" href="/admin/cursos/nuevo">
+            <Icon name="plus" /> Nuevo curso
+          </Link>
+        </div>
+      </header>
+
+      <AdminCourseTable courses={courses} onDeleteCourse={deleteCourse} />
+    </div>
+  );
+}

@@ -1,3 +1,20 @@
 'use client';
-import {useState} from 'react'; import {useDemo} from '@/app/providers'; import {Icon} from '@/lib/icons';
-export default function Settings(){const {resetDemo}=useDemo();const [states,setStates]=useState([true,true,true,false]);const items=[['Notificaciones de nuevas ventas','Mostrar alertas internas cuando se registre una inscripción.'],['Certificados automáticos','Habilitar emisión después de aprobar la evaluación.'],['Validación pública','Permitir consulta de certificados por código.'],['Modo mantenimiento','Ocultar temporalmente el sitio público.']];return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Sistema</span><h1>Configuración</h1><p>Parámetros visuales incluidos en la demostración.</p></div></div><div className="panel" style={{maxWidth:820}}><div className="settings-list">{items.map(([t,d],i)=><div className="setting-row" key={t}><div><strong>{t}</strong><span>{d}</span></div><button className={states[i]?'toggle on':'toggle'} onClick={()=>setStates(v=>v.map((x,j)=>j===i?!x:x))} aria-label={t}></button></div>)}</div><div style={{marginTop:28,paddingTop:20,borderTop:'1px solid #e7edf5'}}><h3 style={{fontSize:15}}>Restablecer demostración</h3><p style={{fontSize:12}}>Elimina cursos creados manualmente, compras, progreso y resultados guardados en este navegador.</p><button className="btn btn-danger" onClick={()=>{resetDemo();location.href='/login'}}><Icon name="trash"/> Restablecer datos demo</button></div></div></div>}
+import { AdminSettingsPanel } from '@/components/admin/AdminSettingsPanel';
+
+export default function AdminSettingsPage() {
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Ajustes Generales</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Configuración de la plataforma</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Configura parámetros del sistema, notificaciones de compras y opciones de mantenimiento.
+          </p>
+        </div>
+      </header>
+
+      <AdminSettingsPanel />
+    </div>
+  );
+}

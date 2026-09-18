@@ -1,3 +1,23 @@
 'use client';
-import Link from 'next/link'; import {useDemo} from '@/app/providers'; import {Icon} from '@/lib/icons';
-export default function AdminCerts(){const {certs}=useDemo();return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Certificación</span><h1>Certificados</h1><p>Consulta códigos emitidos y su estado de validación.</p></div><Link className="btn btn-outline" href="/certificados/validar">Abrir validador público</Link></div><div className="catalog-controls"><div className="search-box"><Icon name="search"/><input placeholder="Buscar por código o estudiante..."/></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Código</th><th>Estudiante</th><th>Curso</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody>{certs.map(c=><tr key={c.code}><td className="table-title">{c.code}</td><td>{c.student}</td><td>{c.course}</td><td>{c.date}</td><td><span className="badge status-ok">{c.status}</span></td><td><Link className="btn btn-soft" href={`/certificados/${c.code}`}>Visualizar</Link></td></tr>)}</tbody></table></div></div>}
+import { useDemo } from '@/app/providers';
+import { AdminCertificatesTable } from '@/components/admin/AdminCertificatesTable';
+
+export default function AdminCertificatesPage() {
+  const { certs, courses } = useDemo();
+
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Acreditación Institucional</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Registro oficial de certificados</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Supervisa los diplomas emitidos, genera certificaciones manuales y valida autenticidad con código único.
+          </p>
+        </div>
+      </header>
+
+      <AdminCertificatesTable certificates={certs} courses={courses} />
+    </div>
+  );
+}

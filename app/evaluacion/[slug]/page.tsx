@@ -1,3 +1,70 @@
 'use client';
-import {useParams} from 'next/navigation'; import {useState} from 'react'; import Link from 'next/link'; import {Logo} from '@/components/Logo'; import {exams} from '@/lib/data'; import {useDemo} from '@/app/providers'; import {Icon} from '@/lib/icons';
-export default function ExamPage(){const {slug}=useParams<{slug:string}>();const exam=exams.find(x=>x.courseSlug===slug);const {saveResult}=useDemo();const [i,setI]=useState(0);const [answers,setAnswers]=useState<Record<string,number>>({});const [result,setResult]=useState<{score:number;passed:boolean;correct:number}|null>(null);if(!exam)return <main className="exam-page"><div className="exam-shell"><Logo/><div className="exam-card" style={{marginTop:30}}><h1>Evaluación no disponible</h1><p>Esta demo incluye una evaluación completa para el curso Derecho de Policía.</p><Link className="btn btn-primary" href="/dashboard/cursos">Volver a mis cursos</Link></div></div></main>;const q=exam.questions[i];const finish=()=>{const correct=exam.questions.filter(x=>answers[x.id]===x.correct).length;const score=Math.round(correct/exam.questions.length*100);const passed=score>=exam.passingScore;const r={score,passed,correct};setResult(r);saveResult(slug,{score,passed})};if(result)return <main className="exam-page"><div className="exam-shell"><div className="exam-top"><Logo/><Link className="text-link" href="/dashboard">Mi dashboard</Link></div><div className="exam-card result-card"><div className={result.passed?'success-icon': 'success-icon'} style={!result.passed?{background:'#fff0f1',color:'#d53f4d'}:{}}><Icon name={result.passed?'check':'close'} size={34}/></div><h1>Evaluación completada</h1><div className="result-score">{result.score}%</div><div className={result.passed?'result-pass':'result-fail'}>{result.passed?'APROBADO':'NO APROBADO'}</div><p>{result.passed?'Has superado el puntaje mínimo de la evaluación. Tu certificado de demostración ya está disponible.':'Necesitas al menos '+exam.passingScore+'% para aprobar. Puedes intentarlo nuevamente.'}</p><div className="result-stats"><div><strong>{result.correct}</strong><span>Correctas</span></div><div><strong>{exam.questions.length-result.correct}</strong><span>Incorrectas</span></div><div><strong>{exam.passingScore}%</strong><span>Mínimo</span></div></div>{result.passed?<Link className="btn btn-primary btn-lg" href="/dashboard/certificados">Ver certificado <Icon name="award"/></Link>:<button className="btn btn-primary" onClick={()=>{setResult(null);setI(0);setAnswers({})}}>Intentar nuevamente</button>}</div></div></main>;return <main className="exam-page"><div className="exam-shell"><div className="exam-top"><Logo/><Link className="text-link" href={`/dashboard/cursos`}>Salir de evaluación</Link></div><div className="exam-card"><span className="question-number">Pregunta {i+1} de {exam.questions.length}</span><div className="exam-progress"><span style={{width:`${((i+1)/exam.questions.length)*100}%`}}></span></div><h1>{q.text}</h1><div className="options">{q.options.map((o,idx)=><button className={answers[q.id]===idx?'option selected':'option'} key={o} onClick={()=>setAnswers(v=>({...v,[q.id]:idx}))}><span className="option-letter">{String.fromCharCode(65+idx)}</span><span>{o}</span></button>)}</div><div className="exam-nav"><button className="btn btn-outline" disabled={i===0} onClick={()=>setI(v=>Math.max(0,v-1))}>Anterior</button>{i<exam.questions.length-1?<button className="btn btn-primary" disabled={answers[q.id]===undefined} onClick={()=>setI(v=>v+1)}>Siguiente <Icon name="arrow"/></button>:<button className="btn btn-primary" disabled={answers[q.id]===undefined} onClick={finish}>Finalizar evaluación <Icon name="check"/></button>}</div></div></div></main>}
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { exams } from '@/lib/data';
+import { useDemo } from '@/app/providers';
+import { StudentExamModule } from '@/components/student/StudentExamModule';
+import type { Exam } from '@/lib/types';
+
+export default function StudentExamPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const { courses } = useDemo();
+
+  const course = courses.find(c => c.slug === slug);
+  let exam = exams.find(x => x.courseSlug === slug);
+
+  // Si el curso existe pero no tiene examen en exams.json, generar evaluación dinámica
+  if (!exam && course) {
+    exam = {
+      courseSlug: course.slug,
+      title: `Evaluación de Certificación — ${course.title}`,
+      passingScore: 75,
+      questions: course.modules.flatMap((m, mIdx) => [
+        {
+          id: `q_dyn_${mIdx}_1`,
+          text: `En relación con ${m.title}, ¿cuál es el criterio fundamental para su correcta aplicación?`,
+          options: [
+            `Analizar el marco normativo y la proporcionalidad de la actuación`,
+            `Omitir el registro documental del caso`,
+            `Actuar sin fundamentación jurídica`,
+            `Delegar la responsabilidad sin verificación previa`,
+          ],
+          correct: 0,
+        },
+        {
+          id: `q_dyn_${mIdx}_2`,
+          text: `¿Qué beneficio garantiza el cumplimiento de los protocolos vistos en este módulo?`,
+          options: [
+            `Reducir la transparencia en la gestión`,
+            `Asegurar trazabilidad, apego a derecho y validez institucional`,
+            `Evitar la rendición de cuentas`,
+            `Acelerar trámites eliminando garantías fundamentales`,
+          ],
+          correct: 1,
+        },
+      ]),
+    } as Exam;
+  }
+
+  if (!course || !exam) {
+    return (
+      <main className="exam-page">
+        <div className="exam-shell" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <h1 style={{ fontSize: 24, marginBottom: 12 }}>Evaluación no encontrada</h1>
+          <p style={{ color: '#68788d', marginBottom: 20 }}>
+            El curso indicado no dispone de una evaluación activa en este momento.
+          </p>
+          <Link className="btn btn-primary" href="/dashboard/cursos">
+            Volver a mis cursos
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="exam-page">
+      <StudentExamModule exam={exam} course={course} />
+    </main>
+  );
+}

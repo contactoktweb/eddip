@@ -1,3 +1,103 @@
 'use client';
-import {useState} from 'react'; import {useParams} from 'next/navigation'; import Link from 'next/link'; import {Logo} from '@/components/Logo'; import {Icon} from '@/lib/icons'; import {useDemo} from '@/app/providers'; import {allLessons} from '@/lib/data';
-export default function Reader(){const {slug,lessonId}=useParams<{slug:string;lessonId:string}>();const {courses,completed,toggleLesson}=useDemo();const [side,setSide]=useState(false);const course=courses.find(c=>c.slug===slug);if(!course)return <div className="section container">Curso no encontrado.</div>;const lessons=allLessons(course);const index=lessons.findIndex(l=>l.id===lessonId);const lesson=lessons[index]||lessons[0];const done=completed[slug]||[];const pct=Math.round(done.length/Math.max(1,lessons.length)*100);const prev=lessons[index-1],next=lessons[index+1];return <main className="reader"><aside className={side?'reader-side open':'reader-side'}><div className="reader-brand"><Logo/></div><div className="reader-course"><h2>{course.title}</h2><div className="reader-progress"><div className="progress" style={{marginBottom:6}}><span style={{width:`${pct}%`}}></span></div>{pct}% completado</div></div>{course.modules.map(m=><div className="reader-module" key={m.id}><h3>{m.title}</h3>{m.lessons.map(l=><Link href={`/aprender/${slug}/${l.id}`} onClick={()=>setSide(false)} key={l.id} className={l.id===lesson.id?'reader-lesson active':'reader-lesson'}><span className={done.includes(l.id)?'lesson-check done':'lesson-check'}>{done.includes(l.id)&&<Icon name="check" size={12}/>}</span><span>{l.title}</span></Link>)}</div>)}</aside><section className="reader-main"><div className="reader-top"><div style={{display:'flex',alignItems:'center',gap:10}}><button className="icon-btn reader-mobile-toggle" onClick={()=>setSide(v=>!v)}><Icon name="menu"/></button><Link className="text-link" href="/dashboard/cursos">← Mis cursos</Link></div><span>{done.length} de {lessons.length} lecciones completadas</span><Link className="btn btn-soft" href={`/evaluacion/${slug}`}>Evaluación</Link></div><article className="reader-content"><span className="eyebrow">Lección {index+1} de {lessons.length}</span><h1>{lesson.title}</h1>{lesson.content.map((p,i)=><p key={i}>{p}</p>)}{lesson.keyPoint&&<div className="key-point"><strong>Punto clave</strong>{lesson.keyPoint}</div>}<div className="reader-nav"><div>{prev?<Link className="btn btn-outline" href={`/aprender/${slug}/${prev.id}`}>← {prev.title}</Link>:<span/>}</div><button className={done.includes(lesson.id)?'btn btn-soft':'btn btn-primary'} onClick={()=>toggleLesson(slug,lesson.id)}>{done.includes(lesson.id)?<><Icon name="check"/> Completada</>:<><Icon name="check"/> Marcar como completada</>}</button><div>{next?<Link className="btn btn-outline" href={`/aprender/${slug}/${next.id}`}>{next.title} →</Link>:<Link className="btn btn-primary" href={`/evaluacion/${slug}`}>Ir a evaluación →</Link>}</div></div></article></section></main>}
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { Icon } from '@/lib/icons';
+import { useDemo } from '@/app/providers';
+import { allLessons } from '@/lib/data';
+import { LessonSidebar } from '@/components/student/LessonSidebar';
+import { LessonReaderContent } from '@/components/student/LessonReaderContent';
+import { LessonNavigation } from '@/components/student/LessonNavigation';
+
+export default function StudentReaderPage() {
+  const { slug, lessonId } = useParams<{ slug: string; lessonId: string }>();
+  const { courses, completed, toggleLesson } = useDemo();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const course = courses.find(c => c.slug === slug);
+
+  if (!course) {
+    return (
+      <main className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>
+        <h1 style={{ fontSize: 28, marginBottom: 12 }}>Curso no encontrado</h1>
+        <p style={{ color: '#68788d', marginBottom: 20 }}>
+          El programa formativo que buscas no está disponible o ha cambiado de dirección.
+        </p>
+        <Link className="btn btn-primary" href="/dashboard/cursos">
+          Volver a mis cursos
+        </Link>
+      </main>
+    );
+  }
+
+  const lessons = allLessons(course);
+  const currentIndex = lessons.findIndex(l => l.id === lessonId);
+  const currentLesson = lessons[currentIndex] || lessons[0];
+  const doneList = completed[slug] || [];
+  const isLessonDone = doneList.includes(currentLesson.id);
+
+  const prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : undefined;
+  const nextLesson = currentIndex < lessons.length - 1 ? lessons[currentIndex + 1] : undefined;
+
+  return (
+    <div className="reader">
+      {/* Barra lateral de módulos y lecciones */}
+      <LessonSidebar
+        course={course}
+        currentLessonId={currentLesson.id}
+        completedLessons={doneList}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Visor principal */}
+      <section className="reader-main">
+        {/* Barra superior del aula virtual */}
+        <header className="reader-top">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              type="button"
+              className="icon-btn reader-mobile-toggle"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Abrir temario del curso"
+            >
+              <Icon name="menu" />
+            </button>
+            <Link className="text-link" href="/dashboard/cursos" style={{ fontSize: 13 }}>
+              ← Mis cursos
+            </Link>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
+              {doneList.length} de {lessons.length} lecciones completadas
+            </span>
+            <Link className="btn btn-soft" href={`/evaluacion/${slug}`} style={{ fontSize: 12, padding: '6px 12px' }}>
+              <Icon name="award" /> Evaluación
+            </Link>
+          </div>
+        </header>
+
+        {/* Contenido de la lección y notas */}
+        <LessonReaderContent
+          courseSlug={slug}
+          lesson={currentLesson}
+          lessonIndex={currentIndex >= 0 ? currentIndex : 0}
+          totalLessons={lessons.length}
+        />
+
+        {/* Controles de navegación */}
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 28px 60px' }}>
+          <LessonNavigation
+            courseSlug={slug}
+            lessonId={currentLesson.id}
+            prevLesson={prevLesson}
+            nextLesson={nextLesson}
+            isCompleted={isLessonDone}
+            onToggleComplete={() => toggleLesson(slug, currentLesson.id)}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}

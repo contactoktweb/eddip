@@ -1,3 +1,52 @@
 'use client';
-import Link from 'next/link'; import {useDemo} from '@/app/providers'; import {students,sales,money} from '@/lib/data'; import {StatCard} from '@/components/StatCard'; import {Icon} from '@/lib/icons';
-export default function AdminHome(){const {courses,certs}=useDemo();const total=sales.reduce((a,b)=>a+b.value,0);const heights=[42,58,48,72,65,88,76,94,82,100,91,106];return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Panel administrativo</span><h1>Resumen de EDDIP</h1><p>Datos demostrativos cargados desde JSON local.</p></div><Link className="btn btn-primary" href="/admin/cursos/nuevo"><Icon name="plus"/> Nuevo curso</Link></div><div className="stats-grid"><StatCard label="Estudiantes" value="724" icon="users" delta="+8.2% este mes"/><StatCard label="Cursos publicados" value={courses.length} icon="book" delta="+2 este mes"/><StatCard label="Ventas demo" value={money(total)} icon="dollar" delta="+12.4%"/><StatCard label="Certificados" value={certs.length+184} icon="award" delta="+23 este mes"/></div><div className="dash-grid"><section className="dash-card"><div className="dash-card-head"><h2>Ventas mensuales</h2><span className="badge">2026</span></div><div className="chart-caption"><strong>$6.840.000 COP</strong><span>↑ 12.4% vs. mes anterior</span></div><div className="bars">{heights.map((h,i)=><div className="bar-col" key={i}><div className="bar" style={{height:`${h}px`}}></div><span>{['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][i]}</span></div>)}</div></section><aside className="dash-card"><div className="dash-card-head"><h2>Cursos más populares</h2></div>{courses.slice().sort((a,b)=>b.students-a.students).slice(0,5).map((c,i)=><div className="activity" style={{padding:'10px 0',borderBottom:'1px solid #eef2f6'}} key={c.id}><div className="avatar" style={{width:34,height:34,fontSize:11}}>{i+1}</div><div><strong>{c.title}</strong><span>{c.students} estudiantes</span></div></div>)}</aside></div><div className="dash-card" style={{marginTop:18}}><div className="dash-card-head"><h2>Últimos estudiantes</h2><Link className="text-link" href="/admin/estudiantes">Ver todos</Link></div><div className="table-wrap" style={{border:0}}><table className="data-table"><thead><tr><th>Estudiante</th><th>Correo</th><th>Cursos</th><th>Progreso</th><th>Registro</th></tr></thead><tbody>{students.slice(0,5).map(s=><tr key={s.id}><td className="table-title">{s.name}</td><td>{s.email}</td><td>{s.courses}</td><td><span className="badge">{s.progress}%</span></td><td>{s.registeredAt}</td></tr>)}</tbody></table></div></div></div>}
+import Link from 'next/link';
+import { useDemo } from '@/app/providers';
+import { sales, students } from '@/lib/data';
+import { Icon } from '@/lib/icons';
+import { AdminStatGrid } from '@/components/admin/AdminStatGrid';
+import { AdminMonthlyChart } from '@/components/admin/AdminMonthlyChart';
+import { AdminPopularCourses } from '@/components/admin/AdminPopularCourses';
+import { AdminRecentStudents } from '@/components/admin/AdminRecentStudents';
+
+export default function AdminHomePage() {
+  const { courses, certs } = useDemo();
+  const totalSales = sales.reduce((a, b) => a + b.value, 0);
+
+  return (
+    <div className="dash-page">
+      {/* Cabecera del panel */}
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Control Institucional</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Resumen de EDDIP</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Supervisión global de programas formativos, estudiantes, certificaciones y ventas.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <Link className="btn btn-primary" href="/admin/cursos/nuevo">
+            <Icon name="plus" /> Nuevo curso
+          </Link>
+        </div>
+      </header>
+
+      {/* Métricas clave */}
+      <AdminStatGrid
+        totalStudents={students.length + 720}
+        totalCourses={courses.length}
+        totalSales={totalSales}
+        totalCertificates={certs.length + 180}
+      />
+
+      {/* Gráfica y Cursos populares */}
+      <div className="dash-grid">
+        <AdminMonthlyChart />
+        <AdminPopularCourses courses={courses} />
+      </div>
+
+      {/* Últimos estudiantes registrados */}
+      <AdminRecentStudents students={students} />
+    </div>
+  );
+}

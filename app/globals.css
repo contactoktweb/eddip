@@ -2335,6 +2335,30 @@ body {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-form-wrapper {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.course-card, .cert-card, .stat-card, .learning-item {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-card:hover, .cert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(15, 89, 223, 0.08);
+}
+
 /* =========================================================
    ACCESSIBILITY: PREFERS-REDUCED-MOTION (RULE 27)
    ========================================================= */

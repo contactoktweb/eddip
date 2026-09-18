@@ -1,3 +1,20 @@
 'use client';
-import {useDemo} from '@/app/providers';
-export default function Profile(){const {user}=useDemo();return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Cuenta</span><h1>Perfil</h1><p>Información del estudiante utilizada en esta demo.</p></div></div><div className="panel" style={{maxWidth:760}}><div className="form-row"><div className="field"><label>Nombre completo</label><input defaultValue={user.name}/></div><div className="field"><label>Documento</label><input defaultValue="1.032.456.789"/></div></div><div className="form-row"><div className="field"><label>Correo electrónico</label><input defaultValue={user.email}/></div><div className="field"><label>Teléfono</label><input defaultValue="300 555 0182"/></div></div><div className="field"><label>Ciudad</label><input defaultValue="Bogotá D.C."/></div><button className="btn btn-primary">Guardar cambios</button><p className="form-note">En esta versión los cambios de perfil son únicamente visuales.</p></div></div>}
+import { StudentProfileManager } from '@/components/student/StudentProfileManager';
+
+export default function StudentProfilePage() {
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Configuración de cuenta</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Mi perfil de estudiante</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Administra tus datos personales, credenciales de acceso y consulta tu resumen académico.
+          </p>
+        </div>
+      </header>
+
+      <StudentProfileManager />
+    </div>
+  );
+}

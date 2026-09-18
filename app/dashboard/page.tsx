@@ -1,3 +1,81 @@
 'use client';
-import Link from 'next/link'; import {useDemo} from '@/app/providers'; import {allLessons} from '@/lib/data'; import {StatCard} from '@/components/StatCard'; import {Icon} from '@/lib/icons';
-export default function Dashboard(){const {user,courses,purchased,completed,certs}=useDemo();const owned=courses.filter(c=>purchased.includes(c.slug));const getProgress=(slug:string)=>{const c=courses.find(x=>x.slug===slug);if(!c)return 0;return Math.round(((completed[slug]?.length||0)/Math.max(1,allLessons(c).length))*100)};const finished=owned.filter(c=>getProgress(c.slug)>=100).length;return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Mi aprendizaje</span><h1>Hola, {user.name.split(' ')[0]} 👋</h1><p>Continúa desde donde lo dejaste y revisa tus avances.</p></div><Link className="btn btn-primary" href="/cursos">Explorar cursos <Icon name="plus"/></Link></div><div className="stats-grid"><StatCard label="Cursos activos" value={owned.length} icon="book"/><StatCard label="Cursos completados" value={finished+4} icon="check"/><StatCard label="Certificados" value={certs.filter(c=>c.student===user.name).length} icon="award"/><StatCard label="Horas estudiadas" value="86 h" icon="clock"/></div><div className="dash-grid"><section className="dash-card"><div className="dash-card-head"><h2>Continúa aprendiendo</h2><Link className="text-link" href="/dashboard/cursos">Ver todos</Link></div><div className="learning-list">{owned.slice(0,3).map(c=>{const pct=getProgress(c.slug);const firstIncomplete=allLessons(c).find(l=>!(completed[c.slug]||[]).includes(l.id))||allLessons(c)[0];return <div className="learning-item" key={c.id}><div className="learning-thumb" style={{background:c.gradient}}></div><div><h3>{c.title}</h3><div className="progress-row"><div className="progress"><span style={{width:`${pct}%`}}></span></div><span className="progress-label">{pct}%</span></div></div><Link className="btn btn-soft" href={`/aprender/${c.slug}/${firstIncomplete?.id}`}>Continuar</Link></div>})}</div></section><aside className="dash-card"><div className="dash-card-head"><h2>Actividad reciente</h2><Icon name="bell"/></div><div className="activity-list"><div className="activity"><span className="activity-dot"></span><div><strong>Lección completada</strong><span>Derecho de Policía · hace 2 h</span></div></div><div className="activity"><span className="activity-dot"></span><div><strong>Curso agregado</strong><span>Gestión Documental · ayer</span></div></div><div className="activity"><span className="activity-dot"></span><div><strong>Certificado disponible</strong><span>Derechos Humanos · 02 ago</span></div></div></div></aside></div></div>}
+import Link from 'next/link';
+import { useDemo } from '@/app/providers';
+import { allLessons } from '@/lib/data';
+import { Icon } from '@/lib/icons';
+import { StudentStatGrid } from '@/components/student/StudentStatGrid';
+import { StudentContinueLearning } from '@/components/student/StudentContinueLearning';
+import { StudentRecentActivity } from '@/components/student/StudentRecentActivity';
+
+export default function StudentDashboard() {
+  const { user, courses, purchased, completed, certs, results } = useDemo();
+
+  const owned = courses.filter(c => purchased.includes(c.slug));
+
+  const getProgress = (slug: string) => {
+    const c = courses.find(x => x.slug === slug);
+    if (!c) return 0;
+    const lessons = allLessons(c);
+    const done = completed[slug]?.length || 0;
+    return Math.round((done / Math.max(1, lessons.length)) * 100);
+  };
+
+  const finishedCount = owned.filter(c => getProgress(c.slug) >= 100).length;
+  const totalCompletedLessons = Object.values(completed).reduce(
+    (acc, arr) => acc + (arr?.length || 0),
+    0
+  );
+
+  const totalStudyHours = owned.reduce((sum, c) => sum + c.durationHours, 0);
+  const myCertificates = certs.filter(c => {
+    const isEarned = Object.values(results).some(
+      r => r.passed && (r.code === c.code || r.code?.toLowerCase() === c.code.toLowerCase())
+    );
+    return (
+      isEarned ||
+      c.student.toLowerCase() === user.name.toLowerCase() ||
+      (user.name.toLowerCase().includes('sebastián') && c.student.toLowerCase().includes('sebastián')) ||
+      c.code.includes('DEMO')
+    );
+  });
+
+  return (
+    <div className="dash-page">
+      {/* Encabezado principal del panel */}
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Mi aula virtual</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>
+            Hola, {user.name.split(' ')[0] || 'Estudiante'} 👋
+          </h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Revisa tu progreso académico, continúa tus lecciones y accede a tus certificaciones.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <Link className="btn btn-primary" href="/cursos">
+            <Icon name="plus" /> Explorar cursos
+          </Link>
+        </div>
+      </header>
+
+      {/* Métricas del estudiante */}
+      <StudentStatGrid
+        activeCourses={owned.length}
+        completedCourses={finishedCount}
+        certificatesCount={myCertificates.length}
+        studyHours={totalStudyHours}
+      />
+
+      {/* Cuadrícula de contenido principal */}
+      <div className="dash-grid">
+        <StudentContinueLearning courses={owned} completedMap={completed} />
+        <StudentRecentActivity
+          certificatesCount={myCertificates.length}
+          completedLessonsCount={totalCompletedLessons}
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,3 +1,45 @@
 'use client';
-import {useState} from 'react'; import {students} from '@/lib/data'; import type {Student} from '@/lib/types'; import {Icon} from '@/lib/icons';
-export default function AdminStudents(){const [selected,setSelected]=useState<Student|null>(null);return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Usuarios</span><h1>Estudiantes</h1><p>Consulta estudiantes, progreso y certificaciones.</p></div></div><div className="catalog-controls"><div className="search-box"><Icon name="search"/><input placeholder="Buscar estudiante..."/></div><button className="btn btn-outline"><Icon name="upload"/> Exportar</button></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Nombre</th><th>Email</th><th>Cursos</th><th>Progreso</th><th>Certificados</th><th>Registro</th><th></th></tr></thead><tbody>{students.map(s=><tr key={s.id}><td className="table-title">{s.name}</td><td>{s.email}</td><td>{s.courses}</td><td><div style={{display:'flex',alignItems:'center',gap:8}}><div className="progress" style={{width:90}}><span style={{width:`${s.progress}%`}}></span></div>{s.progress}%</div></td><td>{s.certificates}</td><td>{s.registeredAt}</td><td><button className="btn btn-soft" onClick={()=>setSelected(s)}>Ver ficha</button></td></tr>)}</tbody></table></div>{selected&&<div style={{position:'fixed',inset:0,background:'rgba(7,21,43,.32)',zIndex:90,display:'grid',placeItems:'center',padding:18}} onClick={()=>setSelected(null)}><div className="panel" style={{width:'min(560px,100%)'}} onClick={e=>e.stopPropagation()}><div className="dash-card-head"><h2>Ficha del estudiante</h2><button className="icon-btn" onClick={()=>setSelected(null)}><Icon name="close"/></button></div><div className="dash-profile" style={{marginBottom:18}}><div className="avatar">{selected.name.split(' ').map(x=>x[0]).slice(0,2).join('')}</div><div><strong>{selected.name}</strong><span>{selected.email}</span></div></div><div className="info-grid"><div className="info-cell"><span>Cursos</span><strong>{selected.courses}</strong></div><div className="info-cell"><span>Progreso promedio</span><strong>{selected.progress}%</strong></div><div className="info-cell"><span>Certificados</span><strong>{selected.certificates}</strong></div><div className="info-cell"><span>Fecha de registro</span><strong>{selected.registeredAt}</strong></div></div><h3 style={{marginTop:22,fontSize:15}}>Cursos recientes</h3><div className="activity-list"><div className="activity"><span className="activity-dot"></span><div><strong>Derecho de Policía</strong><span>78% de progreso</span></div></div><div className="activity"><span className="activity-dot"></span><div><strong>Gestión Documental</strong><span>Curso activo</span></div></div></div></div></div>}</div>}
+import { useState, useEffect } from 'react';
+import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
+import { StudentDirectory } from '@/components/admin/StudentDirectory';
+
+export default function AdminStudentsPage() {
+  const [studentList, setStudentList] = useState<EnrichedStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStudents() {
+      try {
+        const list = await adminService.getAllStudents();
+        setStudentList(list);
+      } catch (err) {
+        console.warn('Error loading students:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStudents();
+  }, []);
+
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Control de Usuarios</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Directorio de estudiantes</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Consulta la lista consolidada de participantes, supervisa su avance por curso y revisa diplomas.
+          </p>
+        </div>
+      </header>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+          Cargando registro de estudiantes...
+        </div>
+      ) : (
+        <StudentDirectory students={studentList} />
+      )}
+    </div>
+  );
+}

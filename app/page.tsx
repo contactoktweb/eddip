@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { CourseCarousel } from '@/components/CourseCarousel';
+import { HomeFeaturedCourses } from '@/components/HomeFeaturedCourses';
 import { Icon } from '@/lib/icons';
 import { baseCourses } from '@/lib/data';
 import { QrVisual } from '@/components/QrVisual';
@@ -313,7 +314,7 @@ export default function Home() {
             </div>
 
             {/* Courses container: Desktop 3-col grid, Mobile native touch swipe carousel */}
-            <CourseCarousel courses={featuredCourses} />
+            <HomeFeaturedCourses fallbackCourses={featuredCourses} />
           </div>
         </section>
 

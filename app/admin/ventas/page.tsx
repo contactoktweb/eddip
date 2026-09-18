@@ -1,2 +1,21 @@
-import {sales,money} from '@/lib/data'; import {StatCard} from '@/components/StatCard'; import {Icon} from '@/lib/icons';
-export default function Sales(){const total=sales.reduce((a,b)=>a+b.value,0);return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Comercial</span><h1>Ventas</h1><p>Resumen demostrativo de inscripciones procesadas.</p></div><button className="btn btn-outline"><Icon name="upload"/> Exportar</button></div><div className="stats-grid"><StatCard label="Total vendido" value={money(total)} icon="dollar"/><StatCard label="Ventas del mes" value="152" icon="chart"/><StatCard label="Ticket promedio" value="$45.000" icon="card"/><StatCard label="Cursos vendidos" value="152" icon="book"/></div><div className="table-wrap"><table className="data-table"><thead><tr><th>ID</th><th>Estudiante</th><th>Curso</th><th>Valor</th><th>Método</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{sales.map(s=><tr key={s.id}><td className="table-title">{s.id}</td><td>{s.student}</td><td>{s.course}</td><td>{money(s.value)}</td><td>{s.method}</td><td>{s.date}</td><td><span className="badge status-ok">{s.status}</span></td></tr>)}</tbody></table></div></div>}
+'use client';
+import { sales } from '@/lib/data';
+import { AdminSalesManager } from '@/components/admin/AdminSalesManager';
+
+export default function AdminSalesPage() {
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Gestión Comercial</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Historial de ventas y pagos</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Consulta las inscripciones adquiridas por pasarelas electrónicas y exporta reportes financieros.
+          </p>
+        </div>
+      </header>
+
+      <AdminSalesManager sales={sales} />
+    </div>
+  );
+}

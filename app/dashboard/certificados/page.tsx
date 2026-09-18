@@ -1,3 +1,31 @@
 'use client';
-import Link from 'next/link'; import {useDemo} from '@/app/providers'; import {Icon} from '@/lib/icons';
-export default function MyCerts(){const {certs,user}=useDemo();const mine=certs.filter(c=>c.student===user.name);return <div className="dash-page"><div className="dash-head"><div><span className="eyebrow">Logros</span><h1>Mis certificados</h1><p>Consulta, imprime o valida tus certificados.</p></div><Link className="btn btn-outline" href="/certificados/validar">Validar código</Link></div><div className="cert-list">{mine.map(c=><div className="cert-card" key={c.code}><div className="cert-card-icon"><Icon name="award"/></div><div><h3>{c.course}</h3><span>{c.date} · {c.code}</span></div><Link className="btn btn-soft" href={`/certificados/${c.code}`}>Ver certificado</Link></div>)}</div></div>}
+import Link from 'next/link';
+import { useDemo } from '@/app/providers';
+import { Icon } from '@/lib/icons';
+import { StudentCertificatesGrid } from '@/components/student/StudentCertificatesGrid';
+
+export default function StudentCertificatesPage() {
+  const { certs, user } = useDemo();
+
+  return (
+    <div className="dash-page">
+      <header className="dash-head">
+        <div>
+          <span className="eyebrow">Acreditación académica</span>
+          <h1 style={{ fontSize: 30, marginBottom: 6 }}>Mis certificados oficiales</h1>
+          <p style={{ color: '#5b6c81', margin: 0 }}>
+            Consulta, descarga o valida ante terceros tus diplomas y certificados emitidos por EDDIP.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <Link className="btn btn-outline" href="/certificados/validar">
+            <Icon name="award" /> Validador público
+          </Link>
+        </div>
+      </header>
+
+      <StudentCertificatesGrid certificates={certs} studentName={user.name} />
+    </div>
+  );
+}

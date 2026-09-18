@@ -1,3 +1,40 @@
 'use client';
-import {useState} from 'react'; import {useRouter} from 'next/navigation'; import Link from 'next/link'; import {Logo} from '@/components/Logo'; import {useDemo} from '@/app/providers'; import {Icon} from '@/lib/icons';
-export default function Login(){const {login}=useDemo();const router=useRouter();const [email,setEmail]=useState('sebastian@demo.eddip.com');const [pass,setPass]=useState('demo123');const enter=(role:'student'|'admin')=>{login(role);router.push(role==='admin'?'/admin':'/dashboard')};return <main className="auth-page"><div className="auth-card"><section className="auth-art"><Logo/><h1>Tu espacio de aprendizaje, en un solo lugar.</h1><p>Consulta tus cursos, continúa tu progreso, presenta evaluaciones y accede a certificados verificables.</p><div className="hero-trust" style={{color:'rgba(255,255,255,.8)',marginTop:30}}><span><Icon name="check"/>Cursos organizados</span><span><Icon name="check"/>Progreso visible</span><span><Icon name="check"/>Certificados</span></div></section><section className="auth-form"><Link href="/" className="text-link" style={{fontSize:12,marginBottom:28}}>← Volver al inicio</Link><span className="eyebrow">Acceso EDDIP</span><h2>Inicia sesión</h2><p>Usa los accesos demo para recorrer la plataforma.</p><div className="field"><label>Correo electrónico</label><input value={email} onChange={e=>setEmail(e.target.value)} type="email"/></div><div className="field"><label>Contraseña</label><input value={pass} onChange={e=>setPass(e.target.value)} type="password"/></div><button className="btn btn-primary btn-full" onClick={()=>enter('student')}>Iniciar sesión</button><div className="demo-separator">ACCESOS DE DEMOSTRACIÓN</div><div className="demo-buttons"><button className="btn btn-soft" onClick={()=>enter('student')}><Icon name="user"/> Entrar como estudiante</button><button className="btn btn-outline" onClick={()=>enter('admin')}><Icon name="settings"/> Entrar como administrador</button></div><p className="form-note">No se valida autenticación real en esta etapa. Los botones cambian el perfil únicamente dentro del navegador.</p></section></div></main>}
+import { Logo } from '@/components/Logo';
+import { Icon } from '@/lib/icons';
+import { StudentAuth } from '@/components/student/StudentAuth';
+
+export default function LoginPage() {
+  return (
+    <main className="auth-page">
+      <div className="auth-card">
+        {/* Arte lateral corporativo */}
+        <section className="auth-art" aria-label="Información institucional">
+          <Logo />
+          <h1 style={{ fontSize: 32, lineHeight: 1.25, margin: '24px 0 14px' }}>
+            Tu espacio de aprendizaje, en un solo lugar.
+          </h1>
+          <p style={{ fontSize: 15, opacity: 0.9, lineHeight: 1.6 }}>
+            Accede a tus cursos interactivos, continúa tu avance lección a lección, presenta evaluaciones de certificación y valida diplomas con registro en Supabase.
+          </p>
+
+          <div className="hero-trust" style={{ color: 'rgba(255,255,255,0.9)', marginTop: 32, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <Icon name="check" size={16} /> Contenido normativo y técnico actualizado
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <Icon name="check" size={16} /> Seguimiento de progreso en tiempo real
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <Icon name="check" size={16} /> Certificados con código de verificación QR
+            </span>
+          </div>
+        </section>
+
+        {/* Sección de autenticación modular */}
+        <section className="auth-form" aria-label="Formulario de acceso">
+          <StudentAuth />
+        </section>
+      </div>
+    </main>
+  );
+}
