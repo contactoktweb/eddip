@@ -9,6 +9,9 @@ import { LessonSidebar } from '@/components/student/LessonSidebar';
 import { LessonReaderContent } from '@/components/student/LessonReaderContent';
 import { LessonNavigation } from '@/components/student/LessonNavigation';
 
+import { SiteHeader } from '@/components/SiteHeader';
+import { Footer } from '@/components/Footer';
+
 export default function StudentReaderPage() {
   const { slug, lessonId } = useParams<{ slug: string; lessonId: string }>();
   const { courses, completed, toggleLesson } = useDemo();
@@ -18,15 +21,19 @@ export default function StudentReaderPage() {
 
   if (!course) {
     return (
-      <main className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h1 style={{ fontSize: 28, marginBottom: 12 }}>Curso no encontrado</h1>
-        <p style={{ color: '#68788d', marginBottom: 20 }}>
-          El programa formativo que buscas no está disponible o ha cambiado de dirección.
-        </p>
-        <Link className="btn btn-primary" href="/dashboard/cursos">
-          Volver a mis cursos
-        </Link>
-      </main>
+      <>
+        <SiteHeader />
+        <main className="section container" style={{ textAlign: 'center', padding: '80px 20px', minHeight: '60vh' }}>
+          <h1 style={{ fontSize: 28, marginBottom: 12 }}>Curso no encontrado</h1>
+          <p style={{ color: '#68788d', marginBottom: 20 }}>
+            El programa formativo que buscas no está disponible o ha cambiado de dirección.
+          </p>
+          <Link className="btn btn-primary" href="/dashboard/cursos">
+            Volver a mis cursos
+          </Link>
+        </main>
+        <Footer />
+      </>
     );
   }
 
@@ -97,6 +104,33 @@ export default function StudentReaderPage() {
             onToggleComplete={() => toggleLesson(slug, currentLesson.id)}
           />
         </div>
+
+        {/* Footer del aula virtual */}
+        <footer
+          style={{
+            borderTop: '1px solid #e2e8f0',
+            padding: '20px 28px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: 13,
+            color: '#64748b',
+            background: '#ffffff',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginTop: 'auto',
+          }}
+        >
+          <span>© {new Date().getFullYear()} EDDIP — Aula Virtual Oficial.</span>
+          <a
+            href="https://www.kytcode.lat"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            Desarrollado por K&T <span style={{ color: '#0f172a' }}>♥</span>
+          </a>
+        </footer>
       </section>
     </div>
   );

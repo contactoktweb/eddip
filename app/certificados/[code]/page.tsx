@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { useDemo } from '@/app/providers';
 import { QrVisual } from '@/components/QrVisual';
 import { Icon } from '@/lib/icons';
+import { SiteHeader } from '@/components/SiteHeader';
+import { Footer } from '@/components/Footer';
 import { certificates } from '@/lib/data';
 import type { Certificate } from '@/lib/types';
 import { studentService } from '@/lib/supabase/studentService';
@@ -70,29 +72,33 @@ export default function CertificateView() {
   // Si no se encuentra en el estado ni en Supabase, se muestra el estado oficial de no encontrado
   if (!cert) {
     return (
-      <main className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 16,
-            background: '#fff1f2',
-            color: '#dc2626',
-            display: 'grid',
-            placeItems: 'center',
-            margin: '0 auto 16px',
-          }}
-        >
-          <Icon name="close" size={32} />
-        </div>
-        <h1 style={{ fontSize: 26, marginBottom: 12 }}>Certificado no encontrado</h1>
-        <p style={{ color: '#68788d', maxWidth: 460, margin: '0 auto 24px' }}>
-          El código ingresado (<strong>{decodedCode}</strong>) no figura en la base de datos oficial o ha sido revocado.
-        </p>
-        <Link className="btn btn-primary" href="/certificados/validar">
-          Ir al validador público de certificados
-        </Link>
-      </main>
+      <>
+        <SiteHeader />
+        <main className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 16,
+              background: '#fff1f2',
+              color: '#dc2626',
+              display: 'grid',
+              placeItems: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <Icon name="close" size={32} />
+          </div>
+          <h1 style={{ fontSize: 26, marginBottom: 12 }}>Certificado no encontrado</h1>
+          <p style={{ color: '#68788d', maxWidth: 460, margin: '0 auto 24px' }}>
+            El código ingresado (<strong>{decodedCode}</strong>) no figura en la base de datos oficial o ha sido revocado.
+          </p>
+          <Link className="btn btn-primary" href="/certificados/validar">
+            Ir al validador público de certificados
+          </Link>
+        </main>
+        <Footer />
+      </>
     );
   }
 
@@ -113,8 +119,10 @@ export default function CertificateView() {
   const courseMeta = courses.find(c => c.slug === cert?.courseSlug);
 
   return (
-    <main style={{ background: '#f0f4f9', minHeight: '100vh', padding: '32px 16px 64px' }}>
-      {/* Barra superior de navegación y acciones */}
+    <>
+      <SiteHeader />
+      <main style={{ background: '#f0f4f9', minHeight: '80vh', padding: '32px 16px 64px' }}>
+        {/* Barra superior de navegación y acciones */}
       <div
         className="container no-print"
         style={{
@@ -378,5 +386,7 @@ export default function CertificateView() {
         </div>
       </section>
     </main>
-  );
+    <Footer />
+  </>
+);
 }

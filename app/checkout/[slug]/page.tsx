@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
+import { SiteHeader } from '@/components/SiteHeader';
+import { Footer } from '@/components/Footer';
 import { useDemo } from '@/app/providers';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
@@ -16,12 +18,16 @@ export default function Checkout() {
 
   if (!course) {
     return (
-      <div className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h1 style={{ fontSize: 24, marginBottom: 12 }}>Curso no encontrado</h1>
-        <Link className="btn btn-primary" href="/cursos">
-          Volver al catálogo
-        </Link>
-      </div>
+      <>
+        <SiteHeader />
+        <div className="section container" style={{ textAlign: 'center', padding: '80px 20px', minHeight: '60vh' }}>
+          <h1 style={{ fontSize: 24, marginBottom: 12 }}>Curso no encontrado</h1>
+          <Link className="btn btn-primary" href="/cursos">
+            Volver al catálogo
+          </Link>
+        </div>
+        <Footer />
+      </>
     );
   }
 
@@ -35,8 +41,10 @@ export default function Checkout() {
   };
 
   return (
-    <main className="checkout-page">
-      <div className="container">
+    <>
+      <SiteHeader />
+      <main className="checkout-page" style={{ minHeight: '80vh', padding: '40px 0 80px' }}>
+        <div className="container">
         <div className="checkout-head">
           <Logo />
           <Link className="text-link" href={`/cursos/${course.slug}`}>
@@ -241,5 +249,7 @@ export default function Checkout() {
         )}
       </div>
     </main>
-  );
+    <Footer />
+  </>
+);
 }

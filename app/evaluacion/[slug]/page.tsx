@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { exams } from '@/lib/data';
 import { useDemo } from '@/app/providers';
 import { StudentExamModule } from '@/components/student/StudentExamModule';
+import { SiteHeader } from '@/components/SiteHeader';
+import { Footer } from '@/components/Footer';
 import type { Exam } from '@/lib/types';
 
 export default function StudentExamPage() {
@@ -48,23 +50,31 @@ export default function StudentExamPage() {
 
   if (!course || !exam) {
     return (
-      <main className="exam-page">
-        <div className="exam-shell" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <h1 style={{ fontSize: 24, marginBottom: 12 }}>Evaluación no encontrada</h1>
-          <p style={{ color: '#68788d', marginBottom: 20 }}>
-            El curso indicado no dispone de una evaluación activa en este momento.
-          </p>
-          <Link className="btn btn-primary" href="/dashboard/cursos">
-            Volver a mis cursos
-          </Link>
-        </div>
-      </main>
+      <>
+        <SiteHeader />
+        <main className="exam-page" style={{ minHeight: '70vh' }}>
+          <div className="exam-shell" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <h1 style={{ fontSize: 24, marginBottom: 12 }}>Evaluación no encontrada</h1>
+            <p style={{ color: '#68788d', marginBottom: 20 }}>
+              El curso indicado no dispone de una evaluación activa en este momento.
+            </p>
+            <Link className="btn btn-primary" href="/dashboard/cursos">
+              Volver a mis cursos
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <main className="exam-page">
-      <StudentExamModule exam={exam} course={course} />
-    </main>
+    <>
+      <SiteHeader />
+      <main className="exam-page" style={{ minHeight: '80vh', padding: '40px 16px 80px' }}>
+        <StudentExamModule exam={exam} course={course} />
+      </main>
+      <Footer />
+    </>
   );
 }

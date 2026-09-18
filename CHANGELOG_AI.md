@@ -1,3 +1,21 @@
+## [2026-09-18] Unificación de Header y Footer en el 100% de las Páginas
+
+### 1. Cobertura Total de Encabezado y Pie de Página
+- **Vistas Públicas e Institucionales**:
+  - [`app/certificados/[code]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/certificados/[code]/page.tsx): Integrados `SiteHeader` y `Footer` institucional tanto en la vista activa del diploma como en el estado de "no encontrado" (ocultos automáticamente al imprimir el diploma gracias a la clase `.no-print`).
+  - [`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx): Reemplazada la barra aislada por `SiteHeader` completo y agregado el `Footer` institucional con branding K&T.
+  - [`app/login/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/login/page.tsx): Envuelto el formulario de acceso con `SiteHeader` y `Footer` para permitir navegación fluida de vuelta al catálogo y conservar la identidad en todo momento.
+  - [`app/evaluacion/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/evaluacion/[slug]/page.tsx): Integrados `SiteHeader` y `Footer` en la pantalla de evaluación del curso.
+  - [`app/not-found.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/not-found.tsx): Creada la página 404 personalizada con `SiteHeader`, navegación y `Footer`.
+- **Aula Virtual (`/aprender/[slug]/[lessonId]`)**:
+  - Conservado el `reader-top` header y adicionado el pie de página institucional del aula virtual con copyright dinámico y atribución "Desarrollado por K&T ♥".
+- **Paneles de Estudiante y Administrador (`DashboardShell.tsx`)**:
+  - Diseñado e implementado `dash-topbar` como encabezado sticky en todos los tamaños de pantalla (con botón de menú móvil, título institucional, estado y enlace al sitio público).
+  - Diseñado e implementado `dash-footer` con copyright dinámico (`new Date().getFullYear()`) y atribución legal "Desarrollado por K&T ♥" con corazón negro sobre fondo claro conforme a la regla 31.
+- **Verificación Automatizada**: Script de integración ejecutado contra todas las rutas confirmando 100% de presencia de encabezado y pie de página con HTTP 200 OK.
+
+---
+
 ## [2026-09-18] Depuración de Textos Demo y Conexión Dinámica de Contenidos con Supabase
 
 ### 1. Eliminación Total de Textos Demo, Mock y Simulaciones
