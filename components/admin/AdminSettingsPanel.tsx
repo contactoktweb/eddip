@@ -42,7 +42,7 @@ export function AdminSettingsPanel() {
   const handleReset = () => {
     if (
       confirm(
-        '¿Deseas restablecer todos los datos demostrativos? Esto limpiará cursos manuales, inscripciones y certificados creados en este navegador.'
+        '¿Deseas restablecer la memoria local del navegador? Esto restaurará la vista inicial y sincronizará de nuevo con Supabase.'
       )
     ) {
       resetDemo();
@@ -148,7 +148,7 @@ export function AdminSettingsPanel() {
         </div>
 
         <p style={{ fontSize: 13, color: '#68788d', marginBottom: 18, lineHeight: 1.5 }}>
-          Restaura los datos iniciales de la plataforma. Esta acción eliminará los cursos creados manualmente, las lecciones agregadas, las notas guardadas y los certificados de prueba generados en este dispositivo.
+          Restaura los datos iniciales de la plataforma en este equipo. Esta acción eliminará modificaciones locales no sincronizadas y recargará la estructura oficial desde el servidor.
         </p>
 
         <button
@@ -157,7 +157,7 @@ export function AdminSettingsPanel() {
           onClick={handleReset}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
         >
-          <Icon name="trash" /> Restablecer datos iniciales de la demo
+          <Icon name="trash" /> Restablecer datos locales del sistema
         </button>
       </div>
     </div>

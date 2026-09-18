@@ -30,7 +30,6 @@ export function StudentCertificatesGrid({ certificates, studentName }: Props) {
       isEarnedInResults ||
       certStudent === currentStudent ||
       (currentStudent.includes('sebastián') && certStudent.includes('sebastián')) ||
-      c.code.includes('DEMO') ||
       c.student === 'Estudiante EDDIP'
     );
   });

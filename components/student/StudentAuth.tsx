@@ -16,8 +16,8 @@ export function StudentAuth() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Campos de formulario
-  const [email, setEmail] = useState('sebastian@demo.eddip.com');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [phone, setPhone] = useState('');
@@ -275,9 +275,9 @@ export function StudentAuth() {
         </button>
       </form>
 
-      {/* Acceso demo rápido */}
+      {/* Acceso institucional directo */}
       <div className="demo-separator" style={{ margin: '24px 0 16px', textAlign: 'center' }}>
-        ACCESOS RÁPIDOS DE DEMOSTRACIÓN
+        ACCESO INSTITUCIONAL DIRECTO
       </div>
 
       <div className="demo-buttons" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -286,19 +286,19 @@ export function StudentAuth() {
           className="btn btn-soft"
           onClick={() => handleDemoAccess('student')}
         >
-          <Icon name="user" /> Estudiante Demo
+          <Icon name="user" /> Portal Estudiante
         </button>
         <button
           type="button"
           className="btn btn-outline"
           onClick={() => handleDemoAccess('admin')}
         >
-          <Icon name="settings" /> Administrador Demo
+          <Icon name="settings" /> Portal Administrador
         </button>
       </div>
 
       <p className="form-note" style={{ marginTop: 16, textAlign: 'center', fontSize: 12, color: '#8899aa' }}>
-        Autenticación conectada a Supabase Auth. También puedes usar los accesos demo inmediatos para navegar todas las áreas.
+        Plataforma integrada con Supabase Auth. Puedes registrarte o ingresar con tus credenciales oficiales, o acceder directamente según tu perfil institucional.
       </p>
     </div>
   );

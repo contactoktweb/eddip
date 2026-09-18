@@ -34,8 +34,7 @@ export default function StudentDashboard() {
     return (
       isEarned ||
       c.student.toLowerCase() === user.name.toLowerCase() ||
-      (user.name.toLowerCase().includes('sebastián') && c.student.toLowerCase().includes('sebastián')) ||
-      c.code.includes('DEMO')
+      (user.name.toLowerCase().includes('sebastián') && c.student.toLowerCase().includes('sebastián'))
     );
   });
 

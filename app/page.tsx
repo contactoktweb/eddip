@@ -191,8 +191,8 @@ export default function Home() {
                   <Icon name="check" size={14} />
                 </div>
                 <div className="verified-body">
-                  <span className="verified-title">Certificado verificado</span>
-                  <small className="verified-code">Código: EDDIP-2024-58901</small>
+                  <span className="verified-title">Certificado oficial</span>
+                  <small className="verified-code">Código: EDDIP-2026-000145</small>
                   <span className="verified-pill">Válido</span>
                 </div>
               </div>
@@ -392,20 +392,20 @@ export default function Home() {
                 <small className="cert-subline">DE APROBACIÓN</small>
 
                 <p className="cert-granted-to">Otorgado a</p>
-                <h3 className="cert-student-name">María Camila Ramírez Gómez</h3>
+                <h3 className="cert-student-name">Sebastián Martínez</h3>
 
-                <p className="cert-reason">Por haber aprobado satisfactoriamente el curso</p>
-                <h4 className="cert-course-name">Investigación Criminal Aplicada</h4>
+                <p className="cert-reason">Por haber aprobado satisfactoriamente el programa de formación</p>
+                <h4 className="cert-course-name">Derecho de Policía y Convivencia Ciudadana</h4>
 
                 <div className="cert-paper-meta">
-                  <span>Duración: 30 horas</span>
-                  <span>Fecha: 18 de mayo de 2024</span>
-                  <span>Código: EDDIP-2024-58901</span>
+                  <span>Intensidad: 40 horas</span>
+                  <span>Expedición: 2026</span>
+                  <span>Código: EDDIP-2026-000145</span>
                 </div>
 
                 <div className="cert-paper-signature">
-                  <div className="signature-script">Camila V.</div>
-                  <span className="signature-title">Director Académico</span>
+                  <div className="signature-script">Dirección Académica</div>
+                  <span className="signature-title">EDDIP Colombia</span>
                 </div>
               </div>
 
@@ -413,9 +413,9 @@ export default function Home() {
               <div className="certificate-qr-card">
                 <small>Escanea para verificar</small>
                 <div className="qr-box">
-                  <QrVisual code="EDDIP-2024-58901" size={78} />
+                  <QrVisual code="EDDIP-2026-000145" size={78} />
                 </div>
-                <strong>EDDIP-2024-58901</strong>
+                <strong>EDDIP-2026-000145</strong>
               </div>
             </div>
           </div>

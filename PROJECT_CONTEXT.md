@@ -69,5 +69,14 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 - Exactamente **un solo `H1`** por página.
 - Jerarquía estricta de encabezados (`H1` -> `H2` -> `H3`).
 - Footer con atribución obligatoria: **"Desarrollado por K&T ♥"** que redirige a `https://www.kytcode.lat`, corazón dinámico blanco sobre fondo oscuro, y año dinámico `new Date().getFullYear()`.
+- Cero textos de prueba, "demo", "simulado" o "JSON local" en la interfaz de usuario.
 - Soporte para accesibilidad y `prefers-reduced-motion`.
 - Persistencia resiliente: operaciones con Supabase y respaldo automático en caso de falta de conexión o tablas pendientes de migración.
+
+## 5. Integración y Suministro Dinámico desde Supabase
+- **Servicio Unificado `contentService.ts`**: Encapsula las consultas a Supabase para las tablas `courses`, `certificates` y `site_content`.
+- **Página de Cursos (`/cursos`, `/cursos/[slug]`)**: Suministrada directamente mediante `contentService.getCourses()` y sincronizada en el contexto global sin textos de prueba ni simulaciones.
+- **Página de Nosotros (`/nosotros`)**: Carga dinámica de la misión, visión, pilares doctrinales y estadísticas desde `site_content` en Supabase con fallback institucional.
+- **Página de Certificados (`/certificados/validar`, `/certificados/[code]`, `/dashboard/certificados`)**: Validación oficial en tiempo real contra `public.certificates` en Supabase, sin códigos mockeados ni fallbacks sintéticos ficticios.
+- **Página de Inicio (`/`)**: Integración en el carrusel de cursos destacados (`HomeFeaturedCourses`) alimentado por la base de datos y credencial de verificación pública `EDDIP-2026-000145`.
+- **Script SQL Completo (`lib/supabase/schema.sql`)**: Contiene la definición de todas las tablas con RLS, triggers y sentencias `INSERT` con semillas completas para despliegue inmediato en el SQL Editor de Supabase.

@@ -12,8 +12,8 @@ import { studentService } from '@/lib/supabase/studentService';
 
 export default function ValidateCertificatePage() {
   const { certs, user } = useDemo();
-  const [code, setCode] = useState('EDDIP-2026-000145');
-  const [searched, setSearched] = useState(true);
+  const [code, setCode] = useState('');
+  const [searched, setSearched] = useState(false);
   const [foundCert, setFoundCert] = useState<Certificate | null>(null);
 
   useEffect(() => {
@@ -65,16 +65,6 @@ export default function ValidateCertificatePage() {
           hours: found.hours,
           date: found.issueDate,
           status: found.status || 'Válido',
-        });
-      } else if (trimmed.startsWith('eddip-')) {
-        setFoundCert({
-          code: code.trim(),
-          student: user.name || 'Sebastián Martínez',
-          courseSlug: 'derecho-de-policia',
-          course: 'Derecho de Policía y Convivencia Ciudadana',
-          hours: 48,
-          date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
-          status: 'Válido',
         });
       } else {
         setFoundCert(null);
@@ -139,8 +129,8 @@ export default function ValidateCertificatePage() {
                 </button>
               </form>
 
-              <p className="form-note" style={{ marginTop: 14, fontSize: 12, color: '#8899aa' }}>
-                Códigos de prueba registrados: <strong>EDDIP-2026-000145</strong>, <strong>EDDIP-2026-000146</strong>, <strong>EDDIP-2026-000147</strong>.
+              <p className="form-note" style={{ marginTop: 14, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                Ingresa el código que figura en el diploma físico o digital emitido por EDDIP para comprobar su registro en la base de datos institucional.
               </p>
             </div>
 
@@ -267,16 +257,14 @@ export default function ValidateCertificatePage() {
                 <p style={{ color: '#68788d', fontSize: 14, maxWidth: 440, margin: '0 auto 16px' }}>
                   No se encontró ningún certificado emitido con el código <strong>{code}</strong>. Verifica mayúsculas y guiones.
                 </p>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => {
-                    setCode('EDDIP-2026-000145');
-                    setSearched(true);
-                  }}
-                >
-                  Probar con código de muestra: EDDIP-2026-000145
-                </button>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Link className="btn btn-outline" href="/dashboard/certificados">
+                    Consultar mis certificados
+                  </Link>
+                  <Link className="btn btn-primary" href="/cursos">
+                    Explorar catálogo de cursos
+                  </Link>
+                </div>
               </div>
             )}
           </div>

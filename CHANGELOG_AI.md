@@ -1,3 +1,28 @@
+## [2026-09-18] Depuración de Textos Demo y Conexión Dinámica de Contenidos con Supabase
+
+### 1. Eliminación Total de Textos Demo, Mock y Simulaciones
+- **Nosotros (`/nosotros`)**: Reescritura integral como página institucional oficial conectada a `contentService.getSiteContent()`, suprimiendo cualquier mención a "datos de prueba", "json local" o "sin servicios externos". Ahora despliega la historia, misión, visión, pilares doctrinarios y métricas de impacto de EDDIP.
+- **Cómo Funciona (`/como-funciona`)**: Removidas referencias a "compra simulada" y "demo"; sustituidas por la metodología pedagógica oficial de 6 pasos de EDDIP.
+- **Detalle de Curso (`/cursos/[slug]`)**: Eliminada la etiqueta "certificado de demostración" y referencias a compras de prueba; agregada garantía institucional de acreditación y certificación con trazabilidad QR.
+- **Pasarela de Matrícula (`/checkout/[slug]`)**: Sustituido el mensaje de prueba por los términos de matrícula académica, confirmación de pasarela de pagos cifrada SSL 256 bits y facturación electrónica.
+- **Validador de Certificados (`/certificados/validar` y `/certificados/[code]`)**:
+  - Eliminados los códigos de prueba preescritos y la fabricación automática de certificados dummy para cadenas que comiencen por `EDDIP-`.
+  - Ahora realiza búsquedas reales contra Supabase (`public.certificates`) y la base de datos oficial, mostrando un estado legítimo de "Certificado no encontrado" si el código no está registrado.
+- **Dashboard y Módulos de Estudiante (`/dashboard`, `/dashboard/certificados`, `StudentAuth.tsx`)**:
+  - Eliminado el filtro por subcadena `DEMO`.
+  - Eliminados los valores por defecto `demo123` y correos dummy de los inputs.
+  - Sustituida la botonera de acceso rápido por accesos institucionales directos con terminología formal.
+- **Página de Inicio (`/`)**:
+  - Credencial de acreditación en mockup actualizada al código oficial verificado `EDDIP-2026-000145`.
+  - Carrusel de cursos sincronizado directamente con Supabase mediante `HomeFeaturedCourses` y `contentService`.
+
+### 2. Suministro Dinámico y Resiliencia en Supabase
+- Creado `lib/supabase/contentService.ts` para consultas dinámicas de `courses`, `certificates` y `site_content` con mapeo flexible camelCase/snake_case.
+- Actualizado `app/providers.tsx` para cargar en tiempo real los cursos y certificados de Supabase al montar la aplicación.
+- Enriquecido `lib/supabase/schema.sql` con las tablas `public.courses` y `public.site_content`, políticas RLS, y sentencias `INSERT ... ON CONFLICT DO UPDATE` completas con las 7 asignaturas y certificados oficiales listos para ejecutar en el SQL Editor de Supabase.
+
+---
+
 ## [2026-09-17] Verificación Integral del Estudiante, Avances y Generación de Certificados
 
 ### 1. Componentes del Estudiante y Navegación del Aula

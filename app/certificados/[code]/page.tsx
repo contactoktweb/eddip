@@ -67,19 +67,7 @@ export default function CertificateView() {
     }
   }, [cert, decodedCode]);
 
-  // 5. Si es un código generado dinámicamente con prefijo EDDIP
-  if (!cert && decodedCode.toUpperCase().startsWith('EDDIP-')) {
-    cert = {
-      code: decodedCode,
-      student: user.name || 'Sebastián Martínez',
-      courseSlug: 'derecho-de-policia',
-      course: 'Derecho de Policía y Convivencia Ciudadana',
-      hours: 48,
-      date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
-      status: 'Válido',
-    } as Certificate;
-  }
-
+  // Si no se encuentra en el estado ni en Supabase, se muestra el estado oficial de no encontrado
   if (!cert) {
     return (
       <main className="section container" style={{ textAlign: 'center', padding: '80px 20px' }}>

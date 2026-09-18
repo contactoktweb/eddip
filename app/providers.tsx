@@ -4,6 +4,7 @@ import { baseCourses, certificates } from '@/lib/data';
 import type { Course, Certificate } from '@/lib/types';
 import { supabase } from '@/lib/supabase/client';
 import { studentService } from '@/lib/supabase/studentService';
+import { contentService } from '@/lib/supabase/contentService';
 import type { StudentProfile } from '@/lib/supabase/types';
 
 type Role = 'guest' | 'student' | 'admin';
@@ -74,6 +75,26 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [results, setResults] = useState<Record<string, Result>>({});
   const [extraCourses, setExtraCourses] = useState<Course[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [remoteCourses, setRemoteCourses] = useState<Course[]>([]);
+  const [remoteCerts, setRemoteCerts] = useState<Certificate[]>([]);
+
+  // Cargar cursos y certificados en tiempo real desde Supabase
+  useEffect(() => {
+    let mounted = true;
+    contentService.getCourses().then(c => {
+      if (mounted && c && c.length > 0) {
+        setRemoteCourses(c);
+      }
+    });
+    contentService.getCertificates().then(certs => {
+      if (mounted && certs && certs.length > 0) {
+        setRemoteCerts(certs);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // 1. Cargar estado local inicial
   useEffect(() => {
@@ -389,15 +410,30 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Lista unificada de cursos (Prioridad: editados por admin localmente > Supabase > base)
+  const combinedCourses = useMemo(() => {
+    const baseList = remoteCourses.length > 0 ? remoteCourses : baseCourses;
+    const map = new Map<string, Course>();
+    for (const c of extraCourses) {
+      map.set(c.slug, c);
+    }
+    for (const c of baseList) {
+      if (!map.has(c.slug)) {
+        map.set(c.slug, c);
+      }
+    }
+    return Array.from(map.values());
+  }, [extraCourses, remoteCourses]);
+
   // Certificados dinámicos combinados
   const certs = useMemo(() => {
     const dynamic = Object.entries(results)
       .filter(([, r]) => r.passed)
       .map(([slug, r], i) => {
-        const c = [...baseCourses, ...extraCourses].find(x => x.slug === slug);
+        const c = combinedCourses.find(x => x.slug === slug);
         return c
           ? {
-              code: r.code || `EDDIP-2026-DEMO${String(i + 1).padStart(3, '0')}`,
+              code: r.code || `EDDIP-2026-${String(200100 + i * 17)}`,
               student: userProfile.name,
               courseSlug: slug,
               course: c.title,
@@ -431,7 +467,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const all = [...dynamic, ...storedCerts, ...certificates];
+    const baseList = remoteCerts.length > 0 ? remoteCerts : certificates;
+    const all = [...dynamic, ...storedCerts, ...baseList];
     const seen = new Set<string>();
     return all.filter(c => {
       const codeKey = (c.code || '').trim().toLowerCase();
@@ -439,14 +476,14 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       seen.add(codeKey);
       return true;
     });
-  }, [results, extraCourses, userProfile.name]);
+  }, [results, combinedCourses, remoteCerts, userProfile.name]);
 
   return (
     <C.Provider
       value={{
         role,
         user: userProfile,
-        courses: [...extraCourses, ...baseCourses],
+        courses: combinedCourses,
         purchased,
         completed,
         results,
