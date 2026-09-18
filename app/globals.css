@@ -2385,6 +2385,31 @@ body {
 }
 
 /* =========================================================
+   ABOUT VISUAL HIGH CONTRAST (AAA ACCESSIBILITY)
+   ========================================================= */
+.about-visual {
+  min-height: 390px;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #072559 0%, #0b50bc 50%, #0e6ae4 100%) !important;
+  color: #ffffff !important;
+}
+.about-visual strong {
+  color: #ffffff !important;
+}
+.about-visual p {
+  color: #f8fafc !important;
+  line-height: 1.65 !important;
+}
+.about-visual span {
+  color: #bfdbfe;
+}
+.about-logo {
+  width: auto !important;
+  height: auto !important;
+  margin-bottom: 20px !important;
+}
+
+/* =========================================================
    ACCESSIBILITY: PREFERS-REDUCED-MOTION (RULE 27)
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {

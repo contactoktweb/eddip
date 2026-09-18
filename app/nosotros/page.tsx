@@ -67,16 +67,16 @@ export default function AboutPage() {
                   </div>
                   <h2 style={{ fontSize: 22, margin: 0, color: '#071F49' }}>{content.mission.title}</h2>
                 </div>
-                <p style={{ fontSize: 15, color: '#52637a', lineHeight: 1.65, margin: '0 0 20px' }}>
+                <p style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.7, margin: '0 0 20px', fontWeight: 400 }}>
                   {content.mission.description}
                 </p>
 
-                <h3 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5, color: '#0F59DF', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.8, color: '#0F59DF', marginBottom: 12, fontWeight: 700 }}>
                   Pilares pedagógicos y doctrinarios:
                 </h3>
                 <div className="outcome-list" style={{ marginTop: 8 }}>
                   {content.mission.pillars.map((pillar, idx) => (
-                    <div className="outcome-item" key={idx} style={{ fontSize: 14 }}>
+                    <div className="outcome-item" key={idx} style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 500, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                       <Icon name="check" size={17} />
                       <span>{pillar}</span>
                     </div>
@@ -110,43 +110,113 @@ export default function AboutPage() {
                   </div>
                   <h2 style={{ fontSize: 22, margin: 0, color: '#071F49' }}>{content.vision.title}</h2>
                 </div>
-                <p style={{ fontSize: 15, color: '#52637a', lineHeight: 1.65, margin: 0 }}>
+                <p style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.7, margin: 0, fontWeight: 400 }}>
                   {content.vision.description}
                 </p>
               </article>
             </div>
 
             {/* Columna Visual Institucional */}
-            <aside className="about-visual" style={{ alignSelf: 'flex-start', position: 'sticky', top: 90 }}>
-              <div className="about-logo" style={{ marginBottom: 16 }}>
-                <Image src="/eddip-logo.png" alt="Escuela EDDIP" width={110} height={110} priority />
+            <aside
+              className="about-visual"
+              style={{
+                alignSelf: 'flex-start',
+                position: 'sticky',
+                top: 90,
+                background: 'linear-gradient(145deg, #072559 0%, #0b50bc 50%, #0e6ae4 100%)',
+                color: '#ffffff',
+                borderRadius: 24,
+                padding: '36px 32px',
+                boxShadow: '0 25px 60px rgba(7, 31, 73, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+              }}
+            >
+              <div
+                className="about-logo"
+                style={{
+                  marginBottom: 20,
+                  background: '#ffffff',
+                  padding: 8,
+                  borderRadius: 20,
+                  display: 'inline-block',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.16)',
+                  width: 'auto',
+                  height: 'auto',
+                }}
+              >
+                <Image src="/eddip-logo.png" alt="Escuela EDDIP" width={80} height={80} priority />
               </div>
-              <strong style={{ fontSize: 24, letterSpacing: 0.5, color: '#071F49' }}>EDDIP</strong>
-              <span style={{ fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, display: 'block', margin: '4px 0 14px' }}>
+
+              <strong style={{ fontSize: 26, letterSpacing: 0.5, color: '#ffffff', display: 'block', fontWeight: 800 }}>
+                EDDIP
+              </strong>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: '#bfdbfe',
+                  textTransform: 'uppercase',
+                  letterSpacing: 1.2,
+                  display: 'block',
+                  margin: '6px 0 16px',
+                  fontWeight: 700,
+                }}
+              >
                 Escuela de Desarrollo y Doctrina Policial
               </span>
-              <p style={{ fontSize: 14, color: '#52637a', lineHeight: 1.6, margin: 0 }}>
+              <p
+                style={{
+                  fontSize: 14.5,
+                  color: '#f8fafc',
+                  lineHeight: 1.65,
+                  margin: 0,
+                  fontWeight: 400,
+                }}
+              >
                 Comprometidos con la modernización de los procesos de capacitación, la difusión de la doctrina policial y el fortalecimiento de las garantías constitucionales.
               </p>
 
               <div
                 style={{
-                  marginTop: 24,
-                  paddingTop: 20,
-                  borderTop: '1px solid var(--line)',
+                  marginTop: 26,
+                  paddingTop: 22,
+                  borderTop: '1px solid rgba(255, 255, 255, 0.22)',
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
                   gap: 14,
                   textAlign: 'center',
                 }}
               >
-                <div>
-                  <strong style={{ display: 'block', fontSize: 20, color: '#0F59DF' }}>{content.stats.students}</strong>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>Egresados</span>
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.14)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.22)',
+                    borderRadius: 14,
+                    padding: '16px 10px',
+                  }}
+                >
+                  <strong style={{ display: 'block', fontSize: 26, color: '#ffffff', fontWeight: 800 }}>
+                    {content.stats.students}
+                  </strong>
+                  <span style={{ fontSize: 12, color: '#e2e8f0', display: 'block', marginTop: 4, fontWeight: 500 }}>
+                    Egresados
+                  </span>
                 </div>
-                <div>
-                  <strong style={{ display: 'block', fontSize: 20, color: '#059669' }}>{content.stats.certificates}</strong>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>Certificados</span>
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.14)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.22)',
+                    borderRadius: 14,
+                    padding: '16px 10px',
+                  }}
+                >
+                  <strong style={{ display: 'block', fontSize: 26, color: '#4ade80', fontWeight: 800 }}>
+                    {content.stats.certificates}
+                  </strong>
+                  <span style={{ fontSize: 12, color: '#e2e8f0', display: 'block', marginTop: 4, fontWeight: 500 }}>
+                    Certificados
+                  </span>
                 </div>
               </div>
             </aside>
