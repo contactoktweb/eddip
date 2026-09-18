@@ -259,6 +259,24 @@ export const studentService = {
     }
   },
 
+  async resetPasswordForEmail(email: string): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      if (!cleanEmail) {
+        return { success: false, error: 'Por favor ingresa tu correo electrónico registrado.' };
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login?mode=reset` : undefined,
+      });
+      if (error) {
+        console.warn('Supabase resetPassword error:', error.message);
+      }
+      return { success: true, error: null };
+    } catch {
+      return { success: true, error: null };
+    }
+  },
+
   // ==========================================
   // CURSOS Y PROGRESO DE LECCIONES
   // ==========================================

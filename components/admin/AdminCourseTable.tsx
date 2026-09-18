@@ -156,7 +156,12 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
                     </span>
                   </td>
                   <td>
-                    <strong style={{ fontSize: 13, color: '#071F49' }}>{course.students}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <strong style={{ fontSize: 13, color: '#071F49' }}>{course.students}</strong>
+                      <span style={{ fontSize: 11, color: '#7a8b9e' }}>
+                        {course.students === 1 ? 'estudiante' : 'estudiantes'}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <strong style={{ fontSize: 13, color: '#0F59DF' }}>

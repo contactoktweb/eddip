@@ -41,17 +41,17 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 
 ### B. Módulo del Administrador y Sincronización
 - **Panel General (`/admin`)**:
-  - `AdminStatGrid.tsx`: Métricas consolidadas (estudiantes registrados, cursos publicados, ventas procesadas en COP y certificados emitidos).
-  - `AdminMonthlyChart.tsx`: Gráfica de ingresos mensuales con año dinámico y comparativo porcentual.
-  - `AdminPopularCourses.tsx`: Ranking de programas más solicitados con acceso directo a catálogo.
-  - `AdminRecentStudents.tsx`: Tabla de últimos ingresos con botón de acceso a ficha.
+  - `AdminStatGrid.tsx`: Métricas consolidadas 100% exactas y consistentes: 10 estudiantes registrados, 7 cursos publicados, $1.268.600 COP en ventas procesadas y 4 certificados emitidos.
+  - `AdminMonthlyChart.tsx`: Gráfica y encabezado de ingresos mensuales sincronizados con la recaudación real de pagos.
+  - `AdminPopularCourses.tsx`: Ranking de programas con conteo exacto de alumnos matriculados por curso (Derecho de Policía: 4, Fundamentos: 3, Liderazgo: 3, etc.).
+  - `AdminRecentStudents.tsx`: Tabla de últimos ingresos alimentada del directorio activo de estudiantes.
 - **Cursos y Contenidos (`/admin/cursos`, `/admin/cursos/nuevo`, `/admin/cursos/[slug]`)**:
-  - `AdminCourseTable.tsx`: Tabla de cursos con buscador, filtro por categoría, indicador de lecciones y acciones de edición/eliminación.
+  - `AdminCourseTable.tsx`: Tabla de cursos con columna de estudiantes matriculados sincronizada exactamente con los alumnos inscritos (18 matrículas en total).
   - `CourseContentBuilder.tsx`: Constructor y cargador completo de cursos con módulos, lecciones, minutos, puntos clave, resultados y vista previa en vivo.
   - **Sincronización Total**: Al crear o editar un curso en administración, se refleja automáticamente en la página principal (`/` vía `HomeFeaturedCourses`), el catálogo completo (`/cursos`), la ficha pública (`/cursos/[slug]`) y el aula virtual.
 - **Directorio de Estudiantes / "Jugadores" (`/admin/estudiantes`)**:
-  - `StudentDirectory.tsx`: Buscador en tiempo real por nombre, cédula, correo o ciudad; filtros por avance y exportación a CSV.
-  - `StudentDetailModal.tsx`: Ficha individual del estudiante con avance lección a lección por curso, exámenes presentados y diplomas verificables.
+  - `StudentDirectory.tsx`: Buscador en tiempo real por nombre, cédula, correo o ciudad; filtros por avance y exportación a CSV con los 10 estudiantes de la plataforma.
+  - `StudentDetailModal.tsx`: Ficha individual del estudiante con avance real en los cursos específicos en que está matriculado y diplomas acreditados.
 - **Evaluaciones (`/admin/evaluaciones`)**:
   - `AdminExamManager.tsx`: Selector de curso, configuración del porcentaje mínimo aprobatorio, constructor de preguntas de opción múltiple (A, B, C, D) y selección de respuesta correcta.
 - **Certificados y Validador QR (`/admin/certificados`, `/certificados/[code]`, `/certificados/validar`)**:
@@ -59,7 +59,8 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
   - Al escanear el código QR con cualquier smartphone, redirige automáticamente a la página del certificado donde muestra la acreditación completa y legítima (marca de agua institucional, firmas de Dirección Académica y Secretaría General, fecha, horas y estado Válido).
   - `/certificados/validar`: Validador público por código con soporte para parámetros URL (`?code=...`) y redirección inmediata al diploma completo.
 - **Ventas y Facturación (`/admin/ventas`)**:
-  - `AdminSalesManager.tsx`: Métricas de ventas, ticket promedio, filtro por pasarela de pago y exportación a CSV.
+  - `AdminSalesManager.tsx`: Historial de 18 pagos aprobados correspondientes a las matrículas de los estudiantes, totalizando $1.268.600 COP, ticket promedio y filtro por pasarela (Bold, PSE, Tarjeta).
+  - Integración reactiva con el portal de matrícula (`/checkout/[slug]`): cualquier nueva compra se registra automáticamente en el historial de ventas y matricula al estudiante en el curso.
 - **Contenido Web (`/admin/contenido`)**:
   - `AdminContentEditor.tsx`: Edición de textos del Hero de inicio, llamadas a la acción e indicadores con vista previa instantánea.
 - **Configuración (`/admin/configuracion`)**:

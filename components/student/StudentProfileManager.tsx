@@ -41,7 +41,7 @@ export function StudentProfileManager() {
       });
 
       if (success) {
-        showToast('success', '¡Perfil actualizado con éxito en Supabase!');
+        showToast('success', '¡Perfil actualizado con éxito!');
       } else {
         showToast('error', 'No se pudo actualizar el perfil.');
       }
@@ -67,7 +67,7 @@ export function StudentProfileManager() {
     try {
       const res = await studentService.updatePassword(newPassword);
       if (res.success) {
-        showToast('success', '¡Contraseña actualizada con éxito en Supabase Auth!');
+        showToast('success', '¡Contraseña actualizada con éxito!');
         setNewPassword('');
         setConfirmPassword('');
       } else {
@@ -196,7 +196,7 @@ export function StudentProfileManager() {
                   style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                 />
                 <span style={{ fontSize: 11, color: '#8b9bb4', marginTop: 4 }}>
-                  El correo de la cuenta está vinculado a Supabase Auth.
+                  El correo está vinculado a tu cuenta institucional y no puede modificarse.
                 </span>
               </div>
               <div className="field">
@@ -229,7 +229,7 @@ export function StudentProfileManager() {
               </button>
 
               <span style={{ fontSize: 12, color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Icon name="check" size={14} /> Sincronización activa con Supabase
+                <Icon name="check" size={14} /> Sincronización activa
               </span>
             </div>
           </form>

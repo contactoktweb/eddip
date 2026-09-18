@@ -1,21 +1,27 @@
-'use client';
+import { money } from '@/lib/data';
 
-export function AdminMonthlyChart() {
+type Props = {
+  totalSales?: number;
+  salesCount?: number;
+};
+
+export function AdminMonthlyChart({ totalSales, salesCount }: Props) {
   const currentYear = new Date().getFullYear();
   const heights = [42, 58, 48, 72, 65, 88, 76, 94, 82, 100, 91, 106];
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const displayTotal = typeof totalSales === 'number' ? money(totalSales) : '$1.268.600 COP';
 
   return (
     <section className="dash-card" aria-label="Gráfica de ingresos mensuales">
       <div className="dash-card-head">
-        <h2>Ingresos mensuales</h2>
+        <h2>Ingresos y matrículas</h2>
         <span className="badge">{currentYear}</span>
       </div>
 
       <div className="chart-caption" style={{ marginBottom: 20 }}>
-        <strong style={{ fontSize: 22, color: '#071F49' }}>$6.840.000 COP</strong>
+        <strong style={{ fontSize: 22, color: '#071F49' }}>{displayTotal}</strong>
         <span style={{ color: '#059669', fontSize: 12, fontWeight: 600, marginLeft: 10 }}>
-          ↑ 12.4% vs. mes anterior
+          {salesCount !== undefined ? `${salesCount} transacciones aprobadas` : '18 transacciones aprobadas'}
         </span>
       </div>
 

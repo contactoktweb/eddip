@@ -50,7 +50,7 @@ export default function CourseDetail() {
               <p>{course.description}</p>
               <div className="detail-meta">
                 <span>
-                  <Icon name="star" size={17} /> {course.rating} · {course.students} estudiantes
+                  <Icon name="star" size={17} /> {course.rating} · {course.students} {course.students === 1 ? 'estudiante' : 'estudiantes'}
                 </span>
                 <span>
                   <Icon name="clock" size={17} /> {course.durationHours} horas

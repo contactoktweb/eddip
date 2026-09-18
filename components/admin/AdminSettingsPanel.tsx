@@ -42,7 +42,7 @@ export function AdminSettingsPanel() {
   const handleReset = () => {
     if (
       confirm(
-        '¿Deseas restablecer la memoria local del navegador? Esto restaurará la vista inicial y sincronizará de nuevo con Supabase.'
+        '¿Deseas restablecer la memoria local del navegador? Esto restaurará la vista inicial y sincronizará de nuevo con el servidor central.'
       )
     ) {
       resetDemo();

@@ -1,3 +1,39 @@
+## [2026-09-18] Sincronización y Consistencia Exacta de Estudiantes, Cursos y Pagos
+
+### 1. Eliminación de Cifras Infladas y Sincronización en Supabase
+- **Tabla `public.courses` y `courses.json`**:
+  - Actualizados los registros de estudiantes en Supabase y localmente para eliminar los números artificiales (342, 286, 412...) y reflejar con exactitud la cantidad real de estudiantes inscritos en cada curso:
+    - *Derecho de Policía*: **4** estudiantes
+    - *Fundamentos de Seguridad y Convivencia*: **3** estudiantes
+    - *Liderazgo y Trabajo en Equipo*: **3** estudiantes
+    - *Gestión Pública por Resultados*: **2** estudiantes
+    - *Derecho Administrativo Contemporáneo*: **2** estudiantes
+    - *Contratación Estatal y Normatividad*: **2** estudiantes
+    - *Ciberseguridad para Entornos Públicos*: **2** estudiantes
+    - **Total matriculados**: **18 inscripciones activas**.
+  - Actualizadas las sentencias de semilla y la cláusula `ON CONFLICT (slug) DO UPDATE` en `lib/supabase/schema.sql`.
+
+### 2. Consistencia en Directorio y Fichas Académicas
+- En `data/students.json` y `lib/supabase/adminService.ts`:
+  - Asignados a cada uno de los 10 estudiantes sus cursos matriculados específicos, avances de lección reales y certificados acreditados (sumando exactamente las 18 inscripciones y los 4 certificados emitidos).
+  - Al abrir la ficha académica de cualquier estudiante (`StudentDetailModal.tsx`), se muestran los cursos en los que verdaderamente está matriculado con sus respectivos códigos de diploma.
+
+### 3. Registro Oficial de Pagos y Ventas
+- En `data/sales.json` y `lib/supabase/adminService.ts`:
+  - Generado el registro oficial de **18 transacciones aprobadas** correspondientes a cada una de las 18 inscripciones académicas por un total recaudado de **$1.268.600 COP**.
+  - Implementada persistencia reactiva en `adminService` (`recordSale`, `getSalesHistory`, `enrollStudentInCourse`) con sincronización en `localStorage`.
+
+### 4. Métricas del Panel de Administración y Portal de Matrícula
+- En [`app/admin/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/admin/page.tsx):
+  - Eliminados los modificadores artificiales (`+ 720`, `+ 180`).
+  - Las 4 tarjetas de métricas despliegan datos 100% reales: **10 estudiantes registrados**, **7 cursos publicados**, **$1.268.600 COP en ventas** y **4 certificados emitidos**.
+- En [`components/admin/AdminMonthlyChart.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminMonthlyChart.tsx):
+  - Sincronizado el encabezado con el recaudo total real ($1.268.600 COP) y las 18 transacciones aprobadas.
+- En [`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx) y [`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx):
+  - Al procesar una matrícula en el checkout, se registra la venta en `adminService.recordSale`, se matricula al estudiante y se incrementa en tiempo real el contador de estudiantes del curso.
+
+---
+
 ## [2026-09-18] Unificación de Header y Footer en el 100% de las Páginas
 
 ### 1. Cobertura Total de Encabezado y Pie de Página

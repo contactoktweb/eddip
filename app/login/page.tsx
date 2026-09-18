@@ -9,33 +9,66 @@ export default function LoginPage() {
   return (
     <>
       <SiteHeader />
-      <main className="auth-page" style={{ padding: '60px 20px' }}>
+      <main className="auth-page">
         <div className="auth-card">
-          {/* Arte lateral corporativo */}
-          <section className="auth-art" aria-label="Información institucional">
-            <Logo />
-            <h1 style={{ fontSize: 32, lineHeight: 1.25, margin: '24px 0 14px' }}>
-              Tu espacio de aprendizaje, en un solo lugar.
-            </h1>
-            <p style={{ fontSize: 15, opacity: 0.9, lineHeight: 1.6 }}>
-              Accede a tus cursos interactivos, continúa tu avance lección a lección, presenta evaluaciones de certificación y valida diplomas con registro en Supabase.
-            </p>
+          {/* Arte lateral corporativo e institucional */}
+          <section className="auth-art" aria-label="Información institucional de EDDIP">
+            <div className="auth-art-glow-top" />
+            <div className="auth-art-glow-bottom" />
 
-            <div className="hero-trust" style={{ color: 'rgba(255,255,255,0.9)', marginTop: 32, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <Icon name="check" size={16} /> Contenido normativo y técnico actualizado
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <Icon name="check" size={16} /> Seguimiento de progreso en tiempo real
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <Icon name="check" size={16} /> Certificados con código de verificación QR
-              </span>
+            <div className="auth-art-inner">
+              <div className="auth-art-brand">
+                <Logo />
+              </div>
+
+              <div className="auth-art-badge">
+                <Icon name="shield" size={14} />
+                <span>Educación Superior y Continua</span>
+              </div>
+
+              <h1 className="auth-art-title">
+                Tu espacio de aprendizaje, en un solo lugar.
+              </h1>
+
+              <p className="auth-art-desc">
+                Accede a tus cursos interactivos, continúa tu avance lección a lección, presenta evaluaciones de certificación y valida diplomas con acreditación y verificación oficial mediante código QR único.
+              </p>
+
+              <div className="auth-art-benefits">
+                <div className="auth-art-benefit-item">
+                  <div className="auth-art-check">
+                    <Icon name="check" size={14} />
+                  </div>
+                  <span>Contenido normativo y técnico actualizado</span>
+                </div>
+                <div className="auth-art-benefit-item">
+                  <div className="auth-art-check">
+                    <Icon name="check" size={14} />
+                  </div>
+                  <span>Seguimiento de progreso lección a lección</span>
+                </div>
+                <div className="auth-art-benefit-item">
+                  <div className="auth-art-check">
+                    <Icon name="check" size={14} />
+                  </div>
+                  <span>Certificados oficiales con código de validación QR</span>
+                </div>
+              </div>
+
+              <div className="auth-art-trust-card">
+                <div className="auth-trust-icon-box">
+                  <Icon name="award" size={22} />
+                </div>
+                <div className="auth-trust-content">
+                  <strong>Acreditación Institucional Garantizada</strong>
+                  <p>Programas diseñados según los estándares normativos vigentes para servidores públicos y profesionales.</p>
+                </div>
+              </div>
             </div>
           </section>
 
           {/* Sección de autenticación modular */}
-          <section className="auth-form" aria-label="Formulario de acceso">
+          <section className="auth-form" aria-label="Formulario de acceso institucional">
             <StudentAuth />
           </section>
         </div>

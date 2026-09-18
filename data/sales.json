@@ -1,6 +1,6 @@
 [
   {
-    "id": "VEN-1028",
+    "id": "VEN-1018",
     "student": "Sebastián Martínez",
     "course": "Derecho de Policía",
     "value": 45000,
@@ -9,48 +9,156 @@
     "status": "Aprobado"
   },
   {
-    "id": "VEN-1027",
-    "student": "Laura Gómez",
-    "course": "Gestión Documental",
-    "value": 45000,
-    "method": "Bold",
+    "id": "VEN-1017",
+    "student": "Sebastián Martínez",
+    "course": "Fundamentos de Seguridad y Convivencia Ciudadana",
+    "value": 59900,
+    "method": "PSE",
     "date": "2026-08-15",
     "status": "Aprobado"
   },
   {
-    "id": "VEN-1026",
-    "student": "Carlos Rodríguez",
-    "course": "Derechos Humanos",
+    "id": "VEN-1016",
+    "student": "Laura Gómez",
+    "course": "Derecho de Policía",
     "value": 45000,
     "method": "Bold",
     "date": "2026-08-14",
     "status": "Aprobado"
   },
   {
-    "id": "VEN-1025",
-    "student": "Natalia Pérez",
-    "course": "Seguridad de Instalaciones",
+    "id": "VEN-1015",
+    "student": "Laura Gómez",
+    "course": "Derecho Administrativo Contemporáneo",
+    "value": 89900,
+    "method": "Tarjeta de Crédito",
+    "date": "2026-08-14",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1014",
+    "student": "Carlos Rodríguez",
+    "course": "Derecho de Policía",
     "value": 45000,
+    "method": "PSE",
+    "date": "2026-08-13",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1013",
+    "student": "Carlos Rodríguez",
+    "course": "Contratación Estatal y Normatividad",
+    "value": 99900,
     "method": "Bold",
     "date": "2026-08-13",
     "status": "Aprobado"
   },
   {
-    "id": "VEN-1024",
+    "id": "VEN-1012",
+    "student": "Natalia Pérez",
+    "course": "Ciberseguridad para Entornos Públicos",
+    "value": 109900,
+    "method": "PSE",
+    "date": "2026-08-12",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1011",
     "student": "Andrés Torres",
-    "course": "Liderazgo",
-    "value": 45000,
+    "course": "Liderazgo y Trabajo en Equipo",
+    "value": 49900,
     "method": "Bold",
     "date": "2026-08-12",
     "status": "Aprobado"
   },
   {
-    "id": "VEN-1023",
-    "student": "Diana Moreno",
-    "course": "Administración Pública",
+    "id": "VEN-1010",
+    "student": "Juliana Castro",
+    "course": "Fundamentos de Seguridad y Convivencia Ciudadana",
+    "value": 59900,
+    "method": "Tarjeta de Crédito",
+    "date": "2026-08-11",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1009",
+    "student": "Juliana Castro",
+    "course": "Gestión Pública por Resultados",
+    "value": 79900,
+    "method": "PSE",
+    "date": "2026-08-11",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1008",
+    "student": "Felipe Vargas",
+    "course": "Derecho de Policía",
     "value": 45000,
     "method": "Bold",
-    "date": "2026-08-11",
+    "date": "2026-08-10",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1007",
+    "student": "Felipe Vargas",
+    "course": "Contratación Estatal y Normatividad",
+    "value": 99900,
+    "method": "PSE",
+    "date": "2026-08-10",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1006",
+    "student": "Diana Moreno",
+    "course": "Liderazgo y Trabajo en Equipo",
+    "value": 49900,
+    "method": "Bold",
+    "date": "2026-08-09",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1005",
+    "student": "Diana Moreno",
+    "course": "Gestión Pública por Resultados",
+    "value": 79900,
+    "method": "Tarjeta de Crédito",
+    "date": "2026-08-09",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1004",
+    "student": "Miguel Rojas",
+    "course": "Liderazgo y Trabajo en Equipo",
+    "value": 49900,
+    "method": "PSE",
+    "date": "2026-08-08",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1003",
+    "student": "Miguel Rojas",
+    "course": "Ciberseguridad para Entornos Públicos",
+    "value": 109900,
+    "method": "Bold",
+    "date": "2026-08-08",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1002",
+    "student": "Paula Sánchez",
+    "course": "Fundamentos de Seguridad y Convivencia Ciudadana",
+    "value": 59900,
+    "method": "PSE",
+    "date": "2026-08-07",
+    "status": "Aprobado"
+  },
+  {
+    "id": "VEN-1001",
+    "student": "Paula Sánchez",
+    "course": "Derecho Administrativo Contemporáneo",
+    "value": 89900,
+    "method": "Tarjeta de Crédito",
+    "date": "2026-08-07",
     "status": "Aprobado"
   }
 ]

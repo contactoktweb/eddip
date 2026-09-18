@@ -64,7 +64,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     city?: string;
   }>({
     name: 'Sebastián Martínez',
-    email: 'sebastian@demo.eddip.com',
+    email: 'estudiante@eddip.edu.co',
     documentId: '1.032.456.789',
     phone: '300 555 0182',
     city: 'Bogotá D.C.',
@@ -204,13 +204,13 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(prev => ({
         ...prev,
         name: 'Administrador EDDIP',
-        email: 'admin@demo.eddip.com',
+        email: 'admin@eddip.edu.co',
       }));
     } else {
       setUserProfile(prev => ({
         ...prev,
         name: prev.name || 'Sebastián Martínez',
-        email: prev.email || 'sebastian@demo.eddip.com',
+        email: prev.email || 'estudiante@eddip.edu.co',
       }));
     }
   }, []);
@@ -225,8 +225,22 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const purchase = useCallback((slug: string) => {
-    setPurchased(v => (v.includes(slug) ? v : [...v, slug]));
-  }, []);
+    setPurchased(v => {
+      if (v.includes(slug)) return v;
+      setExtraCourses(prev => {
+        const existing = prev.find(c => c.slug === slug);
+        if (existing) {
+          return prev.map(c => (c.slug === slug ? { ...c, students: (c.students || 0) + 1 } : c));
+        }
+        const base = (remoteCourses.length > 0 ? remoteCourses : baseCourses).find(c => c.slug === slug);
+        if (base) {
+          return [{ ...base, students: (base.students || 0) + 1 }, ...prev];
+        }
+        return prev;
+      });
+      return [...v, slug];
+    });
+  }, [remoteCourses]);
 
   const toggleLesson = useCallback(async (slug: string, id: string) => {
     const isCurrentlyDone = (completed[slug] || []).includes(id);
@@ -403,7 +417,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     setNotes({});
     setUserProfile({
       name: 'Sebastián Martínez',
-      email: 'sebastian@demo.eddip.com',
+      email: 'estudiante@eddip.edu.co',
       documentId: '1.032.456.789',
       phone: '300 555 0182',
       city: 'Bogotá D.C.',

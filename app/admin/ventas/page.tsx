@@ -1,8 +1,21 @@
 'use client';
-import { sales } from '@/lib/data';
+import { useState, useEffect } from 'react';
+import { sales as initialSales } from '@/lib/data';
+import { adminService } from '@/lib/supabase/adminService';
+import type { Sale } from '@/lib/types';
 import { AdminSalesManager } from '@/components/admin/AdminSalesManager';
 
 export default function AdminSalesPage() {
+  const [salesList, setSalesList] = useState<Sale[]>(initialSales);
+
+  useEffect(() => {
+    adminService.getSalesHistory().then(res => {
+      if (res && res.length > 0) {
+        setSalesList(res);
+      }
+    });
+  }, []);
+
   return (
     <div className="dash-page">
       <header className="dash-head">
@@ -15,7 +28,7 @@ export default function AdminSalesPage() {
         </div>
       </header>
 
-      <AdminSalesManager sales={sales} />
+      <AdminSalesManager sales={salesList} />
     </div>
   );
 }

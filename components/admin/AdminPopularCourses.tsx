@@ -61,7 +61,7 @@ export function AdminPopularCourses({ courses }: Props) {
                   {course.title}
                 </strong>
                 <span style={{ fontSize: 11, color: '#64748b' }}>
-                  {course.category} · {course.students} matriculados
+                  {course.category} · {course.students} {course.students === 1 ? 'matriculado' : 'matriculados'}
                 </span>
               </div>
             </div>

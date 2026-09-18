@@ -1,7 +1,10 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useDemo } from '@/app/providers';
-import { sales, students } from '@/lib/data';
+import { sales as initialSales, students as initialStudents } from '@/lib/data';
+import { adminService } from '@/lib/supabase/adminService';
+import type { Sale, Student } from '@/lib/types';
 import { Icon } from '@/lib/icons';
 import { AdminStatGrid } from '@/components/admin/AdminStatGrid';
 import { AdminMonthlyChart } from '@/components/admin/AdminMonthlyChart';
@@ -10,7 +13,34 @@ import { AdminRecentStudents } from '@/components/admin/AdminRecentStudents';
 
 export default function AdminHomePage() {
   const { courses, certs } = useDemo();
-  const totalSales = sales.reduce((a, b) => a + b.value, 0);
+  const [studentList, setStudentList] = useState<Student[]>(initialStudents);
+  const [salesList, setSalesList] = useState<Sale[]>(initialSales);
+
+  useEffect(() => {
+    adminService.getAllStudents().then(res => {
+      if (res && res.length > 0) {
+        setStudentList(
+          res.map(s => ({
+            id: s.id,
+            name: s.name,
+            email: s.email,
+            courses: s.coursesCount,
+            progress: s.progressAvg,
+            certificates: s.certificatesCount,
+            registeredAt: s.registeredAt,
+          }))
+        );
+      }
+    });
+
+    adminService.getSalesHistory().then(res => {
+      if (res && res.length > 0) {
+        setSalesList(res);
+      }
+    });
+  }, []);
+
+  const totalSales = salesList.reduce((a, b) => a + b.value, 0);
 
   return (
     <div className="dash-page">
@@ -33,20 +63,20 @@ export default function AdminHomePage() {
 
       {/* Métricas clave */}
       <AdminStatGrid
-        totalStudents={students.length + 720}
+        totalStudents={studentList.length}
         totalCourses={courses.length}
         totalSales={totalSales}
-        totalCertificates={certs.length + 180}
+        totalCertificates={certs.length}
       />
 
       {/* Gráfica y Cursos populares */}
       <div className="dash-grid">
-        <AdminMonthlyChart />
+        <AdminMonthlyChart totalSales={totalSales} salesCount={salesList.length} />
         <AdminPopularCourses courses={courses} />
       </div>
 
       {/* Últimos estudiantes registrados */}
-      <AdminRecentStudents students={students} />
+      <AdminRecentStudents students={studentList} />
     </div>
   );
 }

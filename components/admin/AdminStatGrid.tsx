@@ -21,25 +21,25 @@ export function AdminStatGrid({
         label="Estudiantes registrados"
         value={totalStudents}
         icon="users"
-        delta="+8.2% este mes"
+        delta="Directorio activo"
       />
       <StatCard
         label="Cursos publicados"
         value={totalCourses}
         icon="book"
-        delta="+2 este mes"
+        delta="Oferta académica oficial"
       />
       <StatCard
         label="Ventas procesadas"
         value={money(totalSales)}
         icon="dollar"
-        delta="+12.4% vs mes anterior"
+        delta="Recaudo validado"
       />
       <StatCard
         label="Certificados expedidos"
         value={totalCertificates}
         icon="award"
-        delta="+23 este mes"
+        delta="Trazabilidad QR activa"
       />
     </section>
   );
