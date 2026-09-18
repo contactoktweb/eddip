@@ -18,8 +18,11 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 
 ### A. Módulo del Estudiante (Verificado E2E)
 - **Autenticación (`/login`)**:
-  - `StudentAuth.tsx`: Pestañas para inicio de sesión y registro de nuevos estudiantes (Nombre, Cédula, Teléfono, Correo, Contraseña) contra Supabase Auth.
-  - Accesos demo inmediatos para validación sin credenciales.
+  - `StudentAuth.tsx`: Sistema con 3 modos (Inicio de sesión, Registro oficial de estudiante y Restablecimiento de contraseña).
+  - Removidas todas las referencias textuales a "Supabase" hacia el usuario; reemplazadas con distintivo institucional seguro con pulso reactivo ("Campus Virtual Seguro").
+  - Visibilidad alternable de contraseña (`eye`/`eyeOff` SVG) en login y registro.
+  - Flujo integral de restablecimiento de contraseña con envío de correo seguro y pantalla de confirmación.
+  - Accesos directos institucionales optimizados para validación inmediata (Portal Estudiante y Portal Administrador).
 - **Panel Principal (`/dashboard`)**:
   - `StudentStatGrid.tsx`: Métricas de cursos activos, completados, horas acumuladas y diplomas con filtros sincronizados.
   - `StudentContinueLearning.tsx`: Tarjeta interactiva del curso en progreso con avance porcentual, indicación de próxima lección y botón dinámico que conmuta a "Evaluación" al llegar al 100%.

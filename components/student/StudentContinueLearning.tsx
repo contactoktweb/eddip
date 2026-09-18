@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Course } from '@/lib/types';
 import { allLessons } from '@/lib/data';
 import { Icon } from '@/lib/icons';
@@ -73,13 +74,33 @@ export function StudentContinueLearning({ courses, completedMap }: Props) {
               <div
                 className="learning-thumb"
                 style={{
-                  background: course.gradient,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 10,
+                  background: course.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
                   display: 'grid',
                   placeItems: 'center',
                   color: '#fff',
                 }}
               >
-                <Icon name={isCertified ? 'award' : isComplete ? 'check' : 'book'} size={24} />
+                <Image
+                  src={course.image || '/images/courses/seguridad.jpg'}
+                  alt={course.title}
+                  fill
+                  sizes="62px"
+                  style={{ objectFit: 'cover' }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(7, 21, 43, 0.45)',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Icon name={isCertified ? 'award' : isComplete ? 'check' : 'book'} size={18} />
+                </div>
               </div>
 
               <div>

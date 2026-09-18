@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { Icon } from '@/lib/icons';
@@ -63,8 +64,75 @@ export default function CourseDetail() {
             </div>
 
             <aside className="enroll-card">
-              <div className="enroll-cover" style={{ background: course.gradient }}>
-                <Icon name="book" size={58} />
+              <div
+                className="enroll-cover"
+                style={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 16,
+                  height: 205,
+                  background: course.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
+                }}
+              >
+                <Image
+                  src={course.image || '/images/courses/seguridad.jpg'}
+                  alt={course.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 380px"
+                  style={{ objectFit: 'cover' }}
+                  priority
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to top, rgba(7, 21, 43, 0.72) 0%, rgba(7, 21, 43, 0.15) 55%, transparent 100%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      background: 'rgba(7, 21, 43, 0.78)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#fff',
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.02em',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                    }}
+                  >
+                    {course.category}
+                  </span>
+                  <span
+                    style={{
+                      background: 'rgba(15, 89, 223, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#fff',
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      border: '1px solid rgba(255,255,255,0.22)',
+                    }}
+                  >
+                    {course.level}
+                  </span>
+                </div>
               </div>
               <div className="price">{money(course.price)}</div>
               <p style={{ fontSize: 12, color: '#5b6c81' }}>

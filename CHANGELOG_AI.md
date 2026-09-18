@@ -1,3 +1,40 @@
+## [2026-09-18] Remoción de Textos de Supabase, Rediseño Integral de Autenticación y Despliegue de Imágenes de Curso
+
+### 1. Eliminación Completa de Menciones a Supabase en Interfaces de Usuario
+- Removido el chip "Conectado a Supabase" y reemplazado por la insignia institucional con pulso en tiempo real: `<span className="auth-badge-secure"><span className="auth-pulse-dot" /> Campus Virtual Seguro</span>`.
+- En [`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx):
+  - Eliminados todos los textos orientados al usuario que contenían "Supabase" ("Conectando con Supabase...", "¡Cuenta creada exitosamente en Supabase!...", "Plataforma integrada con Supabase Auth...").
+  - Sustituidos por mensajes institucionales de alta confianza sobre cifrado SSL institucional y verificación segura de credenciales.
+- En [`app/login/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/login/page.tsx):
+  - Actualizado el texto descriptivo del panel corporativo para omitir "Supabase", enfatizando la acreditación y verificación oficial mediante código QR único.
+- En [`components/admin/AdminSettingsPanel.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminSettingsPanel.tsx):
+  - Ajustado el mensaje del diálogo de restablecimiento a "sincronizará de nuevo con el servidor central".
+
+### 2. Rediseño de Alta Fidelidad del Portal de Acceso y Registro
+- En [`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx) y [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css):
+  - **Control por Pestañas Segmentadas**: Selector interactivo (`Iniciar sesión` / `Nuevo estudiante`) con micro-interacciones fluidas y estado activo destacado.
+  - **Inputs Modernos**: Envoltorio con iconos vectoriales integrados (`mail`, `lock`, `user`, `card`, `whatsapp`, `building`), contornos refinados y foco con halo suave.
+  - **Visibilidad de Contraseñas**: Botón interactivo de mostrar/ocultar contraseña con iconos SVG nítidos `eye` y `eyeOff` en todos los campos de contraseña.
+  - **Accesos Directos Institucionales**: Tarjetas interactivas con hover para acceso inmediato como Estudiante o Administrador.
+  - **Panel Lateral Institucional**: Jerarquía visual enriquecida con badges de acreditación, beneficios con checkmark y tarjeta de garantía formativa, respetando estrictamente la regla de un solo `H1` por página.
+
+### 3. Implementación Completa del Flujo de Restablecimiento de Contraseña
+- Creado el modo `'reset'` en `StudentAuth.tsx`:
+  - Activación inmediata desde el enlace "¿Olvidaste tu contraseña?" o mediante navegación.
+  - Formulario de solicitud de recuperación mediante correo registrado con validación.
+  - Conexión con `studentService.resetPasswordForEmail(email)`.
+  - Tarjeta de confirmación con icono de correo institucional, instrucciones claras y botón de retorno al inicio de sesión.
+
+### 4. Despliegue de Imágenes de Curso en Fichas y Checkout
+- En [`app/cursos/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/cursos/[slug]/page.tsx):
+  - Sustituido el contenedor monocolor con icono por la fotografía oficial del curso (`course.image` o fallback `/images/courses/seguridad.jpg`) mediante Next.js `Image` optimizado, con gradiente cinematográfico inferior y chips flotantes de categoría y nivel.
+- En [`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx):
+  - Incorporada la miniatura fotográfica del curso en el resumen de orden de matrícula.
+- En [`components/student/StudentContinueLearning.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentContinueLearning.tsx):
+  - Actualizado el thumbnail de cursos activos en el dashboard para mostrar la carátula oficial con el indicador de avance o certificación.
+
+---
+
 ## [2026-09-18] Sincronización y Consistencia Exacta de Estudiantes, Cursos y Pagos
 
 ### 1. Eliminación de Cifras Infladas y Sincronización en Supabase

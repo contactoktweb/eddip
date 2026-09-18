@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { useDemo } from '@/app/providers';
@@ -743,10 +744,12 @@ export default function Checkout() {
                 >
                   <div
                     style={{
-                      width: 54,
-                      height: 54,
+                      position: 'relative',
+                      width: 58,
+                      height: 58,
                       borderRadius: 14,
-                      background: course.gradient,
+                      overflow: 'hidden',
+                      background: course.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
                       color: '#fff',
                       display: 'grid',
                       placeItems: 'center',
@@ -754,7 +757,13 @@ export default function Checkout() {
                       boxShadow: '0 4px 12px rgba(11, 98, 221, 0.2)',
                     }}
                   >
-                    <Icon name="book" size={24} />
+                    <Image
+                      src={course.image || '/images/courses/seguridad.jpg'}
+                      alt={course.title}
+                      fill
+                      sizes="58px"
+                      style={{ objectFit: 'cover' }}
+                    />
                   </div>
                   <div>
                     <span style={{ fontSize: 11, color: '#0b62dd', fontWeight: 700, textTransform: 'uppercase' }}>
