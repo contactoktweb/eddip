@@ -1,3 +1,7 @@
+## [2026-09-26] Actualización del Footer Institucional
+- En [`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx):
+  - Removido el texto `" — Escuela de Desarrollo y Doctrina Policial"` del copyright del footer, unificándolo con el formato estándar: `© {new Date().getFullYear()} EDDIP. Todos los derechos reservados.`.
+
 ## [2026-09-18] Remoción de Textos de Supabase, Rediseño Integral de Autenticación y Despliegue de Imágenes de Curso
 
 ### 1. Eliminación Completa de Menciones a Supabase en Interfaces de Usuario

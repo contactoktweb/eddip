@@ -207,7 +207,7 @@ export function DashboardShell({
             marginTop: 'auto',
           }}
         >
-          <span>© {new Date().getFullYear()} EDDIP — Escuela de Desarrollo y Doctrina Policial.</span>
+          <span>© {new Date().getFullYear()} EDDIP. Todos los derechos reservados.</span>
           <a
             href="https://www.kytcode.lat"
             target="_blank"
