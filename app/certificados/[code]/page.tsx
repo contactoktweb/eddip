@@ -249,7 +249,7 @@ export default function CertificateView() {
               Acreditación y Certificación Académica Oficial
             </div>
 
-            <p style={{ fontSize: 15, color: '#475569', margin: '0 0 6px' }}>
+            <p className="certificate-intro" style={{ fontSize: 15, color: '#475569', margin: '0 0 6px' }}>
               El Consejo Académico y la Dirección General de EDDIP certifican que:
             </p>
 
@@ -269,7 +269,7 @@ export default function CertificateView() {
               {cert.student}
             </h1>
 
-            <p style={{ fontSize: 15, color: '#475569', margin: '14px 0 8px' }}>
+            <p className="certificate-course-pre" style={{ fontSize: 15, color: '#475569', margin: '14px 0 8px' }}>
               Ha cursado, completado y aprobado satisfactoriamente todos los módulos y la evaluación final del programa:
             </p>
 
@@ -329,58 +329,31 @@ export default function CertificateView() {
               </div>
             </div>
 
-            <p style={{ fontSize: 12, maxWidth: 660, margin: '0 auto 32px', color: '#64748b', lineHeight: 1.5 }}>
+            <p className="certificate-verify-text" style={{ fontSize: 12, maxWidth: 660, margin: '0 auto 24px', color: '#64748b', lineHeight: 1.5 }}>
               La autenticidad de este diploma puede ser verificada escaneando el código QR criptográfico incorporado o ingresando el código de registro en el validador oficial de <strong>www.eddip.com/certificados/validar</strong>.
             </p>
 
-            {/* Firmas y Código QR Oficial */}
+            {/* Código QR Oficial Centrado (Sin Firmas) */}
             <div
               className="certificate-footer"
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto 1fr',
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 24,
-                maxWidth: 760,
+                justifyContent: 'center',
+                gap: 8,
+                maxWidth: 420,
                 margin: '0 auto',
                 paddingTop: 16,
                 borderTop: '1px solid #e2e8f0',
               }}
             >
-              <div style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    width: 140,
-                    height: 1,
-                    background: '#94a3b8',
-                    margin: '0 auto 8px',
-                  }}
-                />
-                <strong style={{ display: 'block', fontSize: 12, color: '#071F49' }}>
-                  Dirección Académica
-                </strong>
-                <span style={{ fontSize: 10, color: '#64748b' }}>EDDIP Formación Nacional</span>
-              </div>
-
-              {/* QR Code Real Escaneable */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <QrVisual code={cert.code} size={118} />
+                <QrVisual code={cert.code} size={110} />
               </div>
-
-              <div style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    width: 140,
-                    height: 1,
-                    background: '#94a3b8',
-                    margin: '0 auto 8px',
-                  }}
-                />
-                <strong style={{ display: 'block', fontSize: 12, color: '#071F49' }}>
-                  Secretaría General
-                </strong>
-                <span style={{ fontSize: 10, color: '#64748b' }}>Registro Oficial y Control</span>
-              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                Registro Oficial y Trazabilidad Criptográfica EDDIP
+              </span>
             </div>
           </div>
         </div>

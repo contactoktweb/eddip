@@ -1,3 +1,11 @@
+## [2026-09-26] Certificados: Remoción de Firmas y Optimización Obligatoria de Impresión en 1 Sola Página Horizontal
+- En [`app/certificados/[code]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/certificados/[code]/page.tsx):
+  - Removidas únicamente las firmas de "Dirección Académica" y "Secretaría General".
+  - Centrado el código QR de validación criptográfica (`QrVisual`) con su pie oficial de verificación.
+- En [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css):
+  - Configurada regla `@page { size: landscape; margin: 6mm 8mm; }` para que al imprimir (`window.print()`) el navegador configure obligatoriamente orientación horizontal.
+  - Implementado control estricto de 1 sola página (`max-height: 185mm`, `overflow: hidden`, `page-break-inside: avoid`, `break-inside: avoid`), eliminando cualquier corte o desborde a una segunda página.
+
 ## [2026-09-26] Sistema de Subida de Imágenes de Cursos y Slider Táctil Interactivo (Regla 15)
 - **Subida de Imágenes en el Editor de Cursos** ([`components/admin/CourseContentBuilder.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/CourseContentBuilder.tsx)):
   - Creado el campo interactivo de subida de imágenes para los cursos con soporte para 1 o múltiples archivos simultáneos (JPG, PNG, WEBP) mediante Drag & Drop y selector nativo del sistema.

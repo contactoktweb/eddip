@@ -142,8 +142,139 @@ p{color:var(--muted)}
 @media(max-width:620px){
  h1{font-size:40px}.hero-copy p{font-size:15px}.hero-visual{min-height:355px}.mock-body{grid-template-columns:92px 1fr}.mock-content{padding:16px}.mock-course-row{grid-template-columns:1fr}.mock-card:nth-child(2){display:none}.float-card.one{left:0;bottom:36px}.float-card.two{right:0;bottom:-10px}.stat-strip-inner{padding:12px}.mini-stat{padding:12px}.mini-stat strong{font-size:20px}.category-grid,.course-grid,.feature-grid{grid-template-columns:1fr}.process{grid-template-columns:1fr}.process-step{text-align:left;display:grid;grid-template-columns:52px 1fr;gap:12px}.step-num{width:48px;height:48px;margin:0;grid-row:1/3}.cert-section{padding:26px 20px}.certificate-preview{padding:18px}.form-row,.demo-buttons{grid-template-columns:1fr}.auth-form{padding:30px 22px}.stats-grid{grid-template-columns:1fr}.dash-head{flex-direction:column}.learning-item{grid-template-columns:50px 1fr}.learning-item .btn{grid-column:1/-1}.learning-thumb{width:50px;height:48px}.exam-page{padding:14px}.exam-card{padding:22px 17px}.exam-card h1{font-size:22px}.reader-content{padding:36px 20px 80px}.reader-content h1{font-size:30px}.reader-top{padding:0 16px}.reader-top>span{display:none}.reader-nav{flex-direction:column}.certificate-info{flex-direction:column;gap:10px}.info-grid{grid-template-columns:1fr}.course-detail-hero h1{font-size:39px}.outcome-list{grid-template-columns:1fr}.cert-card{grid-template-columns:46px 1fr}.cert-card>.btn{grid-column:1/-1}.footer-grid{grid-template-columns:1fr!important}
 }
-@media print{
- body{background:#fff}.no-print,.site-header,.footer,.dash-sidebar,.dash-mobilebar{display:none!important}.certificate-full{box-shadow:none;border:0;width:100%;padding:0}.certificate-border{min-height:720px;display:flex;flex-direction:column;justify-content:center}.dash-main{margin:0;padding:0}
+/* =========================================================
+   IMPRESIÓN OFICIAL DEL CERTIFICADO: 1 PÁGINA HORIZONTAL
+   ========================================================= */
+@page {
+  size: landscape;
+  margin: 6mm 8mm;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 6mm 8mm;
+  }
+
+  html,
+  body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print,
+  .site-header,
+  .footer,
+  .dash-sidebar,
+  .dash-mobilebar,
+  header,
+  footer,
+  nav {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .certificate-full {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+    height: auto !important;
+  }
+
+  .certificate-border {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    border: 4px double #0F59DF !important;
+    border-radius: 12px !important;
+    padding: 16px 24px !important;
+    box-shadow: none !important;
+    min-height: unset !important;
+    max-height: 185mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    overflow: hidden !important;
+  }
+
+  .certificate-kicker {
+    font-size: 11px !important;
+    margin: 4px 0 8px !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  .certificate-intro {
+    font-size: 12.5px !important;
+    margin: 0 0 3px !important;
+  }
+
+  .certificate-student {
+    font-size: 24px !important;
+    margin: 4px 0 6px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .certificate-course-pre {
+    font-size: 11.5px !important;
+    margin: 4px 0 3px !important;
+  }
+
+  .certificate-course-name {
+    font-size: 18px !important;
+    margin: 3px auto 10px !important;
+    line-height: 1.25 !important;
+  }
+
+  .certificate-info {
+    margin: 0 auto 10px !important;
+    padding: 6px 12px !important;
+    gap: 10px !important;
+  }
+
+  .certificate-info span {
+    font-size: 9.5px !important;
+  }
+
+  .certificate-info strong {
+    font-size: 12.5px !important;
+  }
+
+  .certificate-verify-text {
+    font-size: 9.5px !important;
+    max-width: 580px !important;
+    margin: 0 auto 8px !important;
+    line-height: 1.3 !important;
+  }
+
+  .certificate-footer {
+    margin-top: 4px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e2e8f0 !important;
+  }
 }
 /* Legacy footer rules replaced by .premium-footer */
 .lesson-editor{border:1px solid #e7edf5;border-radius:13px;padding:14px;margin:10px 0;background:#fbfdff}.lesson-editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.lesson-editor-head strong{font-size:12px}.lesson-editor .field{margin-bottom:10px}.lesson-editor .field:last-child{margin-bottom:0}
