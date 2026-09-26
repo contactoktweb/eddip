@@ -1,3 +1,96 @@
+## [2026-09-26] Pasarela de Pagos Bold: Integración Oficial para Pago de Cursos
+- **Credenciales Seguras en `.env.local`** ([`.env.local`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/.env.local)):
+  - Incorporadas las credenciales de prueba proporcionadas:
+    - Llave de identidad: `7OkEZv2inQ-n10gIYdX_mEzjRGccyySgkpL4F7U_49k` asignada tanto a `NEXT_PUBLIC_BOLD_IDENTITY_KEY` como a `BOLD_IDENTITY_KEY`.
+    - Llave secreta: `TmbpZK-m32Y4_0A6a7czMA` asignada a `BOLD_SECRET_KEY` exclusivamente en el backend (cumpliendo estrictamente con la Regla 34 de seguridad sin exponerla en el bundle del cliente).
+- **Endpoint Seguro de Firma Criptográfica (`/api/bold/checkout`)** ([`app/api/bold/checkout/route.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/api/bold/checkout/route.ts)):
+  - Generación de referencia única de orden `EDDIP-{timestamp}-{random}`.
+  - Creación del hash de integridad criptográfica SHA-256 según la especificación de Bold: `SHA256(orderId + amount + currency + secretKey)`.
+  - Intento automatizado de generación de links de pago en Bold API (`https://api.online.payments.bold.co/v1/payment_links` y endpoint de integración).
+  - Retorno de metadata completa para inicializar el widget oficial de Bold en frontend.
+- **Experiencia de Checkout Integrada (`/checkout/[slug]`)** ([`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx)):
+  - Inyección dinámica y asíncrona de la librería oficial de Bold (`https://checkout.bold.co/library/boldPaymentButton.js`).
+  - Apertura del modal interactivo `window.BoldCheckout` con los parámetros firmados por el servidor.
+  - Fallback a enlace de pago directo o pantalla de simulación Sandbox de Bold con confirmación instantánea.
+  - Al completar la transacción, registro de matrícula en `enrollCourse()` y registro de venta en `adminService` con método `"Bold"`.
+
+## [2026-09-26] Evaluaciones: Preguntas y Cantidad Suministradas Dinámicamente desde Administración
+- **Sincronización Total con Administración** ([`lib/supabase/adminService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/adminService.ts), [`app/evaluacion/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/evaluacion/[slug]/page.tsx)):
+  - La pantalla de evaluación del estudiante (`/evaluacion/[slug]`) y el módulo `StudentExamModule.tsx` ahora leen dinámicamente el cuestionario oficial mediante `adminService.getExamBySlug(slug, course)`.
+  - La cantidad exacta de preguntas (ej. 3, 5, 8, etc.), el texto de los enunciados, las 4 opciones (A, B, C, D), la respuesta correcta y el puntaje mínimo de aprobación provienen estrictamente de la administración.
+  - Se eliminó el generador estático que forzaba 8 preguntas arbitrarias (2 por módulo) cuando el curso no estaba en el archivo estático `exams.json`.
+- **Panel de Gestión de Evaluaciones (`/admin/evaluaciones`)** ([`app/admin/evaluaciones/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/admin/evaluaciones/page.tsx), [`components/admin/AdminExamManager.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminExamManager.tsx)):
+  - Soporte para preselección de curso por parámetro URL (`?course=slug`), permitiendo saltar directamente a editar las preguntas de cualquier programa desde la tabla de cursos o el editor.
+  - Carga asíncrona de exámenes guardados desde la base de datos Supabase (`site_content` con clave `exam_${slug}` y tabla `exams`) y `localStorage`.
+  - Herramientas completas para añadir nuevas preguntas, eliminar preguntas, editar enunciados, modificar distractores, asignar la opción correcta y ajustar el umbral de aprobación.
+  - Al guardar la evaluación, se propaga un evento en tiempo real (`eddip_exam_updated`) que actualiza instantáneamente cualquier prueba abierta sin requerir recargar la página.
+- **Accesos Directos en Cursos** ([`components/admin/AdminCourseTable.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminCourseTable.tsx), [`components/admin/CourseContentBuilder.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/CourseContentBuilder.tsx)):
+  - Agregado botón de acción con icono de acreditación (`Icon name="award"`) en la tabla de cursos para acceder en un clic a la configuración de la prueba de ese curso.
+  - Agregado panel informativo en el constructor de cursos (`CourseContentBuilder`) y botón directo en la cabecera superior.
+
+## [2026-09-26] Header del Dashboard: Remoción del Menú Hamburguesa en PC y Reestructuración Responsiva para Móvil
+- **Ocultamiento de Menú de 3 Líneas en PC** ([`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
+  - En pantallas de escritorio / PC (donde el sidebar lateral ya permanece fijo y visible al 100%), el botón hamburguesa (`.dash-topbar-menu-btn`) se oculta completamente mediante `display: none !important`.
+  - El botón de tres líneas se muestra de forma exclusiva en dispositivos móviles y tabletas (`@media (max-width: 820px)`), permitiendo abrir el panel lateral con suavidad y accesibilidad.
+- **Reorganización y Optimización del Header en Dispositivos Móviles**:
+  - En móviles (`< 620px`), se optimizó el ancho de los elementos para eliminar colisiones y desbordamientos laterales:
+    - El enlace "Sitio Público" oculta su texto y se adapta a un botón de icono compacto (`width: 36px; height: 36px;`), ahorrando más de 80px de espacio.
+    - El perfil de usuario oculta el nombre de texto para mostrar limpiamente el avatar circular con las iniciales, evitando que quede cortado en el borde derecho de la pantalla.
+    - El badge de rol ("Gestión" / "Estudiante") se oculta en pantallas pequeñas para dar prioridad al título institucional y las acciones esenciales.
+    - Se redujo el padding lateral del header a `8px 12px` con `box-sizing: border-box`, asegurando que todo el contenido quepa con holgura en cualquier pantalla móvil (incluso en dispositivos de 360px).
+
+## [2026-09-26] Certificados: Inclusión del Número de Cédula de Ciudadanía Debajo del Nombre del Estudiante
+- **Presentación en Diploma Oficial** ([`app/certificados/[code]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/certificados/[code]/page.tsx)):
+  - Integrado el campo de documento de identidad (`C.C. {numero}`) inmediatamente debajo del nombre del alumno (`h1.certificate-student`), con tipografía legible, peso destacado y formato estandarizado.
+  - Resolución dinámica que prioriza el `documentId` registrado por el alumno en su perfil/cuenta o el asignado en el registro histórico oficial.
+- **Ajustes de Impresión en 1 Sola Página** ([`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
+  - Configurada regla `@media print` para `.certificate-student-doc` con espaciado vertical milimétrico (`margin: 1px 0 4px`), asegurando que la inclusión de la cédula no altere la restricción estricta de una sola página apaisada en PDF/impresión.
+- **Tipado y Datos de Prueba** ([`lib/types.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/types.ts), [`lib/supabase/types.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/types.ts), [`data/certificates.json`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/data/certificates.json)):
+  - Añadido el atributo opcional `documentId?: string` en `Certificate` e `IssuedCertificate`.
+  - Actualizados los registros de prueba y la pantalla pública de validación (`/certificados/validar`) con la celda de Identificación (C.C.).
+- **Mockup de la Página de Inicio** ([`app/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/page.tsx)):
+  - Actualizado el mockup gráfico del diploma en el landing page para exhibir la cédula de ciudadanía debajo del nombre de muestra.
+
+## [2026-09-26] Persistencia Resiliente en Base de Datos Supabase para Imágenes de Cursos
+- **Doble Capa de Almacenamiento en Base de Datos** ([`lib/supabase/adminService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/adminService.ts)):
+  - Se diagnosticó que la tabla remota `courses` de Supabase no contaba inicialmente con las columnas `image` e `images` a nivel de raíz, causando que PostgREST rechazara silenciosamente el upsert completo (error `42703`).
+  - Se implementó persistencia en la tabla `site_content` bajo la clave `course_images_${courseSlug}` con `{ slug, image, images, courseId }`, la cual cuenta con permisos verificados de lectura y escritura directos en PostgreSQL.
+  - Además, se embebieron `courseImages` y `courseImage` dentro del campo JSONB `instructor` en la tabla `courses`, garantizando persistencia relacional sin importar variaciones del esquema SQL.
+- **Recuperación y Sincronización Automática** ([`lib/supabase/contentService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/contentService.ts)):
+  - En `contentService.getCourses()`, se implementó una consulta combinada concurrente que lee la tabla `courses` y el registro de imágenes en `site_content`.
+  - Reconciliación de imágenes primarias y galerías completas para todos los cursos, asegurando que las imágenes subidas o editadas por el administrador permanezcan en la base de datos y se rendericen en el catálogo, ficha y aula.
+- **Respaldo Local Redundante** ([`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx)):
+  - Sincronización cruzada entre las claves `extra_courses` y `eddip_admin_extra_courses`.
+
+## [2026-09-26] Registro de Estudiantes desde Cero: Inicialización Limpia sin Cursos ni Progreso Cargado
+- **Aislamiento de Cuentas Nuevas** ([`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx)):
+  - Al registrarse un nuevo estudiante a través de `signUpStudent`, se inicializan en limpio sus estados: `purchased = []`, `completed = {}`, `results = {}` y `notes = {}`.
+  - Persistencia aislada por usuario en `localStorage` con clave `eddip_user_${email}` y prevención de herencia accidental de los datos demo de "Sebastián Martínez".
+  - Se añadieron métodos `getEnrollments` y `enrollCourse` en [`lib/supabase/studentService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/studentService.ts) para sincronización con la base de datos Supabase / fallback local.
+- **Vistas Adaptadas a Estado Inicial Vacío**:
+  - En [`components/student/StudentRecentActivity.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentRecentActivity.tsx) y [`app/dashboard/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/dashboard/page.tsx): El widget de actividad reciente ahora detecta dinámicamente si el estudiante tiene 0 cursos y muestra "Sin cursos inscritos: Explora el catálogo para comenzar a estudiar", en lugar de forzar cursos precargados.
+  - En [`components/student/StudentProfileManager.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentProfileManager.tsx): Conteo exacto de certificados del estudiante y mensaje de estado vacío en la pestaña de historial académico cuando el alumno recién registrado no tiene materias inscritas.
+  - En [`components/student/StudentCertificatesGrid.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentCertificatesGrid.tsx): Restringida la acreditación del estudiante de prueba para que los nuevos usuarios registrados inicien con 0 diplomas hasta que aprueben sus evaluaciones.
+
+## [2026-09-26] Limpieza de Autenticación: Remoción de Badge "Campus Virtual Seguro" y Corrección Visual de Iconos en Inputs
+- **Remoción de Badge Institucional** ([`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx)):
+  - Eliminado el elemento `<div className="auth-badge-secure">` con el texto "Campus Virtual Seguro", dejando un encabezado superior limpio y despejado con únicamente el enlace "Volver al inicio".
+- **Corrección de Iconos e Inputs de Texto** ([`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css) y [`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx)):
+  - Resuelto conflicto de especificidad CSS donde las reglas generales de `.field input` sobreescribían el padding izquierdo de los inputs de autenticación (`.auth-input`).
+  - Aplicada especificidad prioritaria (`.field .auth-input-wrap input.auth-input, .field input.auth-input, .auth-input`) con `padding: 13px 16px 13px 44px !important`, garantizando holgura perfecta para que ningún texto ni placeholder colisione con el icono.
+  - Centrado vertical de los iconos SVG (`top: 50%; transform: translateY(-50%); z-index: 3; width: 20px; height: 20px;`) y botón de visibilidad de contraseña (`auth-eye-btn`) con `padding-right: 44px !important`.
+
+## [2026-09-26] Corrección: Renderizado y Persistencia de Imágenes Subidas en el Catálogo de Cursos
+- **Soporte para Data URLs y URLs Externas** ([`components/CourseImageSlider.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/CourseImageSlider.tsx)):
+  - Habilitado `unoptimized={true}` para imágenes en base64 (`data:`), `blob:` y URLs externas, evitando que el optimizador del servidor de Next.js bloquee la carga con error 414 / URI Too Long.
+  - Optimizada la asignación de `key` a `slide-${idx}` para eliminar la sobrecarga de reconciliación en React con strings largos.
+- **Compresión en el Cliente** ([`components/admin/CourseContentBuilder.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/CourseContentBuilder.tsx)):
+  - Integrada función `compressImageFile` mediante HTML5 Canvas para redimensionar (máx 1200px) y comprimir fotos grandes (a ~80-120KB) antes de almacenarlas.
+  - Esto erradica el error de cuota excedida (`QuotaExceededError`) en `localStorage`, garantizando persistencia inmediata y duradera.
+- **Sincronización Bidireccional de Cursos** ([`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx)):
+  - Carga y reconciliación combinada de cursos guardados desde el panel de administración (`eddip_admin_extra_courses` y `eddip-demo-v2`).
+  - Priorización estricta por `id` y `slug` en `combinedCourses` para que las fotos y datos editados se reflejen al 100% en `/cursos`.
+
 ## [2026-09-26] Certificados: Remoción de Firmas y Optimización Obligatoria de Impresión en 1 Sola Página Horizontal
 - En [`app/certificados/[code]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/certificados/[code]/page.tsx):
   - Removidas únicamente las firmas de "Dirección Académica" y "Secretaría General".

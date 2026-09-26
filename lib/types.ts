@@ -5,7 +5,7 @@ export type Course = {
   price:number; durationHours:number; level:string; rating:number; students:number; featured:boolean;
   gradient:string; image?:string; images?:string[]; instructor:{name:string; role:string; bio:string}; outcomes:string[]; modules:Module[];
 };
-export type Certificate = { code:string; student:string; courseSlug:string; course:string; hours:number; date:string; status:string };
+export type Certificate = { code:string; student:string; documentId?:string; courseSlug:string; course:string; hours:number; date:string; status:string };
 export type Student = { id:string; name:string; email:string; courses:number; progress:number; certificates:number; registeredAt:string };
 export type Sale = { id:string; student:string; course:string; value:number; method:string; date:string; status:string };
 export type ExamQuestion = { id:string; text:string; options:string[]; correct:number };

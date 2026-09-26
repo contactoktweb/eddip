@@ -137,7 +137,7 @@ export function StudentAuth() {
 
   return (
     <div className="auth-form-wrapper">
-      {/* Barra superior de navegación y sello de seguridad */}
+      {/* Barra superior de navegación */}
       <div className="auth-top-bar">
         {mode === 'login' ? (
           <Link href="/" className="auth-back-link" title="Ir a la página de inicio">
@@ -153,11 +153,6 @@ export function StudentAuth() {
             <span className="auth-back-arrow">←</span> Iniciar sesión
           </button>
         )}
-
-        <div className="auth-badge-secure" title="Conexión encriptada con certificación institucional">
-          <span className="auth-pulse-dot" />
-          <span className="auth-badge-text">Campus Virtual Seguro</span>
-        </div>
       </div>
 
       {/* Selector de modo Login / Registro */}
@@ -385,7 +380,7 @@ export function StudentAuth() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="auth-input"
+                  className="auth-input auth-input-password"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   required
                 />
@@ -416,7 +411,7 @@ export function StudentAuth() {
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Repite tu contraseña"
-                  className="auth-input"
+                  className="auth-input auth-input-password"
                   autoComplete="new-password"
                   required
                 />

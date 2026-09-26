@@ -393,6 +393,9 @@ export default function Home() {
 
                 <p className="cert-granted-to">Otorgado a</p>
                 <h3 className="cert-student-name">Sebastián Martínez</h3>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block', margin: '-4px 0 10px', fontWeight: 600, letterSpacing: '0.5px' }}>
+                  C.C. 1.032.456.789
+                </span>
 
                 <p className="cert-reason">Por haber aprobado satisfactoriamente el programa de formación</p>
                 <h4 className="cert-course-name">Derecho de Policía y Convivencia Ciudadana</h4>

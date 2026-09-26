@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -13,9 +13,26 @@ import { adminService } from '@/lib/supabase/adminService';
 
 type PaymentMethod = 'pse' | 'card' | 'wallet';
 
-export default function Checkout() {
+declare global {
+  interface Window {
+    BoldCheckout?: new (options: {
+      orderId: string;
+      currency: string;
+      amount: string | number;
+      apiKey: string;
+      integritySignature: string;
+      description?: string;
+      redirectionUrl?: string;
+    }) => {
+      open: () => void;
+    };
+  }
+}
+
+function Checkout() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { courses, purchase, login, user, updateProfile } = useDemo();
   const course = courses.find(c => c.slug === slug);
 
@@ -36,6 +53,56 @@ export default function Checkout() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isBoldLoading, setIsBoldLoading] = useState(false);
+  const [boldCheckoutData, setBoldCheckoutData] = useState<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    apiKey: string;
+    integritySignature: string;
+    description: string;
+    redirectionUrl: string;
+    paymentUrl?: string | null;
+  } | null>(null);
+
+  // Carga asíncrona del script oficial de Bold
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (document.querySelector('script[src="https://checkout.bold.co/library/boldPaymentButton.js"]')) {
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.bold.co/library/boldPaymentButton.js';
+    script.async = true;
+    document.head.appendChild(script);
+  }, []);
+
+  // Verificar si el usuario retorna desde la pasarela Bold con pago aprobado
+  useEffect(() => {
+    const boldOrder = searchParams ? searchParams.get('bold_order') : null;
+    const boldStatus = searchParams ? searchParams.get('bold_status') || searchParams.get('status') : null;
+
+    if (boldOrder && course && (boldStatus === 'approved' || boldStatus === 'success')) {
+      adminService.recordSale({
+        id: boldOrder,
+        student: user.name || 'Estudiante Matriculado',
+        course: course.title,
+        value: course.price,
+        method: 'Bold',
+        date: new Date().toISOString().slice(0, 10),
+        status: 'Aprobado',
+      });
+      adminService.enrollStudentInCourse(
+        user.name || 'Estudiante',
+        user.email || 'estudiante@eddip.edu.co',
+        course.slug,
+        course.title
+      );
+      purchase(course.slug);
+      login('student');
+      setStage('success');
+    }
+  }, [searchParams, course, purchase, login, user]);
 
   if (!course) {
     return (
@@ -93,14 +160,40 @@ export default function Checkout() {
     return Object.keys(errs).length === 0;
   };
 
+  const handleSimulateOrConfirmBoldSuccess = (orderId?: string) => {
+    const finalOrderId = orderId || boldCheckoutData?.orderId || `EDDIP-BOLD-${Date.now()}`;
+
+    adminService.recordSale({
+      id: finalOrderId,
+      student: formData.name || user.name || 'Estudiante Matriculado',
+      course: course.title,
+      value: finalPrice,
+      method: 'Bold',
+      date: new Date().toISOString().slice(0, 10),
+      status: 'Aprobado',
+    });
+
+    adminService.enrollStudentInCourse(
+      formData.name || user.name || 'Estudiante',
+      formData.email || user.email || 'estudiante@eddip.edu.co',
+      course.slug,
+      course.title
+    );
+
+    purchase(course.slug);
+    login('student');
+    setStage('success');
+  };
+
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setIsBoldLoading(true);
     setStage('processing');
 
     try {
-      // Guardar datos en el perfil del usuario
+      // 1. Guardar o actualizar perfil del estudiante
       await updateProfile({
         fullName: formData.name,
         documentId: formData.documentId,
@@ -109,29 +202,51 @@ export default function Checkout() {
         city: formData.city,
       });
 
-      // Registrar venta en el sistema comercial
-      const methodLabel = paymentMethod === 'pse' ? 'PSE' : paymentMethod === 'card' ? 'Tarjeta de Crédito' : 'Billetera Digital';
-      adminService.recordSale({
-        id: `VEN-${Math.floor(1020 + Math.random() * 8900)}`,
-        student: formData.name,
-        course: course.title,
-        value: finalPrice,
-        method: methodLabel,
-        date: new Date().toISOString().slice(0, 10),
-        status: 'Aprobado',
+      // 2. Solicitar sesión e integridad a la API de Bold
+      const res = await fetch('/api/bold/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseSlug: course.slug,
+          courseTitle: course.title,
+          amount: finalPrice,
+          customer: formData,
+        }),
       });
 
-      // Matricular al estudiante en el directorio académico
-      adminService.enrollStudentInCourse(formData.name, formData.email, course.slug, course.title);
-    } catch {
-      // Continuar con la matrícula
-    }
+      const data = await res.json();
 
-    setTimeout(() => {
-      purchase(course.slug);
-      login('student');
-      setStage('success');
-    }, 1200);
+      if (!data.success) {
+        throw new Error(data.error || 'Error al conectar con la pasarela Bold');
+      }
+
+      setBoldCheckoutData(data);
+
+      // 3. Abrir la pasarela Bold oficial en cliente
+      if (typeof window !== 'undefined' && window.BoldCheckout) {
+        const checkout = new window.BoldCheckout({
+          orderId: data.orderId,
+          currency: data.currency || 'COP',
+          amount: String(data.amount),
+          apiKey: data.apiKey,
+          integritySignature: data.integritySignature,
+          description: data.description,
+          redirectionUrl: data.redirectionUrl,
+        });
+
+        checkout.open();
+        setIsBoldLoading(false);
+      } else if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        setIsBoldLoading(false);
+      }
+    } catch (err) {
+      console.error('Error al procesar pago con Bold:', err);
+      setIsBoldLoading(false);
+      setStage('form');
+      alert('Hubo un inconveniente al conectar con Bold. Por favor verifica tus credenciales o conexión.');
+    }
   };
 
   return (
@@ -302,24 +417,107 @@ export default function Checkout() {
           ) : stage === 'processing' ? (
             <div
               style={{
-                maxWidth: 580,
+                maxWidth: 620,
                 margin: '40px auto',
                 background: '#ffffff',
                 border: '1px solid #e2e8f0',
                 borderRadius: 24,
-                padding: '60px 32px',
+                padding: '48px 32px',
                 textAlign: 'center',
                 boxShadow: '0 20px 50px rgba(7, 31, 73, 0.08)',
               }}
             >
-              <div className="spinner" style={{ margin: '0 auto 24px' }}></div>
-              <span className="eyebrow">Validación Criptográfica</span>
-              <h2 style={{ fontSize: 24, color: '#071F49', margin: '10px 0 10px', fontWeight: 800 }}>
-                Procesando matrícula académica...
+              <div
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 20,
+                  background: '#eff6ff',
+                  color: '#0b62dd',
+                  display: 'grid',
+                  placeItems: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: '0 8px 24px rgba(11, 98, 221, 0.16)',
+                }}
+              >
+                <Icon name="shield" size={34} />
+              </div>
+              <span className="eyebrow" style={{ color: '#0b62dd' }}>
+                Pasarela Oficial Bold (Sandbox)
+              </span>
+              <h2 style={{ fontSize: 24, color: '#071F49', margin: '8px 0 10px', fontWeight: 800 }}>
+                Conectando con la Pasarela de Pagos Bold...
               </h2>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 auto', maxWidth: 400, lineHeight: 1.6 }}>
-                Confirmando transacción con cifrado seguro y habilitando el temario en tu cuenta de estudiante.
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 auto 24px', maxWidth: 460, lineHeight: 1.6 }}>
+                Estamos procesando la orden de matrícula para <strong>{course.title}</strong> por un monto de{' '}
+                <strong style={{ color: '#0b62dd' }}>{money(finalPrice)}</strong> mediante Bold.co.
               </p>
+
+              {boldCheckoutData && (
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 16,
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    color: '#334155',
+                    marginBottom: 24,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: '#64748b' }}>Referencia de Orden:</span>
+                    <strong style={{ color: '#0b62dd' }}>{boldCheckoutData.orderId}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: '#64748b' }}>Monto a pagar (COP):</span>
+                    <strong style={{ color: '#071F49' }}>{money(boldCheckoutData.amount)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ color: '#64748b' }}>Llave de Identidad (API Key):</span>
+                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
+                      {boldCheckoutData.apiKey.slice(0, 16)}...
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Firma de Integridad (SHA-256):</span>
+                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#059669', fontWeight: 600 }}>
+                      {boldCheckoutData.integritySignature.slice(0, 16)}...
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {boldCheckoutData?.paymentUrl && (
+                  <a
+                    href={boldCheckoutData.paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                    style={{ padding: '12px 24px' }}
+                  >
+                    Abrir pasarela de pago Bold <Icon name="arrow" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleSimulateOrConfirmBoldSuccess(boldCheckoutData?.orderId)}
+                  style={{ padding: '12px 24px' }}
+                >
+                  <Icon name="check" /> Confirmar pago exitoso en Sandbox
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setStage('form')}
+                  style={{ padding: '12px 18px' }}
+                >
+                  Volver al formulario
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={pay} style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
@@ -495,28 +693,43 @@ export default function Checkout() {
                     boxShadow: '0 4px 20px rgba(7, 31, 73, 0.03)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-                    <div
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          background: '#eff6ff',
+                          color: '#0b62dd',
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}
+                      >
+                        <Icon name="shield" size={20} />
+                      </div>
+                      <div>
+                        <h2 style={{ fontSize: 18, color: '#071F49', margin: 0, fontWeight: 700 }}>
+                          2. Pasarela Oficial de Pagos Bold
+                        </h2>
+                        <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                          Transacción segura encriptada con firma de integridad SHA-256 e integración con Bold.co.
+                        </p>
+                      </div>
+                    </div>
+                    <span
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        background: '#f0fdf4',
-                        color: '#16a34a',
-                        display: 'grid',
-                        placeItems: 'center',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: '#fef3c7',
+                        color: '#b45309',
+                        border: '1px solid #fde68a',
+                        padding: '3px 10px',
+                        borderRadius: 999,
                       }}
                     >
-                      <Icon name="shield" size={20} />
-                    </div>
-                    <div>
-                      <h2 style={{ fontSize: 18, color: '#071F49', margin: 0, fontWeight: 700 }}>
-                        2. Selección de Medio de Pago Seguro
-                      </h2>
-                      <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
-                        Pasarela bancaria cifrada con validación y expedición automática.
-                      </p>
-                    </div>
+                      Bold Sandbox Activo
+                    </span>
                   </div>
 
                   {/* Selector de Métodos */}
@@ -886,6 +1099,7 @@ export default function Checkout() {
                 {/* Botón de Acción Principal */}
                 <button
                   type="submit"
+                  disabled={isBoldLoading}
                   className="btn btn-primary btn-full btn-lg"
                   style={{
                     padding: '15px 20px',
@@ -895,15 +1109,20 @@ export default function Checkout() {
                     boxShadow: '0 10px 25px rgba(11, 98, 221, 0.28)',
                     justifyContent: 'center',
                     gap: 8,
+                    cursor: isBoldLoading ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  <Icon name="shield" size={18} /> Confirmar e Inscribirme
+                  <Icon name="shield" size={18} />
+                  {isBoldLoading ? 'Conectando con Bold...' : `Pagar ${money(finalPrice)} con Bold`}
                 </button>
 
                 {/* Sellos de Confianza */}
-                <div style={{ marginTop: 18, textAlign: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <Icon name="check" size={13} /> Activación instantánea en tu cuenta
+                <div style={{ marginTop: 18, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <Icon name="check" size={13} /> Pagos protegidos por Bold.co
+                  </span>
+                  <span style={{ fontSize: 10, color: '#64748b' }}>
+                    PSE, Bancolombia, Nequi, Daviplata y Tarjetas de Crédito
                   </span>
                 </div>
               </aside>
@@ -913,5 +1132,22 @@ export default function Checkout() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ minHeight: '70vh', display: 'grid', placeItems: 'center', background: '#f8fafc' }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px' }} />
+            <p style={{ color: '#64748b', fontSize: 14 }}>Cargando pasarela de matrícula y pagos...</p>
+          </div>
+        </div>
+      }
+    >
+      <Checkout />
+    </Suspense>
   );
 }

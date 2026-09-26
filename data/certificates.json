@@ -2,6 +2,7 @@
   {
     "code": "EDDIP-2026-000145",
     "student": "Sebastián Martínez",
+    "documentId": "1.032.456.789",
     "courseSlug": "derecho-de-policia",
     "course": "Derecho de Policía",
     "hours": 40,
@@ -11,6 +12,7 @@
   {
     "code": "EDDIP-2026-000139",
     "student": "Sebastián Martínez",
+    "documentId": "1.032.456.789",
     "courseSlug": "derechos-humanos",
     "course": "Derechos Humanos",
     "hours": 40,
@@ -20,6 +22,7 @@
   {
     "code": "EDDIP-2026-000128",
     "student": "Laura Gómez",
+    "documentId": "1.031.456.781",
     "courseSlug": "gestion-documental",
     "course": "Gestión Documental",
     "hours": 40,
@@ -29,6 +32,7 @@
   {
     "code": "EDDIP-2026-000112",
     "student": "Carlos Rodríguez",
+    "documentId": "1.032.456.782",
     "courseSlug": "seguridad-de-instalaciones",
     "course": "Seguridad de Instalaciones",
     "hours": 40,

@@ -280,6 +280,41 @@ export const studentService = {
   // ==========================================
   // CURSOS Y PROGRESO DE LECCIONES
   // ==========================================
+  async getEnrollments(userId: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('course_slug')
+        .eq('student_id', userId);
+
+      if (!error && data && data.length > 0) {
+        return data.map(d => d.course_slug);
+      }
+    } catch {
+      // Fallback
+    }
+
+    return getLocalData<string[]>(`enrollments_${userId}`, []);
+  },
+
+  async enrollCourse(userId: string, courseSlug: string): Promise<boolean> {
+    try {
+      await supabase.from('enrollments').upsert({
+        student_id: userId,
+        course_slug: courseSlug,
+        enrolled_at: new Date().toISOString(),
+      });
+    } catch {
+      // Fallback
+    }
+
+    const current = getLocalData<string[]>(`enrollments_${userId}`, []);
+    if (!current.includes(courseSlug)) {
+      setLocalData(`enrollments_${userId}`, [...current, courseSlug]);
+    }
+    return true;
+  },
+
   async getCompletedLessons(userId: string, courseSlug: string): Promise<string[]> {
     try {
       const { data, error } = await supabase
@@ -445,6 +480,7 @@ export const studentService = {
         return {
           code: data.code,
           studentName: data.student_name,
+          documentId: data.document_id || data.documentId,
           courseSlug: data.course_slug,
           courseTitle: data.course_title,
           hours: data.hours,

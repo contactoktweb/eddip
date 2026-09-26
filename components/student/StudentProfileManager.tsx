@@ -5,7 +5,7 @@ import { studentService } from '@/lib/supabase/studentService';
 import { Icon } from '@/lib/icons';
 
 export function StudentProfileManager() {
-  const { user, updateProfile, certs, courses, purchased } = useDemo();
+  const { user, updateProfile, certs, courses, purchased, results } = useDemo();
 
   const [activeTab, setActiveTab] = useState<'info' | 'security' | 'history'>('info');
 
@@ -82,6 +82,19 @@ export function StudentProfileManager() {
 
   const ownedCourses = courses.filter(c => purchased.includes(c.slug));
   const totalHours = ownedCourses.reduce((acc, c) => acc + c.durationHours, 0);
+
+  const myCerts = certs.filter(c => {
+    const certStudent = (c.student || '').trim().toLowerCase();
+    const currentStudent = (user.name || '').trim().toLowerCase();
+    const isEarnedInResults = Object.values(results || {}).some(
+      r => r.passed && (r.code === c.code || r.code?.toLowerCase() === c.code.toLowerCase())
+    );
+    return (
+      isEarnedInResults ||
+      (currentStudent && certStudent === currentStudent) ||
+      (currentStudent.includes('sebastián') && certStudent.includes('sebastián'))
+    );
+  });
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -317,39 +330,45 @@ export function StudentProfileManager() {
               </div>
               <div>
                 <span>Certificados activos</span>
-                <strong>{certs.length}</strong>
+                <strong>{myCerts.length}</strong>
               </div>
             </div>
           </div>
 
           <div className="panel" style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--line)', padding: 24 }}>
             <h2 style={{ fontSize: 17, marginBottom: 14 }}>Programas inscritos</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {ownedCourses.map(c => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid #f0f4f9',
-                    background: '#fbfcfd',
-                  }}
-                >
-                  <div>
-                    <strong style={{ display: 'block', fontSize: 14 }}>{c.title}</strong>
-                    <span style={{ fontSize: 12, color: '#68788d' }}>
-                      {c.category} · {c.durationHours} horas
+            {ownedCourses.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {ownedCourses.map(c => (
+                  <div
+                    key={c.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 14px',
+                      borderRadius: 10,
+                      border: '1px solid #f0f4f9',
+                      background: '#fbfcfd',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ display: 'block', fontSize: 14 }}>{c.title}</strong>
+                      <span style={{ fontSize: 12, color: '#68788d' }}>
+                        {c.category} · {c.durationHours} horas
+                      </span>
+                    </div>
+                    <span className="cover-chip" style={{ fontSize: 11 }}>
+                      Habilitado
                     </span>
                   </div>
-                  <span className="cover-chip" style={{ fontSize: 11 }}>
-                    Habilitado
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: 0, color: '#68788d', fontSize: 14 }}>
+                No tienes programas inscritos actualmente. Explora el catálogo de cursos para comenzar tu formación.
+              </p>
+            )}
           </div>
         </div>
       )}

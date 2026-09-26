@@ -54,6 +54,7 @@ export type ExamResultRecord = {
 export type IssuedCertificate = {
   code: string;
   studentName: string;
+  documentId?: string;
   courseSlug: string;
   courseTitle: string;
   hours: number;

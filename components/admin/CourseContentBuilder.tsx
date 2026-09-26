@@ -120,8 +120,56 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
     }
   };
 
+  // Compresión optimizada para imágenes web (evita sobrepasar límites de memoria/storage)
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const dataUrl = e.target?.result as string;
+        if (!dataUrl) {
+          reject(new Error('Lectura de archivo vacía'));
+          return;
+        }
+
+        const img = new window.Image();
+        img.onload = () => {
+          const maxWidth = 1200;
+          const maxHeight = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          resolve(compressed);
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Manejo de Imágenes (Subida local, Presets, URLs y Slider)
-  const handleFilesUpload = (files: FileList | File[]) => {
+  const handleFilesUpload = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
 
@@ -131,23 +179,13 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
       return;
     }
 
-    const readers: Promise<string>[] = imageFiles.map(file => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readers)
-      .then(newUrls => {
-        setImages(prev => [...prev, ...newUrls]);
-        showToast('success', `${newUrls.length} imagen(es) subida(s) correctamente.`);
-      })
-      .catch(() => {
-        showToast('error', 'Error al procesar las imágenes seleccionadas.');
-      });
+    try {
+      const compressedUrls = await Promise.all(imageFiles.map(compressImageFile));
+      setImages(prev => [...prev, ...compressedUrls]);
+      showToast('success', `${compressedUrls.length} imagen(es) optimizada(s) y agregada(s) con éxito.`);
+    } catch {
+      showToast('error', 'Error al procesar las imágenes seleccionadas.');
+    }
   };
 
   const handleAddUrlImage = () => {
@@ -404,7 +442,17 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {(slug || initialCourse?.slug) && (
+            <Link
+              href={`/admin/evaluaciones?course=${slug || initialCourse?.slug}`}
+              className="btn btn-outline"
+              style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Icon name="award" size={16} />
+              Configurar evaluación y preguntas
+            </Link>
+          )}
           <button
             type="button"
             className="btn btn-primary"
@@ -1010,6 +1058,30 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                   <Icon name="plus" /> Añadir
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Panel 4: Evaluación y Preguntas de Certificación */}
+          <div className="panel" style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--line)', padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span className="eyebrow" style={{ margin: 0 }}>Acreditación y Certificación</span>
+                <h2 style={{ fontSize: 18, margin: '4px 0 0' }}>4. Preguntas y Evaluación Final</h2>
+              </div>
+              <span className="badge status-ok">Sincronizado</span>
+            </div>
+            <p style={{ fontSize: 13, color: '#5b6c81', lineHeight: 1.5, margin: '0 0 16px' }}>
+              La cantidad de preguntas, los enunciados, las 4 opciones de respuesta y el porcentaje aprobatorio de este curso se administran y sincronizan directamente con el panel del estudiante.
+            </p>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Link
+                href={`/admin/evaluaciones?course=${slug || initialCourse?.slug || ''}`}
+                className="btn btn-outline"
+                style={{ fontSize: 13, padding: '9px 18px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Icon name="award" size={16} />
+                Configurar preguntas en el panel de evaluaciones
+              </Link>
             </div>
           </div>
         </section>

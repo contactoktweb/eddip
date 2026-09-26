@@ -159,7 +159,7 @@ export function CourseImageSlider({
           const isActive = idx === currentIndex;
           return (
             <div
-              key={`${src}-${idx}`}
+              key={`slide-${idx}`}
               className={`course-slider-slide ${isActive ? 'active' : ''}`}
               aria-hidden={!isActive}
               style={{
@@ -172,15 +172,21 @@ export function CourseImageSlider({
                 zIndex: isActive ? 1 : 0,
               }}
             >
-              <Image
-                src={src}
-                alt={`${alt} - Imagen ${idx + 1}`}
-                fill
-                sizes={sizes}
-                priority={priority && idx === 0}
-                className="media-photo"
-                style={{ objectFit: 'cover' }}
-              />
+              {(() => {
+                const isCustom = typeof src === 'string' && (src.startsWith('data:') || src.startsWith('blob:') || src.startsWith('http://') || src.startsWith('https://'));
+                return (
+                  <Image
+                    src={src}
+                    alt={`${alt} - Imagen ${idx + 1}`}
+                    fill
+                    sizes={sizes}
+                    priority={priority && idx === 0}
+                    unoptimized={isCustom}
+                    className="media-photo"
+                    style={{ objectFit: 'cover' }}
+                  />
+                );
+              })()}
             </div>
           );
         })}

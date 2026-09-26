@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Course, Exam, ExamQuestion } from '@/lib/types';
 import { adminService } from '@/lib/supabase/adminService';
 import { Icon } from '@/lib/icons';
@@ -9,63 +10,116 @@ type Props = {
   exams: Exam[];
 };
 
-export function AdminExamManager({ courses, exams }: Props) {
-  const [selectedSlug, setSelectedSlug] = useState(courses[0]?.slug || 'derecho-de-policia');
+export function AdminExamManager({ courses, exams: initialExams }: Props) {
+  const searchParams = useSearchParams();
+  const queryCourse = searchParams ? searchParams.get('course') : null;
+
+  const [allExams, setAllExams] = useState<Exam[]>(initialExams);
+  const [selectedSlug, setSelectedSlug] = useState<string>(() => {
+    if (queryCourse && courses.some(c => c.slug === queryCourse)) {
+      return queryCourse;
+    }
+    return courses[0]?.slug || 'derecho-de-policia';
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Examen actual seleccionado
-  const currentExam = exams.find(e => e.courseSlug === selectedSlug) || {
-    courseSlug: selectedSlug,
-    title: `Evaluación Final — ${courses.find(c => c.slug === selectedSlug)?.title || 'Curso'}`,
-    passingScore: 70,
-    questions: [
-      {
-        id: `q-${Date.now()}-1`,
-        text: '¿Cuál es el principio orientador de este programa de formación?',
-        options: [
-          'Asegurar el cumplimiento estricto del orden legal y constitucional',
-          'Proceder sin fundamentación técnica ni motivación',
-          'Omitir los registros de control documental',
-          'Delegar la función sin verificación previa',
-        ],
-        correct: 0,
-      },
-    ],
-  };
+  // Sincronizar exámenes desde base de datos / storage
+  useEffect(() => {
+    adminService.getExams().then(loaded => {
+      if (loaded && loaded.length > 0) {
+        setAllExams(loaded);
+      }
+    });
+  }, []);
 
-  const [passingScore, setPassingScore] = useState(currentExam.passingScore);
+  // Si cambia el query param en la URL
+  useEffect(() => {
+    if (queryCourse && courses.some(c => c.slug === queryCourse)) {
+      setSelectedSlug(queryCourse);
+    }
+  }, [queryCourse, courses]);
+
+  // Examen actual seleccionado
+  const currentExam = useMemo(() => {
+    const existing = allExams.find(e => e.courseSlug === selectedSlug);
+    if (existing) return existing;
+
+    const c = courses.find(x => x.slug === selectedSlug);
+    return {
+      courseSlug: selectedSlug,
+      title: `Evaluación de Certificación — ${c?.title || 'Curso'}`,
+      passingScore: 75,
+      questions: c && c.modules && c.modules.length > 0
+        ? c.modules.flatMap((m, mIdx) => [
+            {
+              id: `q_${selectedSlug}_${mIdx}_1`,
+              text: `En el marco de ${m.title}, ¿cuál es el principio orientador prioritario para la correcta actuación del servidor o profesional?`,
+              options: [
+                'Garantizar el estricto apego al orden legal, la proporcionalidad y la debida fundamentación',
+                'Proceder sin registro documental ni motivación jurídica',
+                'Omitir el debido proceso en favor de la inmediatez',
+                'Delegar las facultades normativas a particulares sin competencia',
+              ],
+              correct: 0,
+            },
+            {
+              id: `q_${selectedSlug}_${mIdx}_2`,
+              text: `¿Qué garantía institucional asegura la correcta ejecución de los protocolos revisados en ${m.title}?`,
+              options: [
+                'Reducir la transparencia en la rendición de cuentas',
+                'Asegurar trazabilidad institucional, legalidad formal y validez probatoria',
+                'Eximir de responsabilidad disciplinaria a los intervinientes',
+                'Limitar el acceso a la defensa de las partes interesadas',
+              ],
+              correct: 1,
+            },
+          ])
+        : [
+            {
+              id: `q_${selectedSlug}_1`,
+              text: '¿Cuál es el principio orientador en este programa de formación institucional?',
+              options: [
+                'Asegurar el cumplimiento estricto del orden legal, constitucional y los derechos ciudadanos',
+                'Proceder discrecionalmente sin fundamentación legal',
+                'Omitir la trazabilidad documental de los procedimientos',
+                'Actuar al margen de los protocolos institucionales vigentes',
+              ],
+              correct: 0,
+            },
+            {
+              id: `q_${selectedSlug}_2`,
+              text: '¿Qué finalidad primordial persigue la correcta fundamentación de las decisiones operativas y jurídicas?',
+              options: [
+                'Eliminar la supervisión de las autoridades de control',
+                'Brindar certeza, apego a derecho y legitimidad pública a la actuación institucional',
+                'Acelerar trámites suprimiendo los términos legales del procedimiento',
+                'Restringir la publicidad de los actos oficiales',
+              ],
+              correct: 1,
+            },
+          ],
+    };
+  }, [allExams, selectedSlug, courses]);
+
+  const [passingScore, setPassingScore] = useState<number>(currentExam.passingScore);
   const [questions, setQuestions] = useState<ExamQuestion[]>(currentExam.questions);
+
+  // Actualizar estado local cuando cambia el examen seleccionado
+  useEffect(() => {
+    setPassingScore(currentExam.passingScore);
+    setQuestions(currentExam.questions);
+  }, [currentExam]);
 
   const handleCourseChange = (slug: string) => {
     setSelectedSlug(slug);
-    const existing = exams.find(e => e.courseSlug === slug);
-    if (existing) {
-      setPassingScore(existing.passingScore);
-      setQuestions(existing.questions);
-    } else {
-      const c = courses.find(x => x.slug === slug);
-      setPassingScore(70);
-      setQuestions([
-        {
-          id: `q-${Date.now()}-1`,
-          text: `¿Cuál es el objetivo primordial en ${c?.title || 'este curso'}?`,
-          options: [
-            'Garantizar la correcta aplicación de los protocolos normativos',
-            'Omitir la motivación en las decisiones',
-            'Actuar al margen del debido proceso',
-            'Evitar la trazabilidad institucional',
-          ],
-          correct: 0,
-        },
-      ]);
-    }
   };
 
   const addQuestion = () => {
     const newQ: ExamQuestion = {
       id: `q-${Date.now()}`,
-      text: 'Nueva pregunta de evaluación...',
+      text: 'Nueva pregunta de evaluación para este curso...',
       options: ['Opción correcta A', 'Opción distractora B', 'Opción distractora C', 'Opción distractora D'],
       correct: 0,
     };
@@ -103,15 +157,26 @@ export function AdminExamManager({ courses, exams }: Props) {
     const c = courses.find(x => x.slug === selectedSlug);
     const payload: Exam = {
       courseSlug: selectedSlug,
-      title: `Evaluación Final — ${c?.title || 'Curso'}`,
+      title: `Evaluación de Certificación — ${c?.title || 'Curso'}`,
       passingScore: Number(passingScore),
       questions,
     };
 
     await adminService.saveExam(payload);
-    setToast('¡Evaluación guardada y sincronizada correctamente!');
+
+    setAllExams(prev => {
+      const idx = prev.findIndex(e => e.courseSlug === selectedSlug);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = payload;
+        return next;
+      }
+      return [payload, ...prev];
+    });
+
+    setToast(`¡Evaluación guardada y sincronizada! Consta de ${questions.length} preguntas.`);
     setIsModalOpen(false);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   return (

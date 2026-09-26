@@ -73,6 +73,8 @@ export default function StudentDashboard() {
         <StudentRecentActivity
           certificatesCount={myCertificates.length}
           completedLessonsCount={totalCompletedLessons}
+          activeCoursesCount={owned.length}
+          latestCourseTitle={owned[0]?.title}
         />
       </div>
     </div>

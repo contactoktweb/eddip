@@ -234,8 +234,15 @@ p{color:var(--muted)}
 
   .certificate-student {
     font-size: 24px !important;
-    margin: 4px 0 6px !important;
+    margin: 4px 0 2px !important;
     padding-bottom: 2px !important;
+  }
+
+  .certificate-student-doc {
+    font-size: 11.5px !important;
+    margin: 1px 0 4px !important;
+    letter-spacing: 0.5px !important;
+    color: #475569 !important;
   }
 
   .certificate-course-pre {
@@ -2854,42 +2861,65 @@ body {
 .auth-input-icon {
   position: absolute;
   left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #94a3b8;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
 }
 
+.field .auth-input-wrap input.auth-input,
+.auth-input-wrap input.auth-input,
+.field input.auth-input,
 .auth-input {
-  width: 100%;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px 14px 12px 42px;
-  font-size: 14px;
-  color: #0f172a;
-  background: #f8fafc;
-  transition: all 0.2s ease;
-  outline: none;
+  width: 100% !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 13px 16px 13px 44px !important; /* Espacio para que el texto y placeholder no toquen el icono */
+  font-size: 14px !important;
+  color: #0f172a !important;
+  background: #f8fafc !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+  box-sizing: border-box !important;
 }
 
+.field .auth-input-wrap input.auth-input:focus,
+.auth-input-wrap input.auth-input:focus,
+.field input.auth-input:focus,
 .auth-input:focus {
-  background: #ffffff;
-  border-color: #0F59DF;
-  box-shadow: 0 0 0 3px rgba(15, 89, 223, 0.12);
+  background: #ffffff !important;
+  border-color: #0F59DF !important;
+  box-shadow: 0 0 0 3px rgba(15, 89, 223, 0.12) !important;
+}
+
+.field .auth-input-wrap input.auth-input-password,
+.auth-input-wrap input.auth-input-password,
+.auth-input-password {
+  padding-right: 44px !important; /* Espacio para que el texto no toque el ojo de contraseña */
 }
 
 .auth-eye-btn {
   position: absolute;
   right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   background: transparent;
   border: 0;
   color: #94a3b8;
   padding: 6px;
   border-radius: 8px;
   cursor: pointer;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: color 0.15s, background 0.15s;
+  z-index: 3;
 }
 
 .auth-eye-btn:hover {
@@ -3164,27 +3194,237 @@ body {
 }
 
 /* =========================================================
-   DASHBOARD HEADER & FOOTER RESPONSIVE
+   DASHBOARD TOPBAR & MOBILE RESPONSIVE
    ========================================================= */
 .dash-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  padding: 12px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  box-sizing: border-box;
   transition: padding 0.2s ease;
 }
+
+.dash-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Ocultar el botón de menú (tres líneas) en PC por defecto */
+.dash-topbar-menu-btn {
+  display: none !important;
+}
+
+.dash-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dash-topbar-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.dash-topbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #071F49;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dash-topbar-subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue, #0f59df);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dash-topbar-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dash-topbar-badge.admin {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.dash-topbar-badge.student {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.dash-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dash-topbar-public-btn {
+  font-size: 12px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.dash-topbar-user {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-topbar-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.dash-topbar-username {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+/* TABLET & MOBILE (< 820px) */
 @media (max-width: 820px) {
   .dash-topbar {
-    padding: 10px 16px !important;
+    padding: 10px 14px !important;
+    gap: 8px;
+  }
+  /* En móvil y tablet SÍ se muestran las tres líneas */
+  .dash-topbar-menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid var(--line, #e2e8f0);
+    color: #071F49;
+    cursor: pointer;
+  }
+  .dash-topbar-menu-btn:hover {
+    background: #edf2f7;
+  }
+  .dash-topbar-left {
+    gap: 10px;
+  }
+  .dash-topbar-brand {
+    gap: 8px;
+  }
+  .dash-topbar-brand .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .dash-topbar-titles {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .dash-topbar-title {
+    font-size: 12px;
+  }
+  .dash-topbar-subtitle {
+    font-size: 10px;
+    letter-spacing: 0.4px;
+  }
+  .dash-topbar-public-btn {
+    padding: 6px 10px;
   }
   .dash-footer {
     padding: 16px !important;
   }
 }
+
+/* SMARTPHONES (< 620px) */
 @media (max-width: 620px) {
-  .dash-topbar span:not(.avatar) {
-    font-size: 11px !important;
+  .dash-topbar {
+    padding: 8px 12px !important;
+    gap: 6px;
+    width: 100%;
+  }
+  .dash-topbar-left {
+    gap: 8px;
+  }
+  .dash-topbar-brand {
+    gap: 6px;
+  }
+  .dash-topbar-brand .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .dash-topbar-menu-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+  /* Ocultar el badge en móvil para despejar espacio horizontal */
+  .dash-topbar-badge {
+    display: none !important;
+  }
+  /* En el botón de Sitio Público, dejar solo el icono de casa */
+  .dash-topbar-public-text {
+    display: none !important;
+  }
+  .dash-topbar-public-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    justify-content: center;
+    border-radius: 10px;
+  }
+  /* En el perfil, ocultar el nombre de texto para mostrar solo el avatar */
+  .dash-topbar-username {
+    display: none !important;
+  }
+  .dash-topbar-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+  .dash-topbar-right {
+    gap: 8px;
   }
   .dash-footer {
     flex-direction: column;
     align-items: flex-start !important;
     gap: 8px !important;
+  }
+}
+
+/* PANTALLAS EXTRA PEQUEÑAS (< 380px) */
+@media (max-width: 380px) {
+  .dash-topbar-title {
+    font-size: 11px;
+    max-width: 95px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dash-topbar-subtitle {
+    display: none !important;
   }
 }
 

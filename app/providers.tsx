@@ -38,6 +38,16 @@ export type StudentContextType = {
 const C = createContext<StudentContextType | null>(null);
 const KEY = 'eddip-demo-v2';
 
+const isDemoStudent = (email?: string) => {
+  if (!email) return false;
+  const clean = email.trim().toLowerCase();
+  return (
+    clean === 'estudiante@eddip.edu.co' ||
+    clean === 'sebastian@demo.eddip.com' ||
+    clean === 'estudiante@demo.eddip.com'
+  );
+};
+
 const defaults = {
   role: 'student' as Role,
   purchased: ['derecho-de-policia', 'gestion-documental', 'seguridad-de-instalaciones'],
@@ -96,19 +106,40 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // 1. Cargar estado local inicial
+  // 1. Cargar estado local inicial y sincronizar con adminService
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
+      let loadedExtra: Course[] = [];
       if (raw) {
         const s = JSON.parse(raw);
         if (s.role) setRole(s.role);
         if (s.userProfile) setUserProfile(s.userProfile);
-        if (s.purchased) setPurchased(s.purchased);
-        if (s.completed) setCompleted(s.completed);
-        if (s.results) setResults(s.results);
-        if (s.extraCourses) setExtraCourses(s.extraCourses);
-        if (s.notes) setNotes(s.notes);
+        if (Array.isArray(s.purchased)) setPurchased(s.purchased);
+        if (s.completed && typeof s.completed === 'object') setCompleted(s.completed);
+        if (s.results && typeof s.results === 'object') setResults(s.results);
+        if (s.extraCourses && Array.isArray(s.extraCourses)) loadedExtra = s.extraCourses;
+        if (s.notes && typeof s.notes === 'object') setNotes(s.notes);
+      }
+
+      // Sincronizar con los cursos guardados desde el panel de administración
+      const adminRaw = localStorage.getItem('eddip_admin_extra_courses') || localStorage.getItem('extra_courses');
+      if (adminRaw) {
+        try {
+          const adminExtra: Course[] = JSON.parse(adminRaw);
+          if (Array.isArray(adminExtra)) {
+            const map = new Map<string, Course>();
+            for (const c of adminExtra) map.set(c.slug, c);
+            for (const c of loadedExtra) {
+              if (!map.has(c.slug)) map.set(c.slug, c);
+            }
+            loadedExtra = Array.from(map.values());
+          }
+        } catch {}
+      }
+
+      if (loadedExtra.length > 0) {
+        setExtraCourses(loadedExtra);
       }
     } catch (e) {
       console.warn('LocalStorage error', e);
@@ -132,14 +163,36 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           const role = meta.role === 'admin' ? 'admin' : 'student';
 
           setRole(role);
-          setUserProfile({
+          const email = (u.email || '').trim().toLowerCase();
+          const profile = {
             id: u.id,
-            name: meta.full_name || u.email?.split('@')[0] || 'Estudiante EDDIP',
-            email: u.email || '',
+            name: meta.full_name || email.split('@')[0] || 'Estudiante EDDIP',
+            email: email,
             documentId: meta.document_id || '',
             phone: meta.phone || '',
             city: meta.city || '',
-          });
+          };
+          setUserProfile(profile);
+
+          if (role === 'student') {
+            const isDemo = isDemoStudent(email);
+            try {
+              const userStored = localStorage.getItem(`eddip_user_${email}`);
+              if (userStored) {
+                const parsed = JSON.parse(userStored);
+                setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
+                setCompleted(parsed.completed || {});
+                setResults(parsed.results || {});
+                setNotes(parsed.notes || {});
+              } else if (!isDemo) {
+                // Nuevo estudiante registrado: sin cursos ni progreso cargado
+                setPurchased([]);
+                setCompleted({});
+                setResults({});
+                setNotes({});
+              }
+            } catch {}
+          }
         }
       } catch (err) {
         console.warn('Supabase session load error:', err);
@@ -158,14 +211,35 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         const meta = u.user_metadata || {};
         const newRole = meta.role === 'admin' ? 'admin' : 'student';
         setRole(newRole);
-        setUserProfile({
+        const email = (u.email || '').trim().toLowerCase();
+        const profile = {
           id: u.id,
-          name: meta.full_name || u.email?.split('@')[0] || 'Estudiante EDDIP',
-          email: u.email || '',
+          name: meta.full_name || email.split('@')[0] || 'Estudiante EDDIP',
+          email: email,
           documentId: meta.document_id || '',
           phone: meta.phone || '',
           city: meta.city || '',
-        });
+        };
+        setUserProfile(profile);
+
+        if (newRole === 'student') {
+          const isDemo = isDemoStudent(email);
+          try {
+            const userStored = localStorage.getItem(`eddip_user_${email}`);
+            if (userStored) {
+              const parsed = JSON.parse(userStored);
+              setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
+              setCompleted(parsed.completed || {});
+              setResults(parsed.results || {});
+              setNotes(parsed.notes || {});
+            } else if (!isDemo) {
+              setPurchased([]);
+              setCompleted({});
+              setResults({});
+              setNotes({});
+            }
+          } catch {}
+        }
       } else if (event === 'SIGNED_OUT') {
         // Mantener sesión de estudiante para visualización de demo o reiniciar
       }
@@ -193,6 +267,21 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           notes,
         })
       );
+
+      if (userProfile?.email) {
+        const cleanEmail = userProfile.email.trim().toLowerCase();
+        localStorage.setItem(
+          `eddip_user_${cleanEmail}`,
+          JSON.stringify({
+            role,
+            userProfile,
+            purchased,
+            completed,
+            results,
+            notes,
+          })
+        );
+      }
     } catch {
       // Ignore quota exceeded
     }
@@ -203,15 +292,21 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     if (r === 'admin') {
       setUserProfile(prev => ({
         ...prev,
-        name: 'Administrador EDDIP',
-        email: 'admin@eddip.edu.co',
+        name: prev.email?.includes('admin') ? prev.name : 'Administrador EDDIP',
+        email: prev.email?.includes('admin') ? prev.email : 'admin@eddip.edu.co',
       }));
     } else {
-      setUserProfile(prev => ({
-        ...prev,
-        name: prev.name || 'Sebastián Martínez',
-        email: prev.email || 'estudiante@eddip.edu.co',
-      }));
+      setUserProfile({
+        name: 'Sebastián Martínez',
+        email: 'estudiante@eddip.edu.co',
+        documentId: '1.032.456.789',
+        phone: '300 555 0182',
+        city: 'Bogotá D.C.',
+      });
+      setPurchased(defaults.purchased);
+      setCompleted(defaults.completed);
+      setResults({});
+      setNotes({});
     }
   }, []);
 
@@ -222,11 +317,22 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       // Ignore
     }
     setRole('guest');
+    setUserProfile({
+      name: '',
+      email: '',
+    });
+    setPurchased([]);
+    setCompleted({});
+    setResults({});
+    setNotes({});
   }, []);
 
   const purchase = useCallback((slug: string) => {
     setPurchased(v => {
       if (v.includes(slug)) return v;
+      if (userProfile.id) {
+        studentService.enrollCourse(userProfile.id, slug).catch(() => {});
+      }
       setExtraCourses(prev => {
         const existing = prev.find(c => c.slug === slug);
         if (existing) {
@@ -240,7 +346,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       });
       return [...v, slug];
     });
-  }, [remoteCourses]);
+  }, [remoteCourses, userProfile.id]);
 
   const toggleLesson = useCallback(async (slug: string, id: string) => {
     const isCurrentlyDone = (completed[slug] || []).includes(id);
@@ -289,6 +395,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           {
             code: certCode,
             studentName: userProfile.name,
+            documentId: userProfile.documentId || '1.032.456.789',
             courseSlug: slug,
             courseTitle: course.title,
             hours: course.durationHours,
@@ -369,19 +476,43 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: res.error };
     }
     if (res.user) {
-      setUserProfile({
+      const cleanEmail = params.email.trim().toLowerCase();
+      const newProfile = {
         id: res.user.id,
         name: params.fullName,
-        email: params.email,
-        documentId: params.documentId,
-        phone: params.phone,
-        city: params.city,
-      });
+        email: cleanEmail,
+        documentId: params.documentId || '',
+        phone: params.phone || '',
+        city: params.city || '',
+      };
+      setUserProfile(newProfile);
       setRole('student');
+
+      // Un nuevo estudiante registrado inicia totalmente desde cero:
+      // Sin ningún curso ni progreso cargado
+      setPurchased([]);
+      setCompleted({});
+      setResults({});
+      setNotes({});
+
+      try {
+        const cleanState = {
+          role: 'student' as Role,
+          userProfile: newProfile,
+          purchased: [] as string[],
+          completed: {} as Record<string, string[]>,
+          results: {} as Record<string, Result>,
+          extraCourses,
+          notes: {} as Record<string, string>,
+        };
+        localStorage.setItem(KEY, JSON.stringify(cleanState));
+        localStorage.setItem(`eddip_user_${cleanEmail}`, JSON.stringify(cleanState));
+      } catch {}
+
       return { success: true, error: null };
     }
     return { success: true, error: null };
-  }, []);
+  }, [extraCourses]);
 
   const signInStudent = useCallback(async (email: string, pass: string) => {
     const res = await studentService.signIn(email, pass);
@@ -389,19 +520,56 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: res.error, role: 'student' as const };
     }
     if (res.user) {
+      const cleanEmail = email.trim().toLowerCase();
       const meta = res.user.user_metadata || {};
-      const isAdmin = meta.role === 'admin' || email.toLowerCase().includes('admin');
+      const isAdmin = meta.role === 'admin' || cleanEmail.includes('admin');
       const assignedRole: Role = isAdmin ? 'admin' : 'student';
 
-      setUserProfile({
+      const profile = {
         id: res.user.id,
-        name: meta.full_name || (isAdmin ? 'Administrador EDDIP' : email.split('@')[0]),
-        email: email,
+        name: meta.full_name || (isAdmin ? 'Administrador EDDIP' : cleanEmail.split('@')[0]),
+        email: cleanEmail,
         documentId: meta.document_id || '',
         phone: meta.phone || '',
         city: meta.city || '',
-      });
+      };
+
+      setUserProfile(profile);
       setRole(assignedRole);
+
+      if (assignedRole === 'student') {
+        const isDemo = isDemoStudent(cleanEmail);
+
+        try {
+          const userStored = localStorage.getItem(`eddip_user_${cleanEmail}`);
+          if (userStored) {
+            const parsed = JSON.parse(userStored);
+            setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
+            setCompleted(parsed.completed || {});
+            setResults(parsed.results || {});
+            setNotes(parsed.notes || {});
+          } else if (isDemo) {
+            setPurchased(defaults.purchased);
+            setCompleted(defaults.completed);
+            setResults({});
+            setNotes({});
+          } else {
+            // Usuario registrado nuevo sin cursos previos ni progreso
+            setPurchased([]);
+            setCompleted({});
+            setResults({});
+            setNotes({});
+          }
+        } catch {
+          if (!isDemo) {
+            setPurchased([]);
+            setCompleted({});
+            setResults({});
+            setNotes({});
+          }
+        }
+      }
+
       return { success: true, error: null, role: assignedRole };
     }
     return { success: true, error: null, role: 'student' as const };
@@ -427,16 +595,16 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   // Lista unificada de cursos (Prioridad: editados por admin localmente > Supabase > base)
   const combinedCourses = useMemo(() => {
     const baseList = remoteCourses.length > 0 ? remoteCourses : baseCourses;
-    const map = new Map<string, Course>();
-    for (const c of extraCourses) {
-      map.set(c.slug, c);
-    }
+    const list: Course[] = [...extraCourses];
+    const existingIds = new Set(extraCourses.map(c => c.id));
+    const existingSlugs = new Set(extraCourses.map(c => c.slug));
+
     for (const c of baseList) {
-      if (!map.has(c.slug)) {
-        map.set(c.slug, c);
+      if (!existingIds.has(c.id) && !existingSlugs.has(c.slug)) {
+        list.push(c);
       }
     }
-    return Array.from(map.values());
+    return list;
   }, [extraCourses, remoteCourses]);
 
   // Certificados dinámicos combinados

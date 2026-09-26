@@ -120,65 +120,49 @@ export function DashboardShell({
       {/* Área principal */}
       <main className="dash-main" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', padding: 0 }}>
         {/* Barra superior de navegación / Dashboard Header */}
-        <header
-          className="dash-topbar"
-          style={{
-            background: '#ffffff',
-            borderBottom: '1px solid #e2e8f0',
-            padding: '12px 28px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            position: 'sticky',
-            top: 0,
-            zIndex: 35,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <header className="dash-topbar">
+          <div className="dash-topbar-left">
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn dash-topbar-menu-btn"
               onClick={() => setOpen(v => !v)}
               aria-label={open ? 'Cerrar navegación' : 'Abrir navegación'}
             >
               <Icon name="menu" />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="dash-topbar-brand">
               <Logo compact />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#071F49' }}>
-                {kind === 'admin' ? 'Administración EDDIP' : 'Campus Virtual EDDIP'}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  background: kind === 'admin' ? '#eff6ff' : '#ecfdf5',
-                  color: kind === 'admin' ? '#1d4ed8' : '#059669',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  fontWeight: 600,
-                }}
-              >
+              <div className="dash-topbar-titles">
+                <span className="dash-topbar-title">
+                  {kind === 'admin' ? 'Administración' : 'Campus Virtual'}
+                </span>
+                <span className="dash-topbar-subtitle">EDDIP</span>
+              </div>
+              <span className={`dash-topbar-badge ${kind === 'admin' ? 'admin' : 'student'}`}>
                 {kind === 'admin' ? 'Gestión' : 'Estudiante'}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="dash-topbar-right">
             <Link
               href="/"
-              className="btn btn-outline"
-              style={{ fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              className="btn btn-outline dash-topbar-public-btn"
+              title="Sitio Público"
+              aria-label="Ir al Sitio Público"
             >
-              <Icon name="home" size={14} /> Sitio Público
+              <Icon name="home" size={15} />
+              <span className="dash-topbar-public-text">Sitio Público</span>
             </Link>
             <Link
               href={kind === 'student' ? '/dashboard/perfil' : '/admin/configuracion'}
-              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
+              className="dash-topbar-user"
+              title={kind === 'admin' ? 'Panel de Configuración' : `Perfil de ${user.name}`}
             >
-              <div className="avatar" style={{ width: 34, height: 34, fontSize: 12 }}>
+              <div className="avatar dash-topbar-avatar">
                 {initials}
               </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>
+              <span className="dash-topbar-username">
                 {kind === 'admin' ? 'Admin' : user.name.split(' ')[0]}
               </span>
             </Link>

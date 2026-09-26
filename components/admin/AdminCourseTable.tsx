@@ -188,6 +188,14 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
                       >
                         <Icon name="edit" size={15} />
                       </Link>
+                      <Link
+                        className="icon-btn"
+                        href={`/admin/evaluaciones?course=${course.slug}`}
+                        title="Configurar preguntas y evaluación"
+                        style={{ color: '#0F59DF' }}
+                      >
+                        <Icon name="award" size={15} />
+                      </Link>
                       {onDeleteCourse && (
                         <button
                           type="button"

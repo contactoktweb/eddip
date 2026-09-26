@@ -59,36 +59,71 @@ export const defaultSiteContent: SiteContent = {
 export const contentService = {
   /**
    * Obtiene la oferta de cursos directamente desde Supabase si la tabla existe,
-   * con respaldo resiliente en baseCourses.
+   * unificando imágenes desde la tabla courses, el registro de site_content y respaldo en baseCourses.
    */
   async getCourses(): Promise<Course[]> {
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('id', { ascending: true });
+      const [coursesRes, imagesRes] = await Promise.all([
+        supabase.from('courses').select('*').order('id', { ascending: true }),
+        supabase.from('site_content').select('key, value').like('key', 'course_images_%'),
+      ]);
 
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
-          id: d.id,
-          slug: d.slug,
-          title: d.title,
-          category: d.category,
-          shortDescription: d.short_description || d.shortDescription || '',
-          description: d.description || '',
-          price: Number(d.price) || 0,
-          durationHours: Number(d.duration_hours || d.durationHours) || 40,
-          level: d.level || 'Intermedio',
-          gradient: d.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
-          instructor: typeof d.instructor === 'string' ? JSON.parse(d.instructor) : d.instructor,
-          outcomes: typeof d.outcomes === 'string' ? JSON.parse(d.outcomes) : d.outcomes,
-          modules: typeof d.modules === 'string' ? JSON.parse(d.modules) : d.modules,
-          featured: Boolean(d.featured),
-          students: Number(d.students) || 0,
-          rating: Number(d.rating) || 4.9,
-          image: d.image || (Array.isArray(d.images) && d.images[0]) || (typeof d.images === 'string' ? JSON.parse(d.images)[0] : undefined),
-          images: Array.isArray(d.images) ? d.images : (typeof d.images === 'string' ? JSON.parse(d.images) : (d.image ? [d.image] : [])),
-        })) as Course[];
+      const siteImagesMap = new Map<string, { image?: string; images?: string[] }>();
+      if (!imagesRes.error && imagesRes.data) {
+        for (const row of imagesRes.data) {
+          if (row.value && typeof row.value === 'object') {
+            const v = row.value as any;
+            if (v.slug) {
+              siteImagesMap.set(v.slug, { image: v.image, images: v.images });
+            }
+          }
+        }
+      }
+
+      if (!coursesRes.error && coursesRes.data && coursesRes.data.length > 0) {
+        return coursesRes.data.map((d: any) => {
+          const instructorObj = typeof d.instructor === 'string' ? JSON.parse(d.instructor) : (d.instructor || {});
+          const sc = siteImagesMap.get(d.slug);
+
+          const resolvedImages: string[] =
+            (sc?.images && sc.images.length > 0 ? sc.images : null) ||
+            (Array.isArray(d.images) && d.images.length > 0 ? d.images : null) ||
+            (typeof d.images === 'string' ? JSON.parse(d.images) : null) ||
+            (Array.isArray(instructorObj.courseImages) && instructorObj.courseImages.length > 0 ? instructorObj.courseImages : null) ||
+            (Array.isArray(instructorObj.images) && instructorObj.images.length > 0 ? instructorObj.images : null) ||
+            (d.image ? [d.image] : null) ||
+            (instructorObj.courseImage ? [instructorObj.courseImage] : null) ||
+            [];
+
+          const resolvedImage: string =
+            sc?.image ||
+            d.image ||
+            (resolvedImages.length > 0 ? resolvedImages[0] : '') ||
+            instructorObj.courseImage ||
+            instructorObj.image ||
+            '';
+
+          return {
+            id: d.id,
+            slug: d.slug,
+            title: d.title,
+            category: d.category,
+            shortDescription: d.short_description || d.shortDescription || '',
+            description: d.description || '',
+            price: Number(d.price) || 0,
+            durationHours: Number(d.duration_hours || d.durationHours) || 40,
+            level: d.level || 'Intermedio',
+            gradient: d.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
+            instructor: instructorObj,
+            outcomes: typeof d.outcomes === 'string' ? JSON.parse(d.outcomes) : d.outcomes,
+            modules: typeof d.modules === 'string' ? JSON.parse(d.modules) : d.modules,
+            featured: Boolean(d.featured),
+            students: Number(d.students) || 0,
+            rating: Number(d.rating) || 4.9,
+            image: resolvedImage,
+            images: resolvedImages.length > 0 ? resolvedImages : (resolvedImage ? [resolvedImage] : []),
+          };
+        }) as Course[];
       }
     } catch {
       // Fallback

@@ -28,9 +28,8 @@ export function StudentCertificatesGrid({ certificates, studentName }: Props) {
 
     return (
       isEarnedInResults ||
-      certStudent === currentStudent ||
-      (currentStudent.includes('sebastián') && certStudent.includes('sebastián')) ||
-      c.student === 'Estudiante EDDIP'
+      (currentStudent && certStudent === currentStudent) ||
+      (currentStudent.includes('sebastián') && certStudent.includes('sebastián'))
     );
   });
 

@@ -4,9 +4,16 @@ import { Icon } from '@/lib/icons';
 type Props = {
   certificatesCount: number;
   completedLessonsCount: number;
+  activeCoursesCount?: number;
+  latestCourseTitle?: string;
 };
 
-export function StudentRecentActivity({ certificatesCount, completedLessonsCount }: Props) {
+export function StudentRecentActivity({
+  certificatesCount,
+  completedLessonsCount,
+  activeCoursesCount = 0,
+  latestCourseTitle,
+}: Props) {
   return (
     <aside className="dash-card" aria-label="Actividad reciente del estudiante">
       <div className="dash-card-head">
@@ -45,13 +52,23 @@ export function StudentRecentActivity({ certificatesCount, completedLessonsCount
           </div>
         )}
 
-        <div className="activity">
-          <span className="activity-dot" style={{ background: '#6366f1' }}></span>
-          <div>
-            <strong>Curso habilitado</strong>
-            <span>Derecho de Policía y Convivencia</span>
+        {activeCoursesCount > 0 ? (
+          <div className="activity">
+            <span className="activity-dot" style={{ background: '#6366f1' }}></span>
+            <div>
+              <strong>{activeCoursesCount === 1 ? 'Curso habilitado' : `Cursos activos (${activeCoursesCount})`}</strong>
+              <span>{latestCourseTitle || 'Programas en progreso'}</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="activity">
+            <span className="activity-dot" style={{ background: '#94a3b8' }}></span>
+            <div>
+              <strong>Sin cursos inscritos</strong>
+              <span>Explora el catálogo para comenzar a estudiar</span>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
