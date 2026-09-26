@@ -1,3 +1,28 @@
+## [2026-09-26] Confirmación de Matrícula: Información Real de Facturación Ingresada por el Estudiante
+- **Corrección de Sobreescritura en Perfil y Matrícula** ([`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx)):
+  - Se eliminó el reseteo involuntario en `login('student')` que forzaba el usuario demo *"Sebastián Martínez"* con documento *"1.032.456.789"*.
+  - `updateProfile` y `login` ahora preservan de manera persistente los datos reales que el usuario ingresa en el checkout (`eddip_student_profile` en `localStorage`).
+- **Persistencia Post-Redirección y Pantalla de Éxito** ([`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx)):
+  - Implementado estado `confirmedCustomer` respaldado en `sessionStorage` (`eddip_checkout_customer`) y `localStorage`.
+  - Al completar la transacción (tanto en pasarela externa de Bold con redirección `?bold_order=...&bold_status=approved` como en el simulador Sandbox):
+    - Se extraen y confirman el nombre completo, cédula, correo, teléfono y ubicación (departamento y ciudad) que el estudiante digitó en el formulario.
+    - Se registra la matrícula (`enrollStudentInCourse`) y la venta en `adminService` con el nombre y correo reales del estudiante.
+    - La tarjeta de **MATRÍCULA CONFIRMADA** ahora despliega con exactitud los datos reales de facturación ingresados, incluyendo estudiante, documento, correo, teléfono y ubicación, sin mostrar ningún valor de prueba ficticio.
+
+## [2026-09-26] Formulario de Checkout: Campos Limpios por Defecto y Selects Personalizados de Departamento y Ciudad
+- **Inicialización Limpia de Datos** ([`app/checkout/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/checkout/[slug]/page.tsx)):
+  - Se eliminó la precarga de datos de prueba (nombre, cédula demo, correo ficticio, teléfono y ciudad pre-ingresados). Todos los campos del formulario de matrícula inician vacíos (`""`), permitiendo que el comprador ingrese sus datos reales sin tener que borrar contenido previo.
+- **Componente `CustomSelect` Modular y Accesible** ([`components/CustomSelect.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/CustomSelect.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
+  - Select interactivo de diseño premium con apertura fluida, borde con foco personalizado, rotación de flecha indicadora y soporte completo para navegación con teclado.
+  - Buscador integrado insensible a mayúsculas y tildes para listas extensas de opciones.
+  - Detección de clic exterior para cierre automático y soporte para estado deshabilitado con mensaje explicativo.
+- **Catálogo Geográfico de Colombia** ([`lib/colombiaPlaces.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/colombiaPlaces.ts)):
+  - Definición completa de los 32 departamentos y Bogotá D.C., con sus correspondientes municipios y ciudades principales.
+- **Cascada Dinámica Departamento - Ciudad**:
+  - El selector de ciudad permanece deshabilitado mostrando *"Primero selecciona un departamento"* hasta que el usuario elija su departamento.
+  - Al seleccionar un departamento, el dropdown de ciudad se activa y carga instantáneamente los municipios asociados. Si se cambia de departamento, la ciudad se reinicia automáticamente para evitar inconsistencias.
+  - Disposición responsiva con clase `.checkout-fields-row` que adapta automáticamente las dos columnas a una en pantallas móviles.
+
 ## [2026-09-26] Pasarela de Pagos Bold: Integración Oficial para Pago de Cursos
 - **Credenciales Seguras en `.env.local`** ([`.env.local`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/.env.local)):
   - Incorporadas las credenciales de prueba proporcionadas:

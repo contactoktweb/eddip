@@ -78,6 +78,11 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
     - Endpoint seguro `/api/bold/checkout` que calcula la referencia única de orden `EDDIP-{timestamp}-{random}` y firma el payload con SHA-256 (`orderId + amount + currency + secretKey`).
     - Carga dinámica del SDK oficial de Bold (`boldPaymentButton.js`) e inicialización de `window.BoldCheckout` con fallback seguro a enlace de pago o Sandbox oficial.
     - Al confirmarse el pago por Bold, matricula de inmediato al estudiante en el curso (`enrollCourse`) y registra la venta formal bajo el método `'Bold'` en `adminService`.
+  - **Formulario de Acreditación Oficial y Confirmación de Matrícula**:
+    - Inicialización 100% limpia sin datos pre-ingresados (campos en blanco con placeholders descriptivos).
+    - Selects personalizados (`CustomSelect`) para Departamento y Ciudad basados en el catálogo territorial oficial de Colombia (`lib/colombiaPlaces.ts`).
+    - Cascada dinámica: el selector de ciudad se habilita una vez escogido el departamento, con buscador rápido integrado insensible a mayúsculas y acentos.
+    - **Pantalla de Confirmación con Datos Reales**: Persistencia garantizada (incluso post-redirección de Bold) en `sessionStorage` y `localStorage`. La tarjeta de matrícula confirmada exhibe con exactitud el nombre, cédula, correo, teléfono y ciudad que el usuario ingresó, sin volver a datos demo ni sobreescribir con valores de prueba.
 - **Contenido Web (`/admin/contenido`)**:
   - `AdminContentEditor.tsx`: Edición de textos del Hero de inicio, llamadas a la acción e indicadores con vista previa instantánea.
 - **Configuración (`/admin/configuracion`)**:

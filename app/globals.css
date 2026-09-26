@@ -3683,6 +3683,32 @@ body {
 }
 
 /* =========================================================
+   CUSTOM SELECT & CHECKOUT FIELDS (RESPONSIVE)
+   ========================================================= */
+@keyframes customSelectIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.checkout-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .checkout-fields-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
    ACCESSIBILITY: PREFERS-REDUCED-MOTION (RULE 27)
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {

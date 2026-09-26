@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,6 +10,8 @@ import { useDemo } from '@/app/providers';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
 import { adminService } from '@/lib/supabase/adminService';
+import CustomSelect from '@/components/CustomSelect';
+import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
 
 type PaymentMethod = 'pse' | 'card' | 'wallet';
 
@@ -43,14 +45,88 @@ function Checkout() {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [couponMsg, setCouponMsg] = useState<{ text: string; error: boolean } | null>(null);
 
-  // Datos del formulario
+  // Datos del formulario - 100% LIMPIOS sin datos precargados por defecto
   const [formData, setFormData] = useState({
-    name: user.name || '',
-    documentId: user.documentId || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    city: user.city || '',
+    name: '',
+    documentId: '',
+    email: '',
+    phone: '',
+    department: '',
+    city: '',
   });
+
+  // Datos reales del estudiante confirmados para la acreditación
+  const [confirmedCustomer, setConfirmedCustomer] = useState<{
+    name: string;
+    documentId: string;
+    email: string;
+    phone: string;
+    department: string;
+    city: string;
+  } | null>(null);
+
+  // Cargar cliente registrado previamente desde sessionStorage / localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.name && parsed.name !== 'Sebastián Martínez') {
+            setConfirmedCustomer(parsed);
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Opciones de departamentos de Colombia
+  const departmentOptions = useMemo(() => {
+    return COLOMBIA_DEPARTMENTS.map(d => ({
+      value: d.name,
+      label: d.name,
+    }));
+  }, []);
+
+  // Ciudades dinámicas según el departamento seleccionado
+  const availableCities = useMemo(() => {
+    if (!formData.department) return [];
+    const dept = COLOMBIA_DEPARTMENTS.find(
+      d => d.name.toLowerCase() === formData.department.toLowerCase()
+    );
+    return dept ? dept.cities : [];
+  }, [formData.department]);
+
+  const cityOptions = useMemo(() => {
+    return availableCities.map(c => ({
+      value: c,
+      label: c,
+    }));
+  }, [availableCities]);
+
+  const handleDepartmentChange = (deptName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      department: deptName,
+      city: '', // Limpiar ciudad al cambiar departamento
+    }));
+    if (errors.department) {
+      setErrors(prev => ({ ...prev, department: '' }));
+    }
+    if (errors.city) {
+      setErrors(prev => ({ ...prev, city: '' }));
+    }
+  };
+
+  const handleCityChange = (cityName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      city: cityName,
+    }));
+    if (errors.city) {
+      setErrors(prev => ({ ...prev, city: '' }));
+    }
+  };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isBoldLoading, setIsBoldLoading] = useState(false);
@@ -83,9 +159,49 @@ function Checkout() {
     const boldStatus = searchParams ? searchParams.get('bold_status') || searchParams.get('status') : null;
 
     if (boldOrder && course && (boldStatus === 'approved' || boldStatus === 'success')) {
+      let cust = confirmedCustomer;
+      if (!cust && typeof window !== 'undefined') {
+        try {
+          const s = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
+          if (s) cust = JSON.parse(s);
+        } catch {}
+      }
+
+      const realName = cust?.name?.trim() || formData.name?.trim() || (user.name !== 'Sebastián Martínez' ? user.name : '') || 'Estudiante Matriculado';
+      const realDoc = cust?.documentId?.trim() || formData.documentId?.trim() || (user.documentId !== '1.032.456.789' ? user.documentId : '') || '';
+      const realEmail = cust?.email?.trim() || formData.email?.trim() || (user.email !== 'estudiante@eddip.edu.co' ? user.email : '') || 'estudiante@eddip.edu.co';
+      const realPhone = cust?.phone?.trim() || formData.phone?.trim() || '';
+      const realLocation = cust?.city
+        ? (cust?.department ? `${cust.city}, ${cust.department}` : cust.city)
+        : (cust?.department || formData.department || '');
+
+      const resolvedCust = {
+        name: realName,
+        documentId: realDoc,
+        email: realEmail,
+        phone: realPhone,
+        department: cust?.department || formData.department || '',
+        city: cust?.city || formData.city || '',
+      };
+
+      setConfirmedCustomer(resolvedCust);
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
+        localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
+      }
+
+      updateProfile({
+        fullName: realName,
+        documentId: realDoc,
+        email: realEmail,
+        phone: realPhone,
+        city: realLocation,
+      });
+
       adminService.recordSale({
         id: boldOrder,
-        student: user.name || 'Estudiante Matriculado',
+        student: realName,
         course: course.title,
         value: course.price,
         method: 'Bold',
@@ -93,16 +209,15 @@ function Checkout() {
         status: 'Aprobado',
       });
       adminService.enrollStudentInCourse(
-        user.name || 'Estudiante',
-        user.email || 'estudiante@eddip.edu.co',
+        realName,
+        realEmail,
         course.slug,
         course.title
       );
       purchase(course.slug);
-      login('student');
       setStage('success');
     }
-  }, [searchParams, course, purchase, login, user]);
+  }, [searchParams, course, purchase, confirmedCustomer, formData, user, updateProfile]);
 
   if (!course) {
     return (
@@ -163,9 +278,49 @@ function Checkout() {
   const handleSimulateOrConfirmBoldSuccess = (orderId?: string) => {
     const finalOrderId = orderId || boldCheckoutData?.orderId || `EDDIP-BOLD-${Date.now()}`;
 
+    let cust = confirmedCustomer;
+    if (!cust && typeof window !== 'undefined') {
+      try {
+        const s = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
+        if (s) cust = JSON.parse(s);
+      } catch {}
+    }
+
+    const realName = cust?.name?.trim() || formData.name?.trim() || (user.name !== 'Sebastián Martínez' ? user.name : '') || 'Estudiante';
+    const realDoc = cust?.documentId?.trim() || formData.documentId?.trim() || (user.documentId !== '1.032.456.789' ? user.documentId : '') || '';
+    const realEmail = cust?.email?.trim() || formData.email?.trim() || (user.email !== 'estudiante@eddip.edu.co' ? user.email : '') || 'estudiante@eddip.edu.co';
+    const realPhone = cust?.phone?.trim() || formData.phone?.trim() || '';
+    const realLocation = cust?.city
+      ? (cust?.department ? `${cust.city}, ${cust.department}` : cust.city)
+      : (cust?.department || formData.department || '');
+
+    const resolvedCust = {
+      name: realName,
+      documentId: realDoc,
+      email: realEmail,
+      phone: realPhone,
+      department: cust?.department || formData.department || '',
+      city: cust?.city || formData.city || '',
+    };
+
+    setConfirmedCustomer(resolvedCust);
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
+      localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
+    }
+
+    updateProfile({
+      fullName: realName,
+      documentId: realDoc,
+      email: realEmail,
+      phone: realPhone,
+      city: realLocation,
+    });
+
     adminService.recordSale({
       id: finalOrderId,
-      student: formData.name || user.name || 'Estudiante Matriculado',
+      student: realName,
       course: course.title,
       value: finalPrice,
       method: 'Bold',
@@ -174,14 +329,13 @@ function Checkout() {
     });
 
     adminService.enrollStudentInCourse(
-      formData.name || user.name || 'Estudiante',
-      formData.email || user.email || 'estudiante@eddip.edu.co',
+      realName,
+      realEmail,
       course.slug,
       course.title
     );
 
     purchase(course.slug);
-    login('student');
     setStage('success');
   };
 
@@ -193,13 +347,33 @@ function Checkout() {
     setStage('processing');
 
     try {
-      // 1. Guardar o actualizar perfil del estudiante
+      // 1. Guardar y persistir datos reales del estudiante
+      const fullLocation = formData.city
+        ? (formData.department ? `${formData.city}, ${formData.department}` : formData.city)
+        : (formData.department || '');
+
+      const customerToSave = {
+        name: formData.name.trim(),
+        documentId: formData.documentId.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        department: formData.department.trim(),
+        city: formData.city.trim(),
+      };
+
+      setConfirmedCustomer(customerToSave);
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(customerToSave));
+        localStorage.setItem('eddip_student_profile', JSON.stringify(customerToSave));
+      }
+
       await updateProfile({
-        fullName: formData.name,
-        documentId: formData.documentId,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
+        fullName: customerToSave.name,
+        documentId: customerToSave.documentId,
+        email: customerToSave.email,
+        phone: customerToSave.phone,
+        city: fullLocation,
       });
 
       // 2. Solicitar sesión e integridad a la API de Bold
@@ -210,7 +384,10 @@ function Checkout() {
           courseSlug: course.slug,
           courseTitle: course.title,
           amount: finalPrice,
-          customer: formData,
+          customer: {
+            ...customerToSave,
+            city: fullLocation,
+          },
         }),
       });
 
@@ -379,23 +556,57 @@ function Checkout() {
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
                   borderRadius: 16,
-                  padding: '16px 20px',
+                  padding: '20px 24px',
                   marginBottom: 28,
                   textAlign: 'left',
                   fontSize: 13,
                   color: '#334155',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ color: '#64748b' }}>Estudiante registrado:</span>
-                  <strong>{formData.name || user.name}</strong>
+                  <strong style={{ color: '#071F49', fontSize: 14 }}>
+                    {confirmedCustomer?.name || formData.name || (user.name !== 'Sebastián Martínez' ? user.name : '') || 'Estudiante'}
+                  </strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ color: '#64748b' }}>Documento de identidad:</span>
-                  <strong>{formData.documentId || user.documentId}</strong>
+                  <strong style={{ color: '#071F49' }}>
+                    {confirmedCustomer?.documentId || formData.documentId || (user.documentId !== '1.032.456.789' ? user.documentId : '') || 'Registrado en expediente'}
+                  </strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Acceso al aula:</span>
+
+                {(confirmedCustomer?.email || formData.email) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ color: '#64748b' }}>Correo de acreditación:</span>
+                    <span style={{ color: '#334155', fontWeight: 600 }}>
+                      {confirmedCustomer?.email || formData.email}
+                    </span>
+                  </div>
+                )}
+
+                {(confirmedCustomer?.phone || formData.phone) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ color: '#64748b' }}>Teléfono de contacto:</span>
+                    <span style={{ color: '#334155', fontWeight: 600 }}>
+                      {confirmedCustomer?.phone || formData.phone}
+                    </span>
+                  </div>
+                )}
+
+                {(confirmedCustomer?.city || formData.city || confirmedCustomer?.department || formData.department) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ color: '#64748b' }}>Ubicación:</span>
+                    <span style={{ color: '#334155', fontWeight: 600 }}>
+                      {confirmedCustomer?.city || formData.city}
+                      {(confirmedCustomer?.department || formData.department) ? `, ${confirmedCustomer?.department || formData.department}` : ''}
+                    </span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #e2e8f0', marginTop: 4 }}>
+                  <span style={{ color: '#64748b' }}>Acceso al aula virtual:</span>
                   <span style={{ color: '#059669', fontWeight: 700 }}>Habilitado 24/7 Inmediato</span>
                 </div>
               </div>
@@ -558,7 +769,7 @@ function Checkout() {
                   </div>
 
                   {/* Fila 1: Nombre y Documento */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 16 }}>
+                  <div className="checkout-fields-row" style={{ marginBottom: 16 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
                         Nombre y apellidos completos <span style={{ color: '#dc2626' }}>*</span>
@@ -637,47 +848,59 @@ function Checkout() {
                     {errors.email && <span style={{ fontSize: 11, color: '#dc2626', marginTop: 4, display: 'block' }}>{errors.email}</span>}
                   </div>
 
-                  {/* Fila 3: Teléfono y Ciudad */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  {/* Fila 3: Teléfono */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                      Teléfono / WhatsApp de contacto
+                    </label>
+                    <input
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: '1px solid #cbd5e1',
+                        fontSize: 14,
+                        color: '#0f172a',
+                        outline: 'none',
+                        background: '#fff',
+                      }}
+                      placeholder="ej. 300 555 0182"
+                      value={formData.phone}
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Fila 4: Departamento y Ciudad (Selects Personalizados) */}
+                  <div className="checkout-fields-row">
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                        Teléfono / WhatsApp de contacto
-                      </label>
-                      <input
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: 12,
-                          border: '1px solid #cbd5e1',
-                          fontSize: 14,
-                          color: '#0f172a',
-                          outline: 'none',
-                          background: '#fff',
-                        }}
-                        placeholder="ej. 300 555 0182"
-                        value={formData.phone}
-                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      <CustomSelect
+                        id="checkout-department"
+                        label="Departamento de residencia"
+                        value={formData.department}
+                        onChange={handleDepartmentChange}
+                        options={departmentOptions}
+                        placeholder="Seleccionar departamento..."
+                        searchable={true}
+                        error={errors.department}
                       />
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                        Ciudad de residencia
-                      </label>
-                      <input
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          borderRadius: 12,
-                          border: '1px solid #cbd5e1',
-                          fontSize: 14,
-                          color: '#0f172a',
-                          outline: 'none',
-                          background: '#fff',
-                        }}
-                        placeholder="ej. Bogotá D.C."
+                      <CustomSelect
+                        id="checkout-city"
+                        label="Ciudad / Municipio de residencia"
                         value={formData.city}
-                        onChange={e => setFormData({ ...formData, city: e.target.value })}
+                        onChange={handleCityChange}
+                        options={cityOptions}
+                        placeholder={
+                          formData.department
+                            ? 'Seleccionar ciudad...'
+                            : 'Primero selecciona un departamento'
+                        }
+                        disabled={!formData.department}
+                        disabledMessage="Primero selecciona un departamento"
+                        searchable={true}
+                        error={errors.city}
                       />
                     </div>
                   </div>

@@ -122,6 +122,24 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         if (s.notes && typeof s.notes === 'object') setNotes(s.notes);
       }
 
+      // Restaurar perfil real del estudiante si fue registrado o actualizado en checkout
+      const savedCustomProfile = localStorage.getItem('eddip_student_profile');
+      if (savedCustomProfile) {
+        try {
+          const cp = JSON.parse(savedCustomProfile);
+          if (cp.name && cp.name !== 'Sebastián Martínez') {
+            setUserProfile(prev => ({
+              ...prev,
+              name: cp.name,
+              email: cp.email || prev.email,
+              documentId: cp.documentId || prev.documentId,
+              phone: cp.phone || prev.phone,
+              city: cp.city || prev.city,
+            }));
+          }
+        } catch {}
+      }
+
       // Sincronizar con los cursos guardados desde el panel de administración
       const adminRaw = localStorage.getItem('eddip_admin_extra_courses') || localStorage.getItem('extra_courses');
       if (adminRaw) {
@@ -296,17 +314,33 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         email: prev.email?.includes('admin') ? prev.email : 'admin@eddip.edu.co',
       }));
     } else {
-      setUserProfile({
-        name: 'Sebastián Martínez',
-        email: 'estudiante@eddip.edu.co',
-        documentId: '1.032.456.789',
-        phone: '300 555 0182',
-        city: 'Bogotá D.C.',
+      setUserProfile(prev => {
+        // Preservar nombre y datos reales si ya fueron ingresados
+        if (prev.name && prev.name !== 'Sebastián Martínez') {
+          return prev;
+        }
+        if (typeof window !== 'undefined') {
+          try {
+            const saved = localStorage.getItem('eddip_student_profile') || sessionStorage.getItem('eddip_checkout_customer');
+            if (saved) {
+              const p = JSON.parse(saved);
+              if (p.name && p.name !== 'Sebastián Martínez') {
+                return {
+                  ...prev,
+                  name: p.name,
+                  email: p.email || prev.email,
+                  documentId: p.documentId || prev.documentId,
+                  phone: p.phone || prev.phone,
+                  city: p.city || prev.city,
+                };
+              }
+            }
+          } catch {}
+        }
+        return prev;
       });
-      setPurchased(defaults.purchased);
-      setCompleted(defaults.completed);
-      setResults({});
-      setNotes({});
+      setPurchased(prev => (prev.length > 0 ? prev : defaults.purchased));
+      setCompleted(prev => (Object.keys(prev).length > 0 ? prev : defaults.completed));
     }
   }, []);
 
@@ -435,14 +469,22 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateProfile = useCallback(async (data: Partial<StudentProfile>): Promise<boolean> => {
-    setUserProfile(prev => ({
-      ...prev,
-      name: data.fullName || prev.name,
-      email: data.email || prev.email,
-      documentId: data.documentId || prev.documentId,
-      phone: data.phone || prev.phone,
-      city: data.city || prev.city,
-    }));
+    setUserProfile(prev => {
+      const updated = {
+        ...prev,
+        name: data.fullName || prev.name,
+        email: data.email || prev.email,
+        documentId: data.documentId || prev.documentId,
+        phone: data.phone || prev.phone,
+        city: data.city || prev.city,
+      };
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('eddip_student_profile', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
 
     if (userProfile.id) {
       return await studentService.updateProfile(userProfile.id, data);
