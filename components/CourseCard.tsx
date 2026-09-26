@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Course } from '@/lib/types';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
+import { CourseImageSlider } from './CourseImageSlider';
 
 function getLevelBadge(level: string) {
   const l = level.toLowerCase();
@@ -16,40 +16,34 @@ function getLevelBadge(level: string) {
 }
 
 export function CourseCard({ course }: { course: Course }) {
-  const imageSrc = course.image || '/images/courses/seguridad.jpg';
   const levelBadge = getLevelBadge(course.level);
+  const images = (course.images && course.images.length > 0)
+    ? course.images
+    : (course.image ? [course.image] : ['/images/courses/seguridad.jpg']);
 
   return (
     <article className="course-card modern-course-card">
-      <Link
-        href={`/cursos/${course.slug}`}
-        className="card-media-chamber"
-        aria-label={`Ver curso ${course.title}`}
-      >
+      <div className="card-media-chamber">
         <div className="media-inner">
-          <Image
-            src={imageSrc}
+          <CourseImageSlider
+            images={images}
             alt={course.title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="media-photo"
+            overlayChildren={
+              <div className="media-chips-top">
+                <span className={`glass-chip ${levelBadge.className}`}>
+                  <span className="live-dot" style={{ backgroundColor: levelBadge.dotColor }} />
+                  {levelBadge.label}
+                </span>
+
+                <span className="glass-chip chip-duration">
+                  <Icon name="clock" size={12} />
+                  <span>{course.durationHours}h</span>
+                </span>
+              </div>
+            }
           />
-          <div className="media-overlay-gradient" />
-
-          {/* Floating Glass Chips on Image */}
-          <div className="media-chips-top">
-            <span className={`glass-chip ${levelBadge.className}`}>
-              <span className="live-dot" style={{ backgroundColor: levelBadge.dotColor }} />
-              {levelBadge.label}
-            </span>
-
-            <span className="glass-chip chip-duration">
-              <Icon name="clock" size={12} />
-              <span>{course.durationHours}h</span>
-            </span>
-          </div>
         </div>
-      </Link>
+      </div>
 
       <div className="card-content-chamber">
         {/* Category & Rating Bar */}

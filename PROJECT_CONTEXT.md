@@ -50,7 +50,8 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
   - `AdminRecentStudents.tsx`: Tabla de últimos ingresos alimentada del directorio activo de estudiantes.
 - **Cursos y Contenidos (`/admin/cursos`, `/admin/cursos/nuevo`, `/admin/cursos/[slug]`)**:
   - `AdminCourseTable.tsx`: Tabla de cursos con columna de estudiantes matriculados sincronizada exactamente con los alumnos inscritos (18 matrículas en total).
-  - `CourseContentBuilder.tsx`: Constructor y cargador completo de cursos con módulos, lecciones, minutos, puntos clave, resultados y vista previa en vivo.
+  - `CourseContentBuilder.tsx`: Constructor y cargador completo de cursos con módulos, lecciones, minutos, puntos clave, resultados, sistema de subida de imágenes múltiples (1 o varias con drag & drop, presets y URLs) y vista previa en vivo con slide táctil interactivo.
+  - `CourseImageSlider.tsx`: Componente modular para tarjetas de catálogo, ficha pública y panel de administración, con soporte completo de gestos táctiles swipe en móviles (Regla 15), navegación prev/next con micro-animaciones, dots y badge indicador.
   - **Sincronización Total**: Al crear o editar un curso en administración, se refleja automáticamente en la página principal (`/` vía `HomeFeaturedCourses`), el catálogo completo (`/cursos`), la ficha pública (`/cursos/[slug]`) y el aula virtual.
 - **Directorio de Estudiantes / "Jugadores" (`/admin/estudiantes`)**:
   - `StudentDirectory.tsx`: Buscador en tiempo real por nombre, cédula, correo o ciudad; filtros por avance y exportación a CSV con los 10 estudiantes de la plataforma.

@@ -152,6 +152,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
   students INT DEFAULT 0,
   featured BOOLEAN DEFAULT FALSE,
   gradient TEXT NOT NULL DEFAULT 'linear-gradient(135deg,#0b62dd,#063f9b)',
+  image TEXT,
+  images JSONB DEFAULT '[]'::jsonb,
   instructor JSONB NOT NULL DEFAULT '{}'::jsonb,
   outcomes JSONB NOT NULL DEFAULT '[]'::jsonb,
   modules JSONB NOT NULL DEFAULT '[]'::jsonb,

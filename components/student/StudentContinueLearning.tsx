@@ -84,7 +84,7 @@ export function StudentContinueLearning({ courses, completedMap }: Props) {
                 }}
               >
                 <Image
-                  src={course.image || '/images/courses/seguridad.jpg'}
+                  src={course.image || (course.images && course.images[0]) || '/images/courses/seguridad.jpg'}
                   alt={course.title}
                   fill
                   sizes="62px"

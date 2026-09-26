@@ -86,6 +86,8 @@ export const contentService = {
           featured: Boolean(d.featured),
           students: Number(d.students) || 0,
           rating: Number(d.rating) || 4.9,
+          image: d.image || (Array.isArray(d.images) && d.images[0]) || (typeof d.images === 'string' ? JSON.parse(d.images)[0] : undefined),
+          images: Array.isArray(d.images) ? d.images : (typeof d.images === 'string' ? JSON.parse(d.images) : (d.image ? [d.image] : [])),
         })) as Course[];
       }
     } catch {

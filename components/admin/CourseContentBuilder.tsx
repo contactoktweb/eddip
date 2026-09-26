@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Course, Module, Lesson } from '@/lib/types';
 import { useDemo } from '@/app/providers';
 import { adminService } from '@/lib/supabase/adminService';
 import { Icon } from '@/lib/icons';
+import { CourseImageSlider } from '@/components/CourseImageSlider';
 
 const slugify = (s: string) =>
   s
@@ -44,6 +45,20 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
   const [gradient, setGradient] = useState(
     initialCourse?.gradient || 'linear-gradient(135deg,#0F59DF,#2F86FF)'
   );
+
+  // Imágenes del Curso (1 o varias para slider)
+  const [images, setImages] = useState<string[]>(() => {
+    if (initialCourse?.images && initialCourse.images.length > 0) {
+      return initialCourse.images;
+    }
+    if (initialCourse?.image) {
+      return [initialCourse.image];
+    }
+    return [];
+  });
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 2. Instructor
   const [instructorName, setInstructorName] = useState(
@@ -103,6 +118,66 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
     if (!isEditing || !slug) {
       setSlug(slugify(val));
     }
+  };
+
+  // Manejo de Imágenes (Subida local, Presets, URLs y Slider)
+  const handleFilesUpload = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    const imageFiles = fileArray.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      showToast('error', 'Por favor selecciona archivos de imagen válidos (PNG, JPG, WEBP).');
+      return;
+    }
+
+    const readers: Promise<string>[] = imageFiles.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers)
+      .then(newUrls => {
+        setImages(prev => [...prev, ...newUrls]);
+        showToast('success', `${newUrls.length} imagen(es) subida(s) correctamente.`);
+      })
+      .catch(() => {
+        showToast('error', 'Error al procesar las imágenes seleccionadas.');
+      });
+  };
+
+  const handleAddUrlImage = () => {
+    if (!urlInput.trim()) return;
+    setImages(prev => [...prev, urlInput.trim()]);
+    setUrlInput('');
+    showToast('success', 'Imagen añadida desde URL.');
+  };
+
+  const handleAddPresetImage = (presetPath: string) => {
+    if (images.includes(presetPath)) {
+      showToast('error', 'Esta imagen ya está incluida.');
+      return;
+    }
+    setImages(prev => [...prev, presetPath]);
+    showToast('success', 'Imagen institucional agregada.');
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSetPrimaryImage = (index: number) => {
+    setImages(prev => {
+      if (index <= 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      const [selected] = next.splice(index, 1);
+      next.unshift(selected);
+      return next;
+    });
   };
 
   // Manejo de Outcomes
@@ -228,6 +303,8 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
 
     setIsSaving(true);
 
+    const primaryImage = images[0] || initialCourse?.image || '/images/courses/seguridad.jpg';
+
     const coursePayload: Course = {
       id: initialCourse?.id || `course-${Date.now()}`,
       slug: courseSlug,
@@ -242,6 +319,8 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
       students: initialCourse?.students || 0,
       featured: initialCourse?.featured ?? false,
       gradient,
+      image: primaryImage,
+      images: images.length > 0 ? images : [primaryImage],
       instructor: {
         name: instructorName.trim(),
         role: instructorRole.trim(),
@@ -471,6 +550,216 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Campo de Subida de Imágenes para Portada y Slider */}
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: 14, fontWeight: 700, color: '#071F49', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                    <Icon name="image" size={18} />
+                    Imágenes del Curso (Portada y Galería en Slide)
+                  </label>
+                  <span style={{ fontSize: 12, color: '#68788d', marginTop: 2, display: 'block' }}>
+                    Sube 1 o varias imágenes. Si seleccionas más de una, se mostrarán automáticamente en un <strong>slider interactivo táctil</strong>.
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    background: images.length > 1 ? '#eff6ff' : images.length === 1 ? '#ecfdf5' : '#f1f5f9',
+                    color: images.length > 1 ? '#0F59DF' : images.length === 1 ? '#059669' : '#64748b',
+                    border: `1px solid ${images.length > 1 ? '#bfdbfe' : images.length === 1 ? '#a7f3d0' : '#e2e8f0'}`,
+                  }}
+                >
+                  {images.length > 1 ? `✓ Slider táctil activo (${images.length} fotos)` : images.length === 1 ? '1 foto de portada' : 'Sin fotos (gradiente)'}
+                </span>
+              </div>
+
+              {/* Input oculto para subida de archivos múltiples */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  if (e.target.files) handleFilesUpload(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+
+              {/* Zona Drag & Drop */}
+              <div
+                className={`course-image-uploader-zone ${isDragOver ? 'dragover' : ''}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => {
+                  e.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  if (e.dataTransfer.files) handleFilesUpload(e.dataTransfer.files);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
+                aria-label="Subir una o varias imágenes de curso"
+              >
+                <div
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: '50%',
+                    background: '#dbeafe',
+                    color: '#0F59DF',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Icon name="upload" size={20} />
+                </div>
+                <div>
+                  <strong style={{ fontSize: 14, color: '#071F49', display: 'block' }}>
+                    Haz clic para seleccionar o arrastra imágenes aquí
+                  </strong>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                    Sube 1 imagen para la portada o varias para activar el slide (PNG, JPG, WEBP)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ fontSize: 12, padding: '7px 16px', pointerEvents: 'none' }}
+                >
+                  <Icon name="plus" size={14} /> Seleccionar fotos del equipo
+                </button>
+              </div>
+
+              {/* Presets rápidos de imágenes y URL directa */}
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                    Presets institucionales:
+                  </span>
+                  {[
+                    { name: '+ Seguridad', path: '/images/courses/seguridad.jpg' },
+                    { name: '+ Derecho', path: '/images/courses/derecho.jpg' },
+                    { name: '+ Contratación', path: '/images/courses/contratacion.jpg' },
+                    { name: '+ Gestión', path: '/images/courses/gestion.jpg' },
+                    { name: '+ Liderazgo', path: '/images/courses/liderazgo.jpg' },
+                    { name: '+ Ciberseguridad', path: '/images/courses/ciberseguridad.jpg' },
+                  ].map(preset => (
+                    <button
+                      key={preset.path}
+                      type="button"
+                      onClick={() => handleAddPresetImage(preset.path)}
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        color: '#0f172a',
+                        transition: 'background 0.15s ease',
+                      }}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={urlInput}
+                    onChange={e => setUrlInput(e.target.value)}
+                    placeholder="O ingresa la URL directa de una imagen web (https://...)"
+                    style={{ fontSize: 12, padding: '8px 12px' }}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddUrlImage())}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleAddUrlImage}
+                    style={{ fontSize: 12, whiteSpace: 'nowrap' }}
+                  >
+                    <Icon name="plus" size={13} /> Añadir URL
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid de Miniaturas de Imágenes Cargadas */}
+              {images.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                      Imágenes configuradas ({images.length}) {images.length > 1 ? '— Slide interactivo habilitado' : '— Portada única'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setImages([])}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#dc2626',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Quitar todas
+                    </button>
+                  </div>
+
+                  <div className="image-thumbnails-grid">
+                    {images.map((imgSrc, idx) => (
+                      <div
+                        key={`${imgSrc}-${idx}`}
+                        className={`image-thumb-card ${idx === 0 ? 'is-primary' : ''}`}
+                      >
+                        {idx === 0 && (
+                          <span className="thumb-badge-primary">
+                            ★ Portada
+                          </span>
+                        )}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imgSrc}
+                          alt={`Miniatura ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        <div className="thumb-actions-overlay">
+                          {idx !== 0 && (
+                            <button
+                              type="button"
+                              className="thumb-action-btn"
+                              onClick={() => handleSetPrimaryImage(idx)}
+                              title="Establecer como foto principal"
+                            >
+                              Portada
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="thumb-action-btn delete"
+                            onClick={() => handleRemoveImage(idx)}
+                            title="Eliminar imagen"
+                            aria-label="Eliminar imagen"
+                          >
+                            <Icon name="trash" size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -727,22 +1016,68 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
 
         {/* Columna Lateral: Vista Previa en Vivo */}
         <aside className="panel sticky-card" style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--line)', padding: 22 }}>
-          <span className="eyebrow">Vista previa interactiva</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="eyebrow" style={{ margin: 0 }}>Vista previa interactiva</span>
+            {images.length > 1 && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  background: '#eff6ff',
+                  color: '#0F59DF',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  border: '1px solid #bfdbfe',
+                }}
+              >
+                Slide ({images.length})
+              </span>
+            )}
+          </div>
 
           <div
-            className="preview-cover"
             style={{
-              background: gradient,
+              position: 'relative',
               borderRadius: 14,
-              padding: 24,
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff',
+              overflow: 'hidden',
+              height: 180,
+              background: gradient,
               marginTop: 14,
-              minHeight: 140,
+              boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
             }}
           >
-            <Icon name="book" size={48} />
+            {images.length > 0 ? (
+              <CourseImageSlider
+                images={images}
+                alt={title || 'Vista previa del curso'}
+                sizes="340px"
+                overlayChildren={
+                  <div className="media-chips-top">
+                    <span className="glass-chip badge-sky">
+                      <span className="live-dot" style={{ backgroundColor: '#0ea5e9' }} />
+                      {level}
+                    </span>
+                    <span className="glass-chip chip-duration">
+                      <Icon name="clock" size={12} />
+                      <span>{durationHours}h</span>
+                    </span>
+                  </div>
+                }
+              />
+            ) : (
+              <div
+                className="preview-cover"
+                style={{
+                  background: gradient,
+                  height: '100%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: '#fff',
+                }}
+              >
+                <Icon name="book" size={48} />
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: 14 }}>

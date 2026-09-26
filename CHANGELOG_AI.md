@@ -1,3 +1,18 @@
+## [2026-09-26] Sistema de Subida de Imágenes de Cursos y Slider Táctil Interactivo (Regla 15)
+- **Subida de Imágenes en el Editor de Cursos** ([`components/admin/CourseContentBuilder.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/CourseContentBuilder.tsx)):
+  - Creado el campo interactivo de subida de imágenes para los cursos con soporte para 1 o múltiples archivos simultáneos (JPG, PNG, WEBP) mediante Drag & Drop y selector nativo del sistema.
+  - Implementada biblioteca de presets rápidos con las fotografías oficiales de la plataforma y campo para añadir imágenes mediante URL directa.
+  - Grid de miniaturas cargadas con badge dinámico `★ Portada` en la primera foto, botón para alternar cuál es la portada principal y botón de eliminación individual.
+  - Sincronización en tiempo real con la **Vista Previa Interactiva** en la columna lateral derecha del editor.
+- **Componente Slider Reusable** ([`components/CourseImageSlider.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/CourseImageSlider.tsx)):
+  - Desarrollado componente modular con soporte nativo para **gestos táctiles swipe en móviles** (Regla 15: `onTouchStart`, `onTouchMove`, `onTouchEnd`), flechas flotantes translúcidas en desktop, dots de paginación y badge contador (`X/Y`).
+  - Si el curso tiene 1 imagen, muestra la portada estática limpia; si tiene 2 o más imágenes, activa automáticamente el modo slide interactivo.
+- **Integración Global**:
+  - En [`components/CourseCard.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/CourseCard.tsx): Integrado el slider para que los usuarios puedan deslizar y ver las fotos directamente desde las tarjetas del catálogo.
+  - En [`app/cursos/[slug]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/cursos/[slug]/page.tsx): Integrado el slider en la tarjeta de matrícula del programa.
+  - En [`lib/supabase/adminService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/adminService.ts) y [`lib/supabase/contentService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/contentService.ts): Persistencia de `image` e `images`.
+  - En [`lib/supabase/schema.sql`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/schema.sql) y [`lib/types.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/types.ts): Actualizada la estructura de tipos y base de datos con la columna `images JSONB`.
+
 ## [2026-09-26] Actualización del Footer Institucional
 - En [`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx):
   - Removido el texto `" — Escuela de Desarrollo y Doctrina Policial"` del copyright del footer, unificándolo con el formato estándar: `© {new Date().getFullYear()} EDDIP. Todos los derechos reservados.`.

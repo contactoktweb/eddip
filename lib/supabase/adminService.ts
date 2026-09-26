@@ -296,6 +296,8 @@ export const adminService = {
         instructor: course.instructor,
         outcomes: course.outcomes,
         modules: course.modules,
+        image: course.image || (course.images && course.images[0]) || '',
+        images: course.images || (course.image ? [course.image] : []),
         updated_at: new Date().toISOString(),
       });
     } catch {

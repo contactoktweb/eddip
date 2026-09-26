@@ -13,6 +13,11 @@
     "students": 3,
     "featured": true,
     "image": "/images/courses/seguridad.jpg",
+    "images": [
+      "/images/courses/seguridad.jpg",
+      "/images/courses/liderazgo.jpg",
+      "/images/courses/ciberseguridad.jpg"
+    ],
     "gradient": "linear-gradient(135deg,#074ca6 0%,#0e79ee 55%,#54adff 100%)",
     "instructor": {
       "name": "Equipo Académico EDDIP",
@@ -57,6 +62,10 @@
     "students": 2,
     "featured": true,
     "image": "/images/courses/derecho.jpg",
+    "images": [
+      "/images/courses/derecho.jpg",
+      "/images/courses/contratacion.jpg"
+    ],
     "gradient": "linear-gradient(135deg,#163f91 0%,#1a64df 55%,#68b9ff 100%)",
     "instructor": {
       "name": "Equipo Académico EDDIP",
