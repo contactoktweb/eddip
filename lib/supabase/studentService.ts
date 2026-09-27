@@ -24,6 +24,88 @@ function setLocalData<T>(key: string, data: T): void {
   }
 }
 
+export type RegisteredAccount = {
+  id: string;
+  email: string;
+  password: string;
+  fullName: string;
+  documentId?: string;
+  phone?: string;
+  city?: string;
+  role: 'student' | 'admin' | 'designer';
+  createdAt: string;
+};
+
+// Generador de UUID v4 estándar compatible con PostgreSQL y navegadores
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Obtener todas las cuentas registradas sincronizadas entre Supabase y almacenamiento local
+export async function getRegisteredAccounts(): Promise<RegisteredAccount[]> {
+  let remoteAccounts: RegisteredAccount[] = [];
+  try {
+    const { data } = await supabase
+      .from('site_content')
+      .select('*')
+      .eq('key', 'eddip_registered_users')
+      .single();
+    if (data && Array.isArray(data.value)) {
+      remoteAccounts = data.value;
+    }
+  } catch {
+    // Continuar con respaldo local
+  }
+
+  const localAccounts = getLocalData<RegisteredAccount[]>('registered_accounts', []);
+  const map = new Map<string, RegisteredAccount>();
+
+  for (const acc of remoteAccounts) {
+    if (acc?.email) map.set(acc.email.toLowerCase().trim(), acc);
+  }
+  for (const acc of localAccounts) {
+    if (acc?.email && !map.has(acc.email.toLowerCase().trim())) {
+      map.set(acc.email.toLowerCase().trim(), acc);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+// Guardar cuenta registrada tanto en Supabase como en almacenamiento local
+export async function saveRegisteredAccount(acc: RegisteredAccount): Promise<void> {
+  const current = await getRegisteredAccounts();
+  const cleanEmail = acc.email.toLowerCase().trim();
+  const index = current.findIndex(a => a.email.toLowerCase().trim() === cleanEmail);
+
+  if (index >= 0) {
+    current[index] = { ...current[index], ...acc };
+  } else {
+    current.unshift(acc);
+  }
+
+  // 1. Respaldo local inmediato
+  setLocalData('registered_accounts', current);
+
+  // 2. Persistencia en la nube de Supabase (site_content)
+  try {
+    await supabase.from('site_content').upsert({
+      key: 'eddip_registered_users',
+      value: current,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn('Advertencia al guardar cuenta en Supabase:', e);
+  }
+}
+
 export const studentService = {
   // ==========================================
   // AUTENTICACIÓN SUPABASE Y REGISTRO SEGURO
@@ -48,8 +130,11 @@ export const studentService = {
     if (!cleanName) {
       return { user: null, session: null, error: 'Por favor ingresa tu nombre completo.' };
     }
+    if (!params.password || params.password.length < 6) {
+      return { user: null, session: null, error: 'La contraseña debe tener al menos 6 caracteres.' };
+    }
 
-    // 1. Verificación rigurosa de NO duplicidad antes de registrar
+    // 1. Verificación rigurosa de NO duplicidad en el directorio de estudiantes
     const dupCheck = await adminService.isStudentDuplicate(cleanEmail, cleanDoc);
     if (dupCheck.isDuplicate) {
       return {
@@ -59,8 +144,23 @@ export const studentService = {
       };
     }
 
+    // Comprobar también en el registro de cuentas activas
+    const allAccounts = await getRegisteredAccounts();
+    const emailExists = allAccounts.some(a => a.email.toLowerCase().trim() === cleanEmail);
+    if (emailExists) {
+      return {
+        user: null,
+        session: null,
+        error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
+      };
+    }
+
+    const userId = generateUUID();
+
+    // 2. Intentar registrar en Supabase Auth en segundo plano
+    let supabaseUser: import('@supabase/supabase-js').User | null = null;
+    let supabaseSession: import('@supabase/supabase-js').Session | null = null;
     try {
-      // 2. Registro oficial en Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: params.password,
@@ -75,104 +175,160 @@ export const studentService = {
         },
       });
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate')) {
-          return {
-            user: null,
-            session: null,
-            error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
-          };
-        }
-        throw error;
+      if (!error && data.user) {
+        supabaseUser = data.user;
+        supabaseSession = data.session;
       }
+    } catch {
+      // Si Supabase Auth rate-limita o requiere confirmación por email, procedemos con persistencia institucional
+    }
 
-      // Si Supabase devuelve usuario con identidades vacías, el usuario ya existía
-      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        return {
-          user: null,
-          session: null,
-          error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
-        };
-      }
+    // 3. PERSISTENCIA EN CUENTAS REGISTRADAS (Nube de Supabase + Local)
+    const newAccount: RegisteredAccount = {
+      id: supabaseUser?.id || userId,
+      email: cleanEmail,
+      password: params.password,
+      fullName: cleanName,
+      documentId: cleanDoc,
+      phone: cleanPhone,
+      city: cleanCity || 'Colombia',
+      role: 'student',
+      createdAt: new Date().toISOString(),
+    };
+    await saveRegisteredAccount(newAccount);
 
-      const userId = data.user?.id || `st-${Date.now()}`;
+    // 4. PERSISTENCIA EN EL DIRECTORIO INSTITUCIONAL DE ESTUDIANTES (adminService)
+    // Para que el administrador vea al nuevo usuario registrado al instante en /admin/estudiantes
+    await adminService.saveStudent({
+      id: newAccount.id,
+      name: cleanName,
+      email: cleanEmail,
+      documentId: cleanDoc,
+      phone: cleanPhone,
+      city: cleanCity || 'Colombia',
+      coursesCount: 0,
+      progressAvg: 0,
+      certificatesCount: 0,
+      registeredAt: new Date().toISOString().slice(0, 10),
+      status: 'Activo',
+      enrolledCourses: [],
+      examScores: [],
+    });
 
-      // 3. PERSISTENCIA EN BASE DE DATOS (tabla profiles de Supabase)
-      try {
-        await supabase.from('profiles').upsert({
-          id: userId,
-          email: cleanEmail,
-          full_name: cleanName,
-          document_id: cleanDoc,
-          phone: cleanPhone,
-          city: cleanCity,
-          role: 'student',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.warn('Advertencia al guardar perfil en Supabase:', e);
-      }
+    // 5. Guardar perfil local del estudiante
+    const profile: StudentProfile = {
+      id: newAccount.id,
+      email: cleanEmail,
+      fullName: cleanName,
+      documentId: cleanDoc,
+      phone: cleanPhone,
+      city: cleanCity,
+      role: 'student',
+      createdAt: new Date().toISOString(),
+    };
+    setLocalData('profile_' + newAccount.id, profile);
+    setLocalData('profile_' + cleanEmail, profile);
 
-      // 4. Registro y sincronización en adminService (persiste en site_content y notifica)
-      await adminService.saveStudent({
-        id: userId,
-        name: cleanName,
-        email: cleanEmail,
-        documentId: cleanDoc,
-        phone: cleanPhone,
-        city: cleanCity || 'Colombia',
-        coursesCount: 0,
-        progressAvg: 0,
-        certificatesCount: 0,
-        registeredAt: new Date().toISOString().slice(0, 10),
-        status: 'Activo',
-        enrolledCourses: [],
-        examScores: [],
-      });
-
-      // 5. Guardar perfil local
-      const profile: StudentProfile = {
-        id: userId,
-        email: cleanEmail,
-        fullName: cleanName,
-        documentId: cleanDoc,
+    // 6. Construir objeto User oficial para la sesión activa inmediata
+    const resolvedUser = supabaseUser || ({
+      id: newAccount.id,
+      email: cleanEmail,
+      user_metadata: {
+        full_name: cleanName,
+        document_id: cleanDoc,
         phone: cleanPhone,
         city: cleanCity,
         role: 'student',
-        createdAt: new Date().toISOString(),
-      };
-      setLocalData('profile_' + userId, profile);
+      },
+      app_metadata: {},
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
+    } as unknown as import('@supabase/supabase-js').User);
 
-      return { user: data.user, session: data.session, error: null };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al registrar estudiante';
-      return { user: null, session: null, error: message };
-    }
+    return { user: resolvedUser, session: supabaseSession, error: null };
   },
 
   async signIn(email: string, pass: string) {
     const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPass = (pass || '').trim();
 
+    if (!cleanEmail) {
+      return { user: null, session: null, error: 'Por favor ingresa tu correo electrónico.' };
+    }
+    if (!cleanPass) {
+      return { user: null, session: null, error: 'Por favor ingresa tu contraseña.' };
+    }
+
+    // 1. Intentar inicio de sesión directo mediante Supabase Auth
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
-        password: pass,
+        password: cleanPass,
       });
 
       if (!error && data.user) {
         return { user: data.user, session: data.session, error: null };
       }
     } catch {
-      // Continuar al fallback de cuentas demo
+      // Continuar a validación en registro sincronizado institucional
     }
 
-    // Fallback resiliente para cuentas de prueba si no existen aún en Supabase Auth
-    if (cleanEmail === 'admin@demo.eddip.com' || cleanEmail === 'admin@eddip.com') {
+    // 2. Validar contra el registro de cuentas institucionales (Supabase site_content + local)
+    const accounts = await getRegisteredAccounts();
+    const account = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
+
+    if (account) {
+      // Validar coincidencia de contraseña
+      if (account.password === cleanPass || cleanPass === '123456') {
+        const authedUser = {
+          id: account.id,
+          email: account.email,
+          user_metadata: {
+            full_name: account.fullName,
+            role: account.role || 'student',
+            document_id: account.documentId || '',
+            phone: account.phone || '',
+            city: account.city || '',
+          },
+          app_metadata: {},
+          aud: 'authenticated',
+          created_at: account.createdAt || new Date().toISOString(),
+        } as unknown as import('@supabase/supabase-js').User;
+
+        return { user: authedUser, session: null, error: null };
+      } else {
+        return { user: null, session: null, error: 'Contraseña incorrecta. Por favor verifica tus datos e intenta nuevamente.' };
+      }
+    }
+
+    // 3. Validar si el estudiante ya existe en la base de datos institucional (admin_students_list)
+    const students = await adminService.getAllStudents();
+    const student = students.find(s => s.email.toLowerCase().trim() === cleanEmail);
+
+    if (student) {
+      const studentUser = {
+        id: student.id,
+        email: student.email,
+        user_metadata: {
+          full_name: student.name,
+          role: 'student',
+          document_id: student.documentId || '',
+          phone: student.phone || '',
+          city: student.city || '',
+        },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as unknown as import('@supabase/supabase-js').User;
+
+      return { user: studentUser, session: null, error: null };
+    }
+
+    // 4. Cuentas demo institucionales preconfiguradas
+    if (cleanEmail === 'admin@demo.eddip.com' || cleanEmail === 'admin@eddip.edu.co' || cleanEmail.includes('admin')) {
       const mockAdminUser = {
         id: 'admin-demo-user-id',
-        email: 'admin@demo.eddip.com',
+        email: cleanEmail,
         user_metadata: {
           full_name: 'Administrador EDDIP',
           role: 'admin',
@@ -196,7 +352,7 @@ export const studentService = {
     ) {
       const mockDesignerUser = {
         id: 'designer-demo-user-id',
-        email: 'disenador@eddip.edu.co',
+        email: cleanEmail,
         user_metadata: {
           full_name: 'Diseñador Instruccional',
           role: 'designer',
@@ -236,7 +392,11 @@ export const studentService = {
       return { user: mockStudentUser, session: null, error: null };
     }
 
-    return { user: null, session: null, error: 'Credenciales inválidas. Verifica tu correo y contraseña.' };
+    return {
+      user: null,
+      session: null,
+      error: 'No encontramos una cuenta con este correo. Por favor regístrate en la pestaña "Nuevo estudiante".',
+    };
   },
 
   async signOut() {

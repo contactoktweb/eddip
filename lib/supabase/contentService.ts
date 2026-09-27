@@ -72,7 +72,7 @@ export const defaultSiteContent: SiteContent = {
     eyebrow: 'Institución de Educación Superior y Doctrina',
     title: 'Excelencia académica para profesionales de la seguridad y el derecho',
     description:
-      'La Escuela de Desarrollo y Doctrina Policial (EDDIP) lidera programas de educación continua, doctrina normativa y actualización profesional orientados a servidores públicos, personal de seguridad y juristas en todo el territorio nacional.',
+      'EDDIP lidera programas de educación continua, formación normativa y actualización profesional orientados a servidores públicos, personal de seguridad y juristas en todo el territorio nacional.',
   },
   mission: {
     title: 'Nuestra Misión',

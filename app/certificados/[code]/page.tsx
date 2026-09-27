@@ -275,196 +275,209 @@ export default function CertificateView() {
         </div>
       </div>
 
-      {/* Diploma Oficial con Estructura de Seguridad */}
-      <section className="certificate-full" style={{ maxWidth: 960, margin: '0 auto' }}>
-        <div
-          className="certificate-border"
-          style={{
-            position: 'relative',
-            background: '#ffffff',
-            border: '8px double #0F59DF',
-            borderRadius: '20px',
-            padding: '48px 36px',
-            boxShadow: '0 20px 60px rgba(7, 31, 73, 0.12)',
-            textAlign: 'center',
-          }}
-        >
-          {/* Marca de agua de seguridad */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              opacity: 0.035,
-              pointerEvents: 'none',
-              zIndex: 0,
-            }}
-          >
-            <Image src="/eddip-logo.png" alt="" width={420} height={420} priority />
+      {/* Contenedor Adaptable para Móviles (Mantiene Diploma Horizontal y Desplazable) */}
+      <div className="certificate-mobile-wrapper">
+        <div className="certificate-touch-indicator no-print" aria-hidden="true">
+          <div className="cert-touch-pill">
+            <span className="cert-touch-arrow">⟵</span>
+            <Icon name="award" size={14} />
+            <span>Diploma en formato horizontal · Desliza con el dedo hacia los lados</span>
+            <span className="cert-touch-arrow">⟶</span>
           </div>
+        </div>
 
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            {/* Cabecera Institucional */}
+        <div className="certificate-scroll-viewport" role="region" aria-label="Diploma oficial en formato horizontal desplazable">
+          <section className="certificate-full certificate-landscape-fixed">
             <div
+              className="certificate-border"
               style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 14,
-                marginBottom: 16,
-              }}
-            >
-              <Image src="/eddip-logo.png" alt="Logo oficial EDDIP" width={64} height={64} priority />
-              <div style={{ textAlign: 'left' }}>
-                <strong style={{ fontSize: 22, color: '#071F49', letterSpacing: 1, display: 'block' }}>
-                  EDDIP
-                </strong>
-                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Escuela de Desarrollo y Doctrina Policial
-                </span>
-              </div>
-            </div>
-
-            <div
-              className="certificate-kicker"
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: 2,
-                color: '#0F59DF',
-                textTransform: 'uppercase',
-                margin: '12px 0 20px',
-              }}
-            >
-              Acreditación y Certificación Académica Oficial
-            </div>
-
-            <p className="certificate-intro" style={{ fontSize: 15, color: '#475569', margin: '0 0 6px' }}>
-              El Consejo Académico y la Dirección General de EDDIP certifican que:
-            </p>
-
-            {/* Nombre del Estudiante */}
-            <h1
-              className="certificate-student"
-              style={{
-                fontSize: 34,
-                fontFamily: 'Georgia, serif',
-                color: '#071F49',
-                margin: '14px 0 4px',
-                borderBottom: '2px solid #0F59DF',
-                display: 'inline-block',
-                paddingBottom: 4,
-              }}
-            >
-              {cert.student}
-            </h1>
-
-            {/* Cédula o Documento de Identidad del Estudiante */}
-            {formattedDoc && (
-              <div
-                className="certificate-student-doc"
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: '#475569',
-                  margin: '4px 0 12px',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                <span>{formattedDoc}</span>
-              </div>
-            )}
-
-            <p className="certificate-course-pre" style={{ fontSize: 15, color: '#475569', margin: '14px 0 8px' }}>
-              Ha cursado, completado y aprobado satisfactoriamente todos los módulos y la evaluación final del programa:
-            </p>
-
-            {/* Nombre del Curso */}
-            <div
-              className="certificate-course-name"
-              style={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: '#0F59DF',
-                maxWidth: 720,
-                margin: '8px auto 24px',
-                lineHeight: 1.3,
-              }}
-            >
-              {cert.course}
-            </div>
-
-            {/* Metadatos del Certificado */}
-            <div
-              className="certificate-info"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 12,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: 16,
-                maxWidth: 760,
-                margin: '0 auto 28px',
+                position: 'relative',
+                background: '#ffffff',
+                border: '8px double #0F59DF',
+                borderRadius: '20px',
+                padding: '48px 36px',
+                boxShadow: '0 20px 60px rgba(7, 31, 73, 0.12)',
                 textAlign: 'center',
               }}
             >
-              <div>
-                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Intensidad horaria</span>
-                <strong style={{ fontSize: 15, color: '#071F49' }}>{cert.hours} horas lectivas</strong>
+              {/* Marca de agua de seguridad */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  opacity: 0.035,
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }}
+              >
+                <Image src="/eddip-logo.png" alt="" width={420} height={420} priority />
               </div>
 
-              <div>
-                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Fecha de expedición</span>
-                <strong style={{ fontSize: 15, color: '#071F49' }}>{cert.date}</strong>
-              </div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* Cabecera Institucional */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 14,
+                    marginBottom: 16,
+                  }}
+                >
+                  <Image src="/eddip-logo.png" alt="Logo oficial EDDIP" width={64} height={64} priority />
+                  <div style={{ textAlign: 'left' }}>
+                    <strong style={{ fontSize: 22, color: '#071F49', letterSpacing: 1, display: 'block' }}>
+                      EDDIP
+                    </strong>
+                    <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
+                      Educación Superior y Continua
+                    </span>
+                  </div>
+                </div>
 
-              <div>
-                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Código único</span>
-                <strong style={{ fontSize: 13, fontFamily: 'monospace', color: '#0F59DF' }}>
-                  {cert.code}
-                </strong>
-              </div>
+                <div
+                  className="certificate-kicker"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 2,
+                    color: '#0F59DF',
+                    textTransform: 'uppercase',
+                    margin: '12px 0 20px',
+                  }}
+                >
+                  Acreditación y Certificación Académica Oficial
+                </div>
 
-              <div>
-                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Estado en plataforma</span>
-                <strong style={{ fontSize: 14, color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <Icon name="check" size={14} /> {cert.status}
-                </strong>
+                <p className="certificate-intro" style={{ fontSize: 15, color: '#475569', margin: '0 0 6px' }}>
+                  El Consejo Académico y la Dirección General de EDDIP certifican que:
+                </p>
+
+                {/* Nombre del Estudiante */}
+                <h1
+                  className="certificate-student"
+                  style={{
+                    fontSize: 34,
+                    fontFamily: 'Georgia, serif',
+                    color: '#071F49',
+                    margin: '14px 0 4px',
+                    borderBottom: '2px solid #0F59DF',
+                    display: 'inline-block',
+                    paddingBottom: 4,
+                  }}
+                >
+                  {cert.student}
+                </h1>
+
+                {/* Cédula o Documento de Identidad del Estudiante */}
+                {formattedDoc && (
+                  <div
+                    className="certificate-student-doc"
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: '#475569',
+                      margin: '4px 0 12px',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    <span>{formattedDoc}</span>
+                  </div>
+                )}
+
+                <p className="certificate-course-pre" style={{ fontSize: 15, color: '#475569', margin: '14px 0 8px' }}>
+                  Ha cursado, completado y aprobado satisfactoriamente todos los módulos y la evaluación final del programa:
+                </p>
+
+                {/* Nombre del Curso */}
+                <div
+                  className="certificate-course-name"
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: '#0F59DF',
+                    maxWidth: 720,
+                    margin: '8px auto 24px',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {cert.course}
+                </div>
+
+                {/* Metadatos del Certificado */}
+                <div
+                  className="certificate-info"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 12,
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 12,
+                    padding: 16,
+                    maxWidth: 760,
+                    margin: '0 auto 28px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Intensidad horaria</span>
+                    <strong style={{ fontSize: 15, color: '#071F49' }}>{cert.hours} horas lectivas</strong>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Fecha de expedición</span>
+                    <strong style={{ fontSize: 15, color: '#071F49' }}>{cert.date}</strong>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Código único</span>
+                    <strong style={{ fontSize: 13, fontFamily: 'monospace', color: '#0F59DF' }}>
+                      {cert.code}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Estado en plataforma</span>
+                    <strong style={{ fontSize: 14, color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <Icon name="check" size={14} /> {cert.status}
+                    </strong>
+                  </div>
+                </div>
+
+                <p className="certificate-verify-text" style={{ fontSize: 12, maxWidth: 660, margin: '0 auto 24px', color: '#64748b', lineHeight: 1.5 }}>
+                  La autenticidad de este diploma puede ser verificada escaneando el código QR criptográfico incorporado o ingresando el código de registro en el validador oficial de <strong>www.eddip.com/certificados/validar</strong>.
+                </p>
+
+                {/* Código QR Oficial Centrado (Sin Firmas) */}
+                <div
+                  className="certificate-footer"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    maxWidth: 420,
+                    margin: '0 auto',
+                    paddingTop: 16,
+                    borderTop: '1px solid #e2e8f0',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <QrVisual code={cert.code} size={110} />
+                  </div>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                    Registro Oficial y Trazabilidad Criptográfica EDDIP
+                  </span>
+                </div>
               </div>
             </div>
-
-            <p className="certificate-verify-text" style={{ fontSize: 12, maxWidth: 660, margin: '0 auto 24px', color: '#64748b', lineHeight: 1.5 }}>
-              La autenticidad de este diploma puede ser verificada escaneando el código QR criptográfico incorporado o ingresando el código de registro en el validador oficial de <strong>www.eddip.com/certificados/validar</strong>.
-            </p>
-
-            {/* Código QR Oficial Centrado (Sin Firmas) */}
-            <div
-              className="certificate-footer"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                maxWidth: 420,
-                margin: '0 auto',
-                paddingTop: 16,
-                borderTop: '1px solid #e2e8f0',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <QrVisual code={cert.code} size={110} />
-              </div>
-              <span style={{ fontSize: 11, color: '#64748b' }}>
-                Registro Oficial y Trazabilidad Criptográfica EDDIP
-              </span>
-            </div>
-          </div>
+          </section>
         </div>
-      </section>
+      </div>
     </main>
     <Footer />
   </>

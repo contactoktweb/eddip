@@ -71,15 +71,18 @@ export function StudentAuth() {
         if (!res.success) {
           setErrorMsg(res.error || 'Credenciales no válidas. Por favor verifica tu correo y contraseña.');
         } else {
-          if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin')) {
-            router.push('/admin');
-          } else if (res.role === 'designer' || cleanEmail.toLowerCase().includes('disenador') || cleanEmail.toLowerCase().includes('designer')) {
-            router.push('/admin/cursos');
-          } else if (redirectParam) {
-            router.push(redirectParam);
-          } else {
-            router.push('/dashboard');
-          }
+          setSuccessMsg('¡Inicio de sesión exitoso! Redirigiendo a tu cuenta...');
+          setTimeout(() => {
+            if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin')) {
+              router.push('/admin');
+            } else if (res.role === 'designer' || cleanEmail.toLowerCase().includes('disenador') || cleanEmail.toLowerCase().includes('designer')) {
+              router.push('/admin/cursos');
+            } else if (redirectParam) {
+              router.push(redirectParam);
+            } else {
+              router.push('/dashboard');
+            }
+          }, 400);
         }
       } else if (mode === 'register') {
         const cleanName = fullName.trim();
@@ -231,6 +234,10 @@ export function StudentAuth() {
             <span className="auth-back-arrow">←</span> Iniciar sesión
           </button>
         )}
+        <div className="auth-badge-secure">
+          <span className="auth-pulse-dot" />
+          <span>Acceso Seguro SSL</span>
+        </div>
       </div>
 
       {/* Selector de modo Login / Registro */}
@@ -596,11 +603,11 @@ export function StudentAuth() {
           title="Acceder como estudiante institucional"
         >
           <div className="auth-role-icon student-role-icon">
-            <Icon name="user" size={18} />
+            <Icon name="user" size={17} />
           </div>
           <div className="auth-role-info">
-            <strong className="auth-role-title">Portal Estudiante</strong>
-            <span className="auth-role-desc">Acceso a cursos y certificados</span>
+            <strong className="auth-role-title">Estudiante</strong>
+            <span className="auth-role-desc">Cursos y notas</span>
           </div>
           <span className="auth-role-arrow">→</span>
         </button>
@@ -612,11 +619,11 @@ export function StudentAuth() {
           title="Acceder como administrador institucional"
         >
           <div className="auth-role-icon admin-role-icon">
-            <Icon name="settings" size={18} />
+            <Icon name="settings" size={17} />
           </div>
           <div className="auth-role-info">
-            <strong className="auth-role-title">Portal Administrador</strong>
-            <span className="auth-role-desc">Gestión integral y ventas</span>
+            <strong className="auth-role-title">Administrador</strong>
+            <span className="auth-role-desc">Gestión integral</span>
           </div>
           <span className="auth-role-arrow">→</span>
         </button>
@@ -628,11 +635,11 @@ export function StudentAuth() {
           title="Acceder como diseñador instruccional"
         >
           <div className="auth-role-icon designer-role-icon">
-            <Icon name="book" size={18} />
+            <Icon name="book" size={17} />
           </div>
           <div className="auth-role-info">
-            <strong className="auth-role-title">Portal Diseñador</strong>
-            <span className="auth-role-desc">Crear y actualizar cursos</span>
+            <strong className="auth-role-title">Diseñador</strong>
+            <span className="auth-role-desc">Crear cursos</span>
           </div>
           <span className="auth-role-arrow">→</span>
         </button>

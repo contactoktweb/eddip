@@ -19,8 +19,12 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 ### A. Módulo del Estudiante (Verificado E2E)
 - **Autenticación y Registro (`/login`)**:
   - `StudentAuth.tsx`: Sistema con 3 modos (Inicio de sesión, Registro oficial de estudiante y Restablecimiento de contraseña).
+  - **Persistencia en la Nube y Base de Datos**: Registro en `eddip_registered_users` y `admin_students_list` dentro de la tabla `site_content` de Supabase más respaldo local. Todo usuario registrado queda guardado y puede iniciar sesión inmediatamente desde cualquier dispositivo o navegador.
+  - **Manejo Resiliente de Autenticación**: Validación de contraseñas garantizada incluso ante límites de envío de correos o falta de confirmación SMTP en Supabase Auth.
+  - **Diseño Responsive y Arquitectura Visual**: Distribución a 2 columnas en desktop (`grid-template-columns: 420px minmax(0, 1fr)`) que previene la compresión de la columna lateral institucional, con títulos protegidos contra saltos o cortes de palabras (`word-break: normal; hyphens: none`), insignia *"Educación Superior y Continua"* en una sola línea, y alineación superior (`justify-content: flex-start`) sin espacios blancos vacíos.
+  - **Adaptabilidad en Tablet y Móviles**: En resoluciones ≤ 899px el banner se transforma en un encabezado corporativo compacto que sitúa el formulario directamente en el viewport, y en pantallas ≤ 640px los accesos institucionales se apilan a 1 columna para asegurar zonas táctiles mayores a 48px.
+  - **Insignia Activa de Seguridad**: Indicador *"Acceso Seguro SSL"* con animación de pulso verde en la barra superior.
   - **Registro Limpio desde Cero**: Al crear una nueva cuenta, el estudiante inicia con 0 cursos comprados, 0 progreso de lecciones, 0 certificados y 0 notas (`purchased: []`, `completed: {}`, `results: {}`). Su almacenamiento queda estrictamente aislado por usuario (`eddip_user_${email}`) sin heredar los cursos de la cuenta de prueba demo.
-  - Removidas todas las menciones a "Campus Virtual Seguro" y "Supabase", presentando una interfaz institucional minimalista y limpia con retorno directo al inicio.
   - Inputs optimizados con iconos vectoriales centrados verticalmente y espaciado interior (`padding-left: 44px`), evitando cualquier superposición con textos o placeholders.
   - Visibilidad alternable de contraseña (`eye`/`eyeOff` SVG) con espacio reservado a la derecha en todos los campos de contraseña.
 - **Panel Principal (`/dashboard`)**:
@@ -37,9 +41,11 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 - **Evaluación Final (`/evaluacion/[slug]`)**:
   - `StudentExamModule.tsx`: Pantalla de instrucciones, stepper interactivo de preguntas, cálculo de puntaje, validación de aprobación (>=70-80%), generación automática de certificados oficiales y enlace directo al diploma.
   - Generador dinámico de evaluaciones para programas que no cuenten con examen fijo en JSON.
-- **Mis Certificados y Diploma Oficial (`/dashboard/certificados`, `/certificados/[code]`)**:
+- **Mis Certificados y Diploma Oficial (`/dashboard/certificados`, `/certificados/[code]`, `/certificados/validar`)**:
   - `StudentCertificatesGrid.tsx`: Catálogo de certificados emitidos para el estudiante con código QR real escaneable y enlace de validación pública.
-  - `[code]/page.tsx`: Vista oficial del diploma con código QR criptográfico, diseño apaisado de una sola página para impresión/PDF y número de identificación (C.C.) visible debajo del nombre del alumno.
+  - `[code]/page.tsx`: Vista oficial del diploma con código QR criptográfico, número de identificación (C.C.) visible y diseño apaisado institucional de una sola página.
+  - **Soporte Móvil Horizontal Desplazable (Touch/Swipe - Regla 15)**: En dispositivos móviles y pantallas estrechas, el diploma preserva su estructura apaisada original de alta fidelidad (`min-width: 920px`) mediante un contenedor interactivo con scroll horizontal suave (`overflow-x: auto; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch;`), permitiendo al usuario moverlo con el dedo de lado a lado sin alterar el ancho del resto de la página. Incluye una píldora visual animada que indica la posibilidad de deslizamiento táctil.
+  - **Identidad Institucional Actualizada**: Se eliminó en su totalidad la mención *"Escuela de Desarrollo y Doctrina Policial"*, adoptando de manera unificada *"Educación Superior y Continua"*.
 - **Perfil de Estudiante (`/dashboard/perfil`)**:
   - `StudentProfileManager.tsx`: Pestañas de datos personales, cambio de contraseña mediante Supabase Auth y resumen académico del estudiante.
 

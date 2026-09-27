@@ -170,7 +170,7 @@ export default function AboutPage() {
                   fontWeight: 700,
                 }}
               >
-                Escuela de Desarrollo y Doctrina Policial
+                Escuela de Educación Superior y Continua
               </span>
               <p
                 style={{
@@ -181,7 +181,7 @@ export default function AboutPage() {
                   fontWeight: 400,
                 }}
               >
-                Comprometidos con la modernización de los procesos de capacitación, la difusión de la doctrina policial y el fortalecimiento de las garantías constitucionales.
+                Comprometidos con la modernización de los procesos de capacitación, la formación jurídica y el fortalecimiento de las garantías constitucionales.
               </p>
 
               <div
