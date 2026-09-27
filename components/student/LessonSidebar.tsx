@@ -137,6 +137,11 @@ export function LessonSidebar({
                             {isDone ? <Icon name="check" size={12} /> : <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#b2c1d2' }}></span>}
                           </span>
                           <span style={{ flex: 1, lineHeight: 1.3 }}>{l.title}</span>
+                          {Boolean(l.videoUrl) && (
+                            <span title="Incluye videoclase" style={{ color: '#0F59DF', display: 'inline-flex', alignItems: 'center' }}>
+                              <Icon name="play" size={13} />
+                            </span>
+                          )}
                           <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.minutes}m</span>
                         </Link>
                       );

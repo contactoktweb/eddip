@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useDemo } from '@/app/providers';
 import { studentService } from '@/lib/supabase/studentService';
@@ -10,9 +10,23 @@ type AuthMode = 'login' | 'register' | 'reset';
 
 export function StudentAuth() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const modeParam = searchParams.get('mode');
   const { signInStudent, signUpStudent, login } = useDemo();
 
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>(() => {
+    if (modeParam === 'register') return 'register';
+    if (modeParam === 'reset') return 'reset';
+    return 'login';
+  });
+
+  useEffect(() => {
+    if (modeParam === 'register' || modeParam === 'reset' || modeParam === 'login') {
+      setMode(modeParam);
+    }
+  }, [modeParam]);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -59,16 +73,27 @@ export function StudentAuth() {
         } else {
           if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin')) {
             router.push('/admin');
+          } else if (res.role === 'designer' || cleanEmail.toLowerCase().includes('disenador') || cleanEmail.toLowerCase().includes('designer')) {
+            router.push('/admin/cursos');
+          } else if (redirectParam) {
+            router.push(redirectParam);
           } else {
             router.push('/dashboard');
           }
         }
       } else if (mode === 'register') {
         const cleanName = fullName.trim();
-        const cleanEmail = email.trim();
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanDoc = documentId.trim();
 
-        if (!cleanName || !cleanEmail || !password) {
+        if (!cleanName || !cleanEmail || !cleanDoc || !password) {
           setErrorMsg('Por favor completa todos los campos obligatorios (*).');
+          setLoading(false);
+          return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+          setErrorMsg('Por favor ingresa un correo electrónico válido (ejemplo: usuario@correo.com).');
           setLoading(false);
           return;
         }
@@ -95,7 +120,7 @@ export function StudentAuth() {
           email: cleanEmail,
           password,
           fullName: cleanName,
-          documentId: documentId.trim(),
+          documentId: cleanDoc,
           phone: phone.trim(),
           city: city.trim(),
         });
@@ -103,9 +128,13 @@ export function StudentAuth() {
         if (!res.success) {
           setErrorMsg(res.error || 'Error al registrar la cuenta. Inténtalo nuevamente.');
         } else {
-          setSuccessMsg('¡Cuenta de estudiante creada con éxito! Redirigiendo a tu aula virtual...');
+          setSuccessMsg(
+            redirectParam
+              ? '¡Cuenta creada con éxito! Redirigiendo a tu matrícula de curso...'
+              : '¡Cuenta de estudiante creada con éxito! Redirigiendo a tu aula virtual...'
+          );
           setTimeout(() => {
-            router.push('/dashboard');
+            router.push(redirectParam || '/dashboard');
           }, 1200);
         }
       } else if (mode === 'reset') {
@@ -130,13 +159,62 @@ export function StudentAuth() {
     }
   };
 
-  const handleDemoAccess = (role: 'student' | 'admin') => {
+  const handleDemoAccess = (role: 'student' | 'admin' | 'designer') => {
     login(role);
-    router.push(role === 'admin' ? '/admin' : '/dashboard');
+    if (role === 'admin') {
+      router.push('/admin');
+    } else if (role === 'designer') {
+      router.push('/admin/cursos');
+    } else if (redirectParam) {
+      router.push(redirectParam);
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   return (
     <div className="auth-form-wrapper">
+      {/* Banner explicativo de requerimiento de registro para pago */}
+      {redirectParam && (
+        <div
+          style={{
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 14,
+            padding: '14px 16px',
+            marginBottom: 20,
+            fontSize: 13,
+            color: '#1e40af',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: '#dbeafe',
+              color: '#1d4ed8',
+              display: 'grid',
+              placeItems: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="lock" size={18} />
+          </div>
+          <div>
+            <strong style={{ display: 'block', color: '#1e3a8a', fontSize: 13 }}>
+              Registro Requerido para Pago de Curso
+            </strong>
+            <span style={{ fontSize: 12, color: '#2563eb' }}>
+              Para matricularte oficialmente y habilitar el pago de tu curso, primero debes iniciar sesión o crear tu cuenta de estudiante.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Barra superior de navegación */}
       <div className="auth-top-bar">
         {mode === 'login' ? (
@@ -276,7 +354,7 @@ export function StudentAuth() {
           {mode === 'register' && (
             <div className="form-row auth-form-row">
               <div className="field auth-field">
-                <label htmlFor="reg-doc">Cédula o Documento</label>
+                <label htmlFor="reg-doc">Cédula o Documento de Identidad *</label>
                 <div className="auth-input-wrap">
                   <span className="auth-input-icon">
                     <Icon name="card" size={17} />
@@ -284,6 +362,7 @@ export function StudentAuth() {
                   <input
                     id="reg-doc"
                     type="text"
+                    required
                     value={documentId}
                     onChange={e => setDocumentId(e.target.value)}
                     placeholder="Ej. 1.032.456.789"
@@ -537,7 +616,23 @@ export function StudentAuth() {
           </div>
           <div className="auth-role-info">
             <strong className="auth-role-title">Portal Administrador</strong>
-            <span className="auth-role-desc">Gestión académica y reportes</span>
+            <span className="auth-role-desc">Gestión integral y ventas</span>
+          </div>
+          <span className="auth-role-arrow">→</span>
+        </button>
+
+        <button
+          type="button"
+          className="auth-role-card"
+          onClick={() => handleDemoAccess('designer')}
+          title="Acceder como diseñador instruccional"
+        >
+          <div className="auth-role-icon designer-role-icon">
+            <Icon name="book" size={18} />
+          </div>
+          <div className="auth-role-info">
+            <strong className="auth-role-title">Portal Diseñador</strong>
+            <span className="auth-role-desc">Crear y actualizar cursos</span>
           </div>
           <span className="auth-role-arrow">→</span>
         </button>

@@ -28,7 +28,11 @@
 - `/admin/certificados`
 - `/admin/ventas`
 - `/admin/contenido`
-- `/admin/configuracion`
+
+## Diseñador Instruccional
+- `/admin/cursos` (Gestión, creación y edición de cursos y contenidos)
+- `/admin/cursos/nuevo` (Creador de curso)
+- `/admin/cursos/[slug]` (Editor de contenidos y lecciones)
 
 ## Datos de prueba
 Los archivos están en `/data`:

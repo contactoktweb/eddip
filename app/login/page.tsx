@@ -1,4 +1,5 @@
 'use client';
+import { Suspense } from 'react';
 import { Logo } from '@/components/Logo';
 import { Icon } from '@/lib/icons';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -69,7 +70,9 @@ export default function LoginPage() {
 
           {/* Sección de autenticación modular */}
           <section className="auth-form" aria-label="Formulario de acceso institucional">
-            <StudentAuth />
+            <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando acceso institucional...</div>}>
+              <StudentAuth />
+            </Suspense>
           </section>
         </div>
       </main>

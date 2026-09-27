@@ -16,62 +16,140 @@ export default function CertificateView() {
   const { code } = useParams<{ code: string }>();
   const { certs, courses, user, results } = useDemo();
   const [copied, setCopied] = useState(false);
-  const [asyncCert, setAsyncCert] = useState<Certificate | null>(null);
+  const [resolvedCert, setResolvedCert] = useState<Certificate | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const decodedCode = decodeURIComponent(code || '').trim();
 
-  // 1. Buscar en certificados activos del contexto o recuperado asíncronamente
-  let cert = certs.find(c => c.code.toLowerCase() === decodedCode.toLowerCase()) || asyncCert;
+  // Búsqueda multi-capa asíncrona y reactiva
+  useEffect(() => {
+    if (!decodedCode) {
+      setLoading(false);
+      return;
+    }
 
-  // 2. Si no se encuentra, buscar en datos base
-  if (!cert) {
-    cert = certificates.find(c => c.code.toLowerCase() === decodedCode.toLowerCase()) || null;
-  }
+    let isMounted = true;
+    const lower = decodedCode.toLowerCase();
 
-  // 3. Revisar si pertenece a los resultados de examen del usuario actual
-  if (!cert) {
+    // 1. Revisar en certificados activos en memoria de React
+    const inMemory = certs.find(c => c.code.toLowerCase() === lower);
+    if (inMemory) {
+      setResolvedCert(inMemory);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Revisar en resultados de examen del usuario actual
     const matchedResult = Object.entries(results).find(
-      ([, r]) => r.passed && r.code?.toLowerCase() === decodedCode.toLowerCase()
+      ([, r]) => r.passed && r.code?.toLowerCase() === lower
     );
     if (matchedResult) {
       const courseSlug = matchedResult[0];
       const courseObj = courses.find(c => c.slug === courseSlug);
-      if (courseObj) {
-        cert = {
-          code: decodedCode,
-          student: user.name,
-          documentId: user.documentId,
-          courseSlug,
-          course: courseObj.title,
-          hours: courseObj.durationHours,
-          date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
-          status: 'Válido',
-        };
-      }
+      const cObj: Certificate = {
+        code: decodedCode,
+        student: user.name || 'Estudiante EDDIP',
+        documentId: user.documentId || '1.032.456.789',
+        courseSlug,
+        course: courseObj?.title || 'Curso EDDIP',
+        hours: courseObj?.durationHours || 40,
+        date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
+        status: 'Válido',
+      };
+      setResolvedCert(cObj);
+      setLoading(false);
+      return;
     }
+
+    // 3. Revisar en datos base certificados.json
+    const inBase = certificates.find(c => c.code.toLowerCase() === lower);
+    if (inBase) {
+      setResolvedCert(inBase);
+      setLoading(false);
+      return;
+    }
+
+    // 4. Revisar en almacenamiento local directo
+    if (typeof window !== 'undefined') {
+      try {
+        const directKey = localStorage.getItem(`eddip_cert_${lower}`);
+        if (directKey) {
+          const parsed = JSON.parse(directKey);
+          if (parsed && parsed.code) {
+            setResolvedCert({
+              code: parsed.code,
+              student: parsed.studentName || parsed.student || user.name,
+              documentId: parsed.documentId || user.documentId,
+              courseSlug: parsed.courseSlug,
+              course: parsed.courseTitle || parsed.course,
+              hours: Number(parsed.hours) || 40,
+              date: parsed.issueDate || parsed.date,
+              status: parsed.status || 'Válido',
+            });
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    // 5. Consultar de forma asíncrona en Supabase (certificates y site_content)
+    studentService.getCertificateByCode(decodedCode).then(found => {
+      if (!isMounted) return;
+      if (found) {
+        setResolvedCert({
+          code: found.code,
+          student: found.studentName,
+          documentId: found.documentId || user.documentId,
+          courseSlug: found.courseSlug,
+          course: found.courseTitle,
+          hours: found.hours,
+          date: found.issueDate,
+          status: found.status || 'Válido',
+        });
+      }
+      setLoading(false);
+    }).catch(() => {
+      if (isMounted) setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [decodedCode, certs, courses, results, user.name, user.documentId]);
+
+  const cert = resolvedCert;
+
+  // Estado de carga mientras verifica
+  if (loading) {
+    return (
+      <>
+        <SiteHeader />
+        <main style={{ background: '#f0f4f9', minHeight: '80vh', display: 'grid', placeItems: 'center', padding: '40px 16px' }}>
+          <div style={{ textAlign: 'center', background: '#fff', padding: '40px 32px', borderRadius: 20, border: '1px solid var(--line)', maxWidth: 480, boxShadow: '0 8px 30px rgba(7,31,73,0.06)' }}>
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                border: '3px solid #e2e8f0',
+                borderTopColor: '#0F59DF',
+                margin: '0 auto 18px',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            <h2 style={{ fontSize: 18, marginBottom: 8, color: '#071F49' }}>Consultando acreditación oficial...</h2>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Verificando el registro criptográfico de <strong>{decodedCode}</strong> en la base de datos oficial de EDDIP.
+            </p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
   }
 
-  // 4. Buscar en persistencia local/remota si se accede desde enlace directo o QR
-  useEffect(() => {
-    if (!cert && decodedCode) {
-      studentService.getCertificateByCode(decodedCode).then(found => {
-        if (found) {
-          setAsyncCert({
-            code: found.code,
-            student: found.studentName,
-            documentId: found.documentId,
-            courseSlug: found.courseSlug,
-            course: found.courseTitle,
-            hours: found.hours,
-            date: found.issueDate,
-            status: found.status || 'Válido',
-          });
-        }
-      });
-    }
-  }, [cert, decodedCode]);
-
-  // Si no se encuentra en el estado ni en Supabase, se muestra el estado oficial de no encontrado
+  // Si no se encuentra tras consultar todas las capas
   if (!cert) {
     return (
       <>

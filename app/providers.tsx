@@ -4,10 +4,11 @@ import { baseCourses, certificates } from '@/lib/data';
 import type { Course, Certificate } from '@/lib/types';
 import { supabase } from '@/lib/supabase/client';
 import { studentService } from '@/lib/supabase/studentService';
+import { adminService } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { StudentProfile } from '@/lib/supabase/types';
 
-type Role = 'guest' | 'student' | 'admin';
+type Role = 'guest' | 'student' | 'admin' | 'designer';
 type Result = { score: number; passed: boolean; correct?: number; total?: number; code?: string };
 
 export type StudentContextType = {
@@ -32,7 +33,7 @@ export type StudentContextType = {
   updateProfile: (data: Partial<StudentProfile>) => Promise<boolean>;
   saveNote: (courseSlug: string, lessonId: string, text: string) => Promise<void>;
   signUpStudent: (params: { email: string; password: string; fullName: string; documentId?: string; phone?: string; city?: string }) => Promise<{ success: boolean; error: string | null }>;
-  signInStudent: (email: string, pass: string) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' }>;
+  signInStudent: (email: string, pass: string) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' | 'designer' }>;
 };
 
 const C = createContext<StudentContextType | null>(null);
@@ -49,13 +50,9 @@ const isDemoStudent = (email?: string) => {
 };
 
 const defaults = {
-  role: 'student' as Role,
-  purchased: ['derecho-de-policia', 'gestion-documental', 'seguridad-de-instalaciones'],
-  completed: {
-    'derecho-de-policia': ['dp-l1', 'dp-l2', 'dp-l3', 'dp-l4'],
-    'gestion-documental': [],
-    'seguridad-de-instalaciones': ['si-l1'],
-  },
+  role: 'guest' as Role,
+  purchased: [] as string[],
+  completed: {} as Record<string, string[]>,
   results: {} as Record<string, Result>,
   extraCourses: [] as Course[],
   notes: {} as Record<string, string>,
@@ -73,11 +70,11 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     phone?: string;
     city?: string;
   }>({
-    name: 'Sebastián Martínez',
-    email: 'estudiante@eddip.edu.co',
-    documentId: '1.032.456.789',
-    phone: '300 555 0182',
-    city: 'Bogotá D.C.',
+    name: '',
+    email: '',
+    documentId: '',
+    phone: '',
+    city: '',
   });
 
   const [purchased, setPurchased] = useState<string[]>(defaults.purchased);
@@ -178,7 +175,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         if (data.session?.user) {
           const u = data.session.user;
           const meta = u.user_metadata || {};
-          const role = meta.role === 'admin' ? 'admin' : 'student';
+          const role: Role =
+            meta.role === 'admin'
+              ? 'admin'
+              : meta.role === 'designer' || (u.email || '').includes('disenador') || (u.email || '').includes('designer')
+              ? 'designer'
+              : 'student';
 
           setRole(role);
           const email = (u.email || '').trim().toLowerCase();
@@ -227,7 +229,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         const u = session.user;
         const meta = u.user_metadata || {};
-        const newRole = meta.role === 'admin' ? 'admin' : 'student';
+        const newRole: Role =
+          meta.role === 'admin'
+            ? 'admin'
+            : meta.role === 'designer' || (u.email || '').includes('disenador') || (u.email || '').includes('designer')
+            ? 'designer'
+            : 'student';
         setRole(newRole);
         const email = (u.email || '').trim().toLowerCase();
         const profile = {
@@ -305,13 +312,19 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loaded, role, userProfile, purchased, completed, results, extraCourses, notes]);
 
-  const login = useCallback((r: 'student' | 'admin') => {
+  const login = useCallback((r: 'student' | 'admin' | 'designer') => {
     setRole(r);
     if (r === 'admin') {
       setUserProfile(prev => ({
         ...prev,
         name: prev.email?.includes('admin') ? prev.name : 'Administrador EDDIP',
         email: prev.email?.includes('admin') ? prev.email : 'admin@eddip.edu.co',
+      }));
+    } else if (r === 'designer') {
+      setUserProfile(prev => ({
+        ...prev,
+        name: prev.email?.includes('disenador') || prev.email?.includes('designer') ? prev.name : 'Diseñador Instruccional',
+        email: prev.email?.includes('disenador') || prev.email?.includes('designer') ? prev.email : 'disenador@eddip.edu.co',
       }));
     } else {
       setUserProfile(prev => {
@@ -402,7 +415,13 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   }, [completed, userProfile.id]);
 
   const saveResult = useCallback(async (slug: string, result: Result) => {
-    const course = [...baseCourses, ...extraCourses].find(c => c.slug === slug);
+    // Buscar curso en todos los cursos conocidos (base, extra y remotos)
+    const allKnownCourses = [...baseCourses, ...extraCourses, ...remoteCourses];
+    const course = allKnownCourses.find(c => c.slug === slug);
+
+    const courseTitle = course?.title || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const courseHours = course?.durationHours || 80;
+
     const certCode =
       result.code ||
       (result.passed ? `EDDIP-2026-${Math.floor(100000 + Math.random() * 900000)}` : undefined);
@@ -410,13 +429,33 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     const enrichedResult = { ...result, code: certCode };
     setResults(v => ({ ...v, [slug]: enrichedResult }));
 
-    if (result.passed && course && certCode) {
+    if (result.passed && certCode) {
+      const issueDateStr = new Intl.DateTimeFormat('es-CO', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date());
+
+      const certObj: Certificate = {
+        code: certCode,
+        student: userProfile.name || 'Estudiante EDDIP',
+        documentId: userProfile.documentId || '1.032.456.789',
+        courseSlug: slug,
+        course: courseTitle,
+        hours: courseHours,
+        date: issueDateStr,
+        status: 'Válido',
+      };
+
+      // Agregar inmediatamente a certificados en memoria
+      setRemoteCerts(prev => [certObj, ...prev.filter(c => c.code !== certCode)]);
+
       try {
         await studentService.saveExamResult({
           studentId: userProfile.id || 'demo-student',
           studentName: userProfile.name,
           courseSlug: slug,
-          courseTitle: course.title,
+          courseTitle,
           score: result.score,
           passed: result.passed,
           totalQuestions: result.total || 5,
@@ -428,25 +467,23 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         await studentService.issueCertificate(
           {
             code: certCode,
-            studentName: userProfile.name,
+            studentName: userProfile.name || 'Estudiante EDDIP',
             documentId: userProfile.documentId || '1.032.456.789',
             courseSlug: slug,
-            courseTitle: course.title,
-            hours: course.durationHours,
+            courseTitle,
+            hours: courseHours,
             status: 'Válido',
-            issueDate: new Intl.DateTimeFormat('es-CO', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-            }).format(new Date()),
+            issueDate: issueDateStr,
           },
           userProfile.id
         );
+
+        await adminService.issueManualCertificate(certObj);
       } catch (err) {
         console.warn('Error saving exam/certificate:', err);
       }
     }
-  }, [extraCourses, userProfile]);
+  }, [extraCourses, remoteCourses, userProfile]);
 
   const addCourse = useCallback((course: Course) => {
     setExtraCourses(v => [course, ...v]);
@@ -565,11 +602,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       const cleanEmail = email.trim().toLowerCase();
       const meta = res.user.user_metadata || {};
       const isAdmin = meta.role === 'admin' || cleanEmail.includes('admin');
-      const assignedRole: Role = isAdmin ? 'admin' : 'student';
+      const isDesigner = meta.role === 'designer' || cleanEmail.includes('disenador') || cleanEmail.includes('designer');
+      const assignedRole: Role = isAdmin ? 'admin' : (isDesigner ? 'designer' : 'student');
 
       const profile = {
         id: res.user.id,
-        name: meta.full_name || (isAdmin ? 'Administrador EDDIP' : cleanEmail.split('@')[0]),
+        name: meta.full_name || (isAdmin ? 'Administrador EDDIP' : (isDesigner ? 'Diseñador Instruccional' : cleanEmail.split('@')[0])),
         email: cleanEmail,
         documentId: meta.document_id || '',
         phone: meta.phone || '',
@@ -669,22 +707,60 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       })
       .filter(Boolean) as Certificate[];
 
-    // Unir con certificados persistidos
-    let storedCerts: Certificate[] = [];
+    // Unir con certificados persistidos de todas las fuentes locales
+    const storedCerts: Certificate[] = [];
     if (typeof window !== 'undefined') {
       try {
-        const raw = localStorage.getItem('eddip_student_certificates_list');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          storedCerts = parsed.map((sc: any) => ({
-            code: sc.code,
-            student: sc.studentName,
-            courseSlug: sc.courseSlug,
-            course: sc.courseTitle,
-            hours: sc.hours,
-            date: sc.issueDate,
-            status: sc.status || 'Válido',
-          }));
+        const parseList = (raw: string | null) => {
+          if (!raw) return;
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              for (const sc of parsed) {
+                if (sc && sc.code) {
+                  storedCerts.push({
+                    code: sc.code,
+                    student: sc.studentName || sc.student || userProfile.name,
+                    documentId: sc.documentId,
+                    courseSlug: sc.courseSlug,
+                    course: sc.courseTitle || sc.course,
+                    hours: Number(sc.hours) || 40,
+                    date: sc.issueDate || sc.date,
+                    status: sc.status || 'Válido',
+                  });
+                }
+              }
+            }
+          } catch {}
+        };
+
+        parseList(localStorage.getItem('eddip_student_certificates_list'));
+        parseList(localStorage.getItem('certificates_list'));
+        parseList(localStorage.getItem('admin_certs'));
+
+        // Claves atómicas eddip_cert_*
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('eddip_cert_')) {
+            try {
+              const val = localStorage.getItem(key);
+              if (val) {
+                const sc = JSON.parse(val);
+                if (sc && sc.code) {
+                  storedCerts.push({
+                    code: sc.code,
+                    student: sc.studentName || sc.student || userProfile.name,
+                    documentId: sc.documentId,
+                    courseSlug: sc.courseSlug,
+                    course: sc.courseTitle || sc.course,
+                    hours: Number(sc.hours) || 40,
+                    date: sc.issueDate || sc.date,
+                    status: sc.status || 'Válido',
+                  });
+                }
+              }
+            } catch {}
+          }
         }
       } catch {
         // ignore

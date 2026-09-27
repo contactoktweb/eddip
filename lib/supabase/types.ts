@@ -5,7 +5,7 @@ export type StudentProfile = {
   documentId?: string;
   phone?: string;
   city?: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'admin' | 'designer';
   avatarUrl?: string;
   createdAt?: string;
 };

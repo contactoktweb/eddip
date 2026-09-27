@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,8 +35,41 @@ function Checkout() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { courses, purchase, login, user, updateProfile } = useDemo();
+  const { courses, purchase, login, user, updateProfile, role, authLoading, signInStudent } = useDemo();
   const course = courses.find(c => c.slug === slug);
+
+  // Verificación estricta: para pagar un curso se debe estar registrado en la plataforma
+  const isRegistered = role !== 'guest' && Boolean(user?.email && user.email.trim().length > 0);
+  const processedBoldOrderRef = useRef<string | null>(null);
+
+  const [showQuickLogin, setShowQuickLogin] = useState(false);
+  const [quickEmail, setQuickEmail] = useState('');
+  const [quickPassword, setQuickPassword] = useState('');
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
+
+  const handleQuickLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = quickEmail.trim().toLowerCase();
+    if (!clean || !quickPassword) {
+      setQuickError('Por favor ingresa tu correo y contraseña.');
+      return;
+    }
+    setQuickLoading(true);
+    setQuickError(null);
+    const res = await signInStudent(clean, quickPassword);
+    setQuickLoading(false);
+    if (!res.success) {
+      setQuickError(res.error || 'Credenciales inválidas.');
+    } else {
+      setShowQuickLogin(false);
+      setQuickPassword('');
+      setFormData(prev => ({
+        ...prev,
+        email: clean,
+      }));
+    }
+  };
 
   const [stage, setStage] = useState<'form' | 'processing' | 'success'>('form');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pse');
@@ -54,6 +87,20 @@ function Checkout() {
     department: '',
     city: '',
   });
+
+  // Si el estudiante ya está registrado y autenticado, sincronizar datos con su perfil
+  useEffect(() => {
+    if (isRegistered && user?.email) {
+      setFormData(prev => ({
+        name: prev.name || user.name || '',
+        email: prev.email || user.email || '',
+        documentId: prev.documentId || user.documentId || '',
+        phone: prev.phone || user.phone || '',
+        department: prev.department || '',
+        city: prev.city || user.city || '',
+      }));
+    }
+  }, [isRegistered, user?.name, user?.email, user?.documentId, user?.phone, user?.city]);
 
   // Datos reales del estudiante confirmados para la acreditación
   const [confirmedCustomer, setConfirmedCustomer] = useState<{
@@ -153,14 +200,47 @@ function Checkout() {
     document.head.appendChild(script);
   }, []);
 
-  // Verificar si el usuario retorna desde la pasarela Bold con pago aprobado
+  // Verificar si el usuario retorna desde la pasarela Bold con pago aprobado (Ejecución única y protegida)
   useEffect(() => {
     const boldOrder = searchParams ? searchParams.get('bold_order') : null;
     const boldStatus = searchParams ? searchParams.get('bold_status') || searchParams.get('status') : null;
 
-    if (boldOrder && course && (boldStatus === 'approved' || boldStatus === 'success')) {
-      let cust = confirmedCustomer;
-      if (!cust && typeof window !== 'undefined') {
+    if (!boldOrder || !course || (boldStatus !== 'approved' && boldStatus !== 'success')) {
+      return;
+    }
+
+    // Prevenir bucle infinito si ya fue procesada esta orden en este montaje
+    if (processedBoldOrderRef.current === boldOrder) {
+      return;
+    }
+
+    // Verificar si ya fue procesada en la sesión
+    if (typeof window !== 'undefined') {
+      const alreadyProcessed = sessionStorage.getItem(`eddip_bold_processed_${boldOrder}`);
+      if (alreadyProcessed) {
+        processedBoldOrderRef.current = boldOrder;
+        setStage('success');
+        return;
+      }
+    }
+
+    processedBoldOrderRef.current = boldOrder;
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(`eddip_bold_processed_${boldOrder}`, 'true');
+      } catch {}
+    }
+
+    const processReturn = async () => {
+      // 1. Remover cualquier overlay residual de pasarela externa que bloquee la pantalla
+      if (typeof document !== 'undefined') {
+        const boldModal = document.getElementById('boldEmbeddedCheckout');
+        if (boldModal) boldModal.remove();
+        document.body.style.overflow = '';
+      }
+
+      let cust: any = null;
+      if (typeof window !== 'undefined') {
         try {
           const s = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
           if (s) cust = JSON.parse(s);
@@ -187,11 +267,13 @@ function Checkout() {
       setConfirmedCustomer(resolvedCust);
 
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
-        localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
+        try {
+          sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
+          localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
+        } catch {}
       }
 
-      updateProfile({
+      await updateProfile({
         fullName: realName,
         documentId: realDoc,
         email: realEmail,
@@ -199,8 +281,17 @@ function Checkout() {
         city: realLocation,
       });
 
-      adminService.recordSale({
-        id: boldOrder,
+      // Asegurar activación de sesión de estudiante
+      if (role !== 'student') {
+        login('student');
+      }
+
+      const txId = boldOrder.startsWith('VEN-')
+        ? boldOrder
+        : `VEN-${boldOrder.replace(/^EDDIP-BOLD-|^EDDIP-/, '').slice(-5)}`;
+
+      await adminService.recordSale({
+        id: txId,
         student: realName,
         course: course.title,
         value: course.price,
@@ -208,16 +299,32 @@ function Checkout() {
         date: new Date().toISOString().slice(0, 10),
         status: 'Aprobado',
       });
-      adminService.enrollStudentInCourse(
+
+      await adminService.enrollStudentInCourse(
         realName,
         realEmail,
         course.slug,
-        course.title
+        course.title,
+        {
+          documentId: realDoc,
+          phone: realPhone,
+          city: realLocation,
+        }
       );
+
       purchase(course.slug);
       setStage('success');
-    }
-  }, [searchParams, course, purchase, confirmedCustomer, formData, user, updateProfile]);
+
+      // Limpiar query params de la URL de forma silenciosa para evitar reprocesamientos
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        try {
+          window.history.replaceState({}, '', `/checkout/${course.slug}`);
+        } catch {}
+      }
+    };
+
+    processReturn();
+  }, [searchParams, course?.slug, course?.title, course?.price]);
 
   if (!course) {
     return (
@@ -275,7 +382,7 @@ function Checkout() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSimulateOrConfirmBoldSuccess = (orderId?: string) => {
+  const handleSimulateOrConfirmBoldSuccess = async (orderId?: string) => {
     const finalOrderId = orderId || boldCheckoutData?.orderId || `EDDIP-BOLD-${Date.now()}`;
 
     let cust = confirmedCustomer;
@@ -318,21 +425,32 @@ function Checkout() {
       city: realLocation,
     });
 
-    adminService.recordSale({
-      id: finalOrderId,
+    const txId = finalOrderId.startsWith('VEN-')
+      ? finalOrderId
+      : `VEN-${finalOrderId.replace(/^EDDIP-BOLD-|^EDDIP-/, '').slice(-5)}`;
+
+    const currentMethod = paymentMethod === 'pse' ? 'PSE' : paymentMethod === 'card' ? 'Tarjeta de Crédito' : 'Bold';
+
+    await adminService.recordSale({
+      id: txId,
       student: realName,
       course: course.title,
       value: finalPrice,
-      method: 'Bold',
+      method: currentMethod,
       date: new Date().toISOString().slice(0, 10),
       status: 'Aprobado',
     });
 
-    adminService.enrollStudentInCourse(
+    await adminService.enrollStudentInCourse(
       realName,
       realEmail,
       course.slug,
-      course.title
+      course.title,
+      {
+        documentId: realDoc,
+        phone: realPhone,
+        city: realLocation,
+      }
     );
 
     purchase(course.slug);
@@ -341,6 +459,13 @@ function Checkout() {
 
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Verificación estricta: Se debe estar registrado en la plataforma antes de pagar
+    if (!isRegistered) {
+      router.push(`/login?mode=register&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`);
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsBoldLoading(true);
@@ -611,16 +736,45 @@ function Checkout() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 10 }}>
+                <Link
                   className="btn btn-primary btn-lg"
-                  onClick={() => router.push(`/aprender/${course.slug}`)}
-                  style={{ padding: '13px 30px' }}
+                  href={`/aprender/${course.slug}`}
+                  style={{
+                    padding: '13px 30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                  }}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = `/aprender/${course.slug}`;
+                    }
+                  }}
                 >
                   <Icon name="cap" /> Ingresar al aula virtual
-                </button>
-                <Link className="btn btn-outline" href="/dashboard/cursos" style={{ padding: '13px 24px' }}>
+                </Link>
+                <Link
+                  className="btn btn-outline btn-lg"
+                  href="/dashboard/cursos"
+                  style={{
+                    padding: '13px 24px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/dashboard/cursos';
+                    }
+                  }}
+                >
                   Ir a Mis Cursos
                 </Link>
               </div>
@@ -734,6 +888,251 @@ function Checkout() {
             <form onSubmit={pay} style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
               {/* Columna Izquierda: Datos y Pago */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {/* AVISO / GESTIÓN DE REGISTRO PREVIO OBLIGATORIO */}
+                {!isRegistered ? (
+                  <section
+                    style={{
+                      background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+                      border: '2px solid #bfdbfe',
+                      borderRadius: 22,
+                      padding: '24px 26px',
+                      boxShadow: '0 8px 30px rgba(11, 98, 221, 0.08)',
+                      position: 'relative',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background: '#0b62dd',
+                          color: '#ffffff',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                          boxShadow: '0 4px 12px rgba(11, 98, 221, 0.25)',
+                        }}
+                      >
+                        <Icon name="lock" size={22} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                          <span
+                            style={{
+                              background: '#dbeafe',
+                              color: '#1e40af',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '3px 9px',
+                              borderRadius: 20,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.5,
+                            }}
+                          >
+                            Requisito Obligatorio
+                          </span>
+                          <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+                            Debes estar registrado para pagar
+                          </span>
+                        </div>
+                        <h2 style={{ fontSize: 18, color: '#071F49', margin: '0 0 6px', fontWeight: 800 }}>
+                          Crea tu cuenta de estudiante para continuar
+                        </h2>
+                        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+                          Para expedir legalmente tu diploma con código QR y darte acceso inmediato e ilimitado al aula virtual, es indispensable que estés registrado en EDDIP.
+                        </p>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                          <Link
+                            href={`/login?mode=register&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`}
+                            className="btn btn-primary"
+                            style={{
+                              padding: '10px 20px',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              borderRadius: 10,
+                              boxShadow: '0 4px 12px rgba(11, 98, 221, 0.2)',
+                            }}
+                          >
+                            <Icon name="user" size={16} /> Crear Cuenta de Estudiante
+                          </Link>
+                          <Link
+                            href={`/login?mode=login&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`}
+                            className="btn btn-outline"
+                            style={{
+                              padding: '10px 18px',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              borderRadius: 10,
+                            }}
+                          >
+                            Ya tengo cuenta / Iniciar Sesión
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setShowQuickLogin(!showQuickLogin)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#0b62dd',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              padding: '6px 8px',
+                            }}
+                          >
+                            {showQuickLogin ? 'Cerrar ingreso rápido' : '⚡ Ingreso rápido aquí'}
+                          </button>
+                        </div>
+
+                        {/* Formulario de Ingreso Rápido In-line */}
+                        {showQuickLogin && (
+                          <div
+                            style={{
+                              marginTop: 16,
+                              padding: 16,
+                              background: '#ffffff',
+                              borderRadius: 14,
+                              border: '1px solid #cbd5e1',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+                            }}
+                          >
+                            <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#071F49' }}>
+                              Ingresa con tu correo y contraseña registrados:
+                            </p>
+                            {quickError && (
+                              <div
+                                style={{
+                                  background: '#fef2f2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
+                                  borderRadius: 8,
+                                  padding: '8px 12px',
+                                  fontSize: 12,
+                                  marginBottom: 10,
+                                }}
+                              >
+                                {quickError}
+                              </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 10 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                                  Correo Electrónico
+                                </label>
+                                <input
+                                  type="email"
+                                  placeholder="tu@correo.com"
+                                  value={quickEmail}
+                                  onChange={e => setQuickEmail(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: 8,
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: 13,
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                                  Contraseña
+                                </label>
+                                <input
+                                  type="password"
+                                  placeholder="••••••••"
+                                  value={quickPassword}
+                                  onChange={e => setQuickPassword(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: 8,
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: 13,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                disabled={quickLoading}
+                                onClick={handleQuickLogin}
+                                className="btn btn-primary"
+                                style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, borderRadius: 8 }}
+                              >
+                                {quickLoading ? 'Verificando...' : 'Iniciar Sesión y Desbloquear Pago'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowQuickLogin(false)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  fontSize: 12,
+                                  color: '#64748b',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                ) : (
+                  <section
+                    style={{
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: 18,
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon name="check" size={18} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Estudiante Registrado y Verificado
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#14532d', fontWeight: 600 }}>
+                          Cuenta activa: {user.name || user.email} ({user.email})
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/login?mode=login&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`}
+                      style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      ¿Cambiar de cuenta?
+                    </Link>
+                  </section>
+                )}
+
                 {/* TARJETA 1: DATOS DEL ESTUDIANTE */}
                 <section
                   style={{
@@ -1320,24 +1719,56 @@ function Checkout() {
                 </div>
 
                 {/* Botón de Acción Principal */}
-                <button
-                  type="submit"
-                  disabled={isBoldLoading}
-                  className="btn btn-primary btn-full btn-lg"
-                  style={{
-                    padding: '15px 20px',
-                    fontSize: 15,
-                    fontWeight: 700,
-                    borderRadius: 14,
-                    boxShadow: '0 10px 25px rgba(11, 98, 221, 0.28)',
-                    justifyContent: 'center',
-                    gap: 8,
-                    cursor: isBoldLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <Icon name="shield" size={18} />
-                  {isBoldLoading ? 'Conectando con Bold...' : `Pagar ${money(finalPrice)} con Bold`}
-                </button>
+                {isRegistered ? (
+                  <button
+                    type="submit"
+                    disabled={isBoldLoading}
+                    className="btn btn-primary btn-full btn-lg"
+                    style={{
+                      padding: '15px 20px',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      borderRadius: 14,
+                      boxShadow: '0 10px 25px rgba(11, 98, 221, 0.28)',
+                      justifyContent: 'center',
+                      gap: 8,
+                      cursor: isBoldLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <Icon name="shield" size={18} />
+                    {isBoldLoading ? 'Conectando con Bold...' : `Pagar ${money(finalPrice)} con Bold`}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Link
+                      href={`/login?mode=register&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`}
+                      className="btn btn-primary btn-full btn-lg"
+                      style={{
+                        padding: '15px 20px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        borderRadius: 14,
+                        boxShadow: '0 10px 25px rgba(11, 98, 221, 0.28)',
+                        justifyContent: 'center',
+                        gap: 8,
+                        textAlign: 'center',
+                        textDecoration: 'none',
+                        background: 'linear-gradient(135deg, #0b62dd 0%, #064096 100%)',
+                      }}
+                    >
+                      <Icon name="user" size={18} />
+                      Regístrate para Pagar este Curso
+                    </Link>
+                    <div style={{ textAlign: 'center' }}>
+                      <Link
+                        href={`/login?mode=login&redirect=${encodeURIComponent(`/checkout/${course.slug}`)}`}
+                        style={{ fontSize: 12, color: '#0b62dd', fontWeight: 600, textDecoration: 'underline' }}
+                      >
+                        ¿Ya tienes cuenta? Iniciar Sesión
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
                 {/* Sellos de Confianza */}
                 <div style={{ marginTop: 18, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>

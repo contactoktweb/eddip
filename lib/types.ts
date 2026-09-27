@@ -1,4 +1,14 @@
-export type Lesson = { id:string; title:string; minutes:number; content:string[]; keyPoint?:string };
+export type Lesson = {
+  id: string;
+  title: string;
+  minutes: number;
+  content: string[];
+  keyPoint?: string;
+  videoUrl?: string;
+  videoType?: 'youtube' | 'direct';
+  images?: string[];
+  imageUrl?: string;
+};
 export type Module = { id:string; title:string; lessons:Lesson[] };
 export type Course = {
   id:string; slug:string; title:string; category:string; shortDescription:string; description:string;

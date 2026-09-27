@@ -47,6 +47,28 @@ export default function ValidateCertificatePage() {
       match = certificates.find(c => c.code.toLowerCase() === trimmed);
     }
 
+    // 2.b Buscar en almacenamiento local directo
+    if (!match && typeof window !== 'undefined') {
+      try {
+        const directKey = localStorage.getItem(`eddip_cert_${trimmed}`);
+        if (directKey) {
+          const parsed = JSON.parse(directKey);
+          if (parsed && parsed.code) {
+            match = {
+              code: parsed.code,
+              student: parsed.studentName || parsed.student,
+              documentId: parsed.documentId,
+              courseSlug: parsed.courseSlug,
+              course: parsed.courseTitle || parsed.course,
+              hours: Number(parsed.hours) || 40,
+              date: parsed.issueDate || parsed.date,
+              status: parsed.status || 'Válido',
+            };
+          }
+        }
+      } catch {}
+    }
+
     if (match) {
       setFoundCert(match);
       return;
@@ -60,6 +82,7 @@ export default function ValidateCertificatePage() {
         setFoundCert({
           code: found.code,
           student: found.studentName,
+          documentId: found.documentId,
           courseSlug: found.courseSlug,
           course: found.courseTitle,
           hours: found.hours,

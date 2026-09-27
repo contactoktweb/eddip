@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { adminService } from './adminService';
 import type { StudentProfile, CourseEnrollment, StudentNote, ExamResultRecord, IssuedCertificate } from './types';
 
 // Storage keys for resilient local fallback
@@ -25,7 +26,7 @@ function setLocalData<T>(key: string, data: T): void {
 
 export const studentService = {
   // ==========================================
-  // AUTENTICACIÓN SUPABASE
+  // AUTENTICACIÓN SUPABASE Y REGISTRO SEGURO
   // ==========================================
   async signUp(params: {
     email: string;
@@ -35,37 +36,114 @@ export const studentService = {
     phone?: string;
     city?: string;
   }) {
+    const cleanEmail = (params.email || '').trim().toLowerCase();
+    const cleanName = (params.fullName || '').trim();
+    const cleanDoc = (params.documentId || '').trim();
+    const cleanPhone = (params.phone || '').trim();
+    const cleanCity = (params.city || '').trim();
+
+    if (!cleanEmail) {
+      return { user: null, session: null, error: 'Por favor ingresa un correo electrónico válido.' };
+    }
+    if (!cleanName) {
+      return { user: null, session: null, error: 'Por favor ingresa tu nombre completo.' };
+    }
+
+    // 1. Verificación rigurosa de NO duplicidad antes de registrar
+    const dupCheck = await adminService.isStudentDuplicate(cleanEmail, cleanDoc);
+    if (dupCheck.isDuplicate) {
+      return {
+        user: null,
+        session: null,
+        error: dupCheck.message || 'El correo o documento ya se encuentra registrado.',
+      };
+    }
+
     try {
+      // 2. Registro oficial en Supabase Auth
       const { data, error } = await supabase.auth.signUp({
-        email: params.email,
+        email: cleanEmail,
         password: params.password,
         options: {
           data: {
-            full_name: params.fullName,
-            document_id: params.documentId || '',
-            phone: params.phone || '',
-            city: params.city || '',
+            full_name: cleanName,
+            document_id: cleanDoc,
+            phone: cleanPhone,
+            city: cleanCity,
             role: 'student',
           },
         },
       });
 
-      if (error) throw error;
-
-      // Save local backup profile
-      if (data.user) {
-        const profile: StudentProfile = {
-          id: data.user.id,
-          email: params.email,
-          fullName: params.fullName,
-          documentId: params.documentId,
-          phone: params.phone,
-          city: params.city,
-          role: 'student',
-          createdAt: new Date().toISOString(),
-        };
-        setLocalData('profile_' + data.user.id, profile);
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate')) {
+          return {
+            user: null,
+            session: null,
+            error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
+          };
+        }
+        throw error;
       }
+
+      // Si Supabase devuelve usuario con identidades vacías, el usuario ya existía
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          user: null,
+          session: null,
+          error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
+        };
+      }
+
+      const userId = data.user?.id || `st-${Date.now()}`;
+
+      // 3. PERSISTENCIA EN BASE DE DATOS (tabla profiles de Supabase)
+      try {
+        await supabase.from('profiles').upsert({
+          id: userId,
+          email: cleanEmail,
+          full_name: cleanName,
+          document_id: cleanDoc,
+          phone: cleanPhone,
+          city: cleanCity,
+          role: 'student',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('Advertencia al guardar perfil en Supabase:', e);
+      }
+
+      // 4. Registro y sincronización en adminService (persiste en site_content y notifica)
+      await adminService.saveStudent({
+        id: userId,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: cleanDoc,
+        phone: cleanPhone,
+        city: cleanCity || 'Colombia',
+        coursesCount: 0,
+        progressAvg: 0,
+        certificatesCount: 0,
+        registeredAt: new Date().toISOString().slice(0, 10),
+        status: 'Activo',
+        enrolledCourses: [],
+        examScores: [],
+      });
+
+      // 5. Guardar perfil local
+      const profile: StudentProfile = {
+        id: userId,
+        email: cleanEmail,
+        fullName: cleanName,
+        documentId: cleanDoc,
+        phone: cleanPhone,
+        city: cleanCity,
+        role: 'student',
+        createdAt: new Date().toISOString(),
+      };
+      setLocalData('profile_' + userId, profile);
 
       return { user: data.user, session: data.session, error: null };
     } catch (err: unknown) {
@@ -108,6 +186,30 @@ export const studentService = {
       } as unknown as import('@supabase/supabase-js').User;
 
       return { user: mockAdminUser, session: null, error: null };
+    }
+
+    if (
+      cleanEmail === 'disenador@demo.eddip.com' ||
+      cleanEmail === 'disenador@eddip.edu.co' ||
+      cleanEmail.includes('disenador') ||
+      cleanEmail.includes('designer')
+    ) {
+      const mockDesignerUser = {
+        id: 'designer-demo-user-id',
+        email: 'disenador@eddip.edu.co',
+        user_metadata: {
+          full_name: 'Diseñador Instruccional',
+          role: 'designer',
+          document_id: '88.777.666',
+          phone: '312 444 5566',
+          city: 'Bogotá D.C.',
+        },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as unknown as import('@supabase/supabase-js').User;
+
+      return { user: mockDesignerUser, session: null, error: null };
     }
 
     if (
@@ -440,35 +542,161 @@ export const studentService = {
   },
 
   // ==========================================
-  // CERTIFICADOS
+  // CERTIFICADOS CON ALTA DISPONIBILIDAD Y PERSISTENCIA
   // ==========================================
   async issueCertificate(cert: IssuedCertificate, userId?: string): Promise<void> {
+    const isUuid = (id?: string) =>
+      Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+    const validStudentId = isUuid(userId) ? userId : null;
+
+    // 1. Persistir en tabla certificates de Supabase (evitando errores de tipo UUID)
     try {
       await supabase.from('certificates').upsert({
         code: cert.code,
-        student_id: userId || null,
+        student_id: validStudentId,
         student_name: cert.studentName,
         course_slug: cert.courseSlug,
         course_title: cert.courseTitle,
         hours: cert.hours,
-        status: cert.status,
+        status: cert.status || 'Válido',
         issue_date: cert.issueDate,
       });
-    } catch {
-      // Fallback
+    } catch (e) {
+      console.warn('Aviso al insertar en tabla certificates:', e);
+    }
+
+    // 2. Persistir siempre en site_content para consulta pública sin restricciones RLS/UUID
+    try {
+      await supabase.from('site_content').upsert({
+        key: `certificate_${cert.code.toLowerCase()}`,
+        value: {
+          code: cert.code,
+          student: cert.studentName,
+          studentName: cert.studentName,
+          documentId: cert.documentId,
+          courseSlug: cert.courseSlug,
+          course: cert.courseTitle,
+          courseTitle: cert.courseTitle,
+          hours: cert.hours,
+          status: cert.status || 'Válido',
+          date: cert.issueDate,
+          issueDate: cert.issueDate,
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (e) {
+      console.warn('Aviso al registrar certificado en site_content:', e);
+    }
+
+    // 3. Persistir en almacenamiento local (claves atómicas y listas)
+    const certPayload = {
+      ...cert,
+      status: cert.status || 'Válido',
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`eddip_cert_${cert.code.toLowerCase()}`, JSON.stringify(certPayload));
+      } catch {}
     }
 
     const certs = getLocalData<IssuedCertificate[]>('certificates_list', []);
-    if (!certs.some(c => c.code === cert.code)) {
-      certs.unshift(cert);
-      setLocalData('certificates_list', certs);
+    const exists = certs.findIndex(c => c.code.toLowerCase() === cert.code.toLowerCase());
+    if (exists >= 0) {
+      certs[exists] = certPayload;
+    } else {
+      certs.unshift(certPayload);
+    }
+    setLocalData('certificates_list', certs);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('eddip_student_certificates_list', JSON.stringify(certs));
+        window.dispatchEvent(new CustomEvent('eddip_certificate_issued', { detail: certPayload }));
+      } catch {}
     }
   },
 
   async getCertificateByCode(code: string): Promise<IssuedCertificate | null> {
     const trimmed = (code || '').trim();
     if (!trimmed) return null;
+    const lower = trimmed.toLowerCase();
 
+    // 1. Revisar clave atómica en localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const direct = localStorage.getItem(`eddip_cert_${lower}`);
+        if (direct) {
+          const p = JSON.parse(direct);
+          if (p && p.code) {
+            return {
+              code: p.code,
+              studentName: p.studentName || p.student,
+              documentId: p.documentId,
+              courseSlug: p.courseSlug,
+              courseTitle: p.courseTitle || p.course,
+              hours: Number(p.hours) || 40,
+              status: p.status || 'Válido',
+              issueDate: p.issueDate || p.date,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Revisar listas locales
+    const localCerts = getLocalData<IssuedCertificate[]>('certificates_list', []);
+    const foundLocal = localCerts.find(c => c.code.toLowerCase() === lower);
+    if (foundLocal) return foundLocal;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawAlt = localStorage.getItem('eddip_student_certificates_list');
+        if (rawAlt) {
+          const list: any[] = JSON.parse(rawAlt);
+          const f = list.find((c: any) => c.code && c.code.toLowerCase() === lower);
+          if (f) {
+            return {
+              code: f.code,
+              studentName: f.studentName || f.student,
+              documentId: f.documentId,
+              courseSlug: f.courseSlug,
+              courseTitle: f.courseTitle || f.course,
+              hours: Number(f.hours) || 40,
+              status: f.status || 'Válido',
+              issueDate: f.issueDate || f.date,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Revisar en Supabase tabla site_content (clave directa)
+    try {
+      const { data, error } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', `certificate_${lower}`)
+        .single();
+
+      if (!error && data?.value) {
+        const val = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (val && val.code) {
+          return {
+            code: val.code,
+            studentName: val.studentName || val.student,
+            documentId: val.documentId,
+            courseSlug: val.courseSlug,
+            courseTitle: val.courseTitle || val.course,
+            hours: Number(val.hours) || 40,
+            status: val.status || 'Válido',
+            issueDate: val.issueDate || val.date,
+          };
+        }
+      }
+    } catch {}
+
+    // 4. Revisar en Supabase tabla certificates
     try {
       const { data, error } = await supabase
         .from('certificates')
@@ -483,18 +711,14 @@ export const studentService = {
           documentId: data.document_id || data.documentId,
           courseSlug: data.course_slug,
           courseTitle: data.course_title,
-          hours: data.hours,
-          status: data.status,
+          hours: Number(data.hours) || 40,
+          status: data.status || 'Válido',
           issueDate: data.issue_date,
         };
       }
-    } catch {
-      // Fallback
-    }
+    } catch {}
 
-    const certs = getLocalData<IssuedCertificate[]>('certificates_list', []);
-    const found = certs.find(c => c.code.toLowerCase() === trimmed.toLowerCase());
-    return found || null;
+    return null;
   },
 
   async getAllCertificates(): Promise<IssuedCertificate[]> {
@@ -508,10 +732,11 @@ export const studentService = {
         return data.map(d => ({
           code: d.code,
           studentName: d.student_name,
+          documentId: d.document_id || d.documentId,
           courseSlug: d.course_slug,
           courseTitle: d.course_title,
-          hours: d.hours,
-          status: d.status,
+          hours: Number(d.hours) || 40,
+          status: d.status || 'Válido',
           issueDate: d.issue_date,
         }));
       }

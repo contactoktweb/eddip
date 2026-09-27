@@ -27,8 +27,7 @@ eddip-nextjs-premium/
 │       ├── evaluaciones/page.tsx # Constructor de cuestionarios y preguntas
 │       ├── certificados/page.tsx # Control de certificados y emisión manual
 │       ├── ventas/page.tsx       # Historial de transacciones y facturación
-│       ├── contenido/page.tsx    # Editor de textos y propuesta de valor
-│       └── configuracion/page.tsx# Parámetros operativos y mantenimiento
+│       └── contenido/page.tsx    # Editor de textos y propuesta de valor
 ├── components/
 │   ├── student/                  # Componentes de Estudiante
 │   │   ├── StudentAuth.tsx
@@ -56,8 +55,10 @@ eddip-nextjs-premium/
 │   │   ├── AdminExamManager.tsx
 │   │   ├── AdminCertificatesTable.tsx
 │   │   ├── AdminSalesManager.tsx
-│   │   ├── AdminContentEditor.tsx
-│   │   └── AdminSettingsPanel.tsx
+│   │   └── AdminContentEditor.tsx
+│   ├── HomeHeroSection.tsx       # Sección Hero dinámica conectada a Supabase site_content
+│   ├── HomeStatsSection.tsx      # Banner de métricas dinámicas conectado a Supabase site_content
+│   ├── HomeFeaturedCourses.tsx   # Carrusel dinámico de cursos destacados
 │   ├── DashboardShell.tsx        # Shell de navegación unificado (estudiante & admin)
 │   └── Footer.tsx                # Footer con firma K&T y fecha dinámica
 ├── lib/

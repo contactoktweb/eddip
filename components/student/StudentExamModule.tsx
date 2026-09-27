@@ -36,7 +36,7 @@ export function StudentExamModule({ exam, course }: Props) {
   };
 
   const handleFinish = async () => {
-    const total = exam.questions.length;
+    const total = Math.max(1, exam.questions.length);
     const correct = exam.questions.filter(q => answers[q.id] === q.correct).length;
     const score = Math.round((correct / total) * 100);
     const passed = score >= exam.passingScore;
@@ -122,7 +122,14 @@ export function StudentExamModule({ exam, course }: Props) {
           </div>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <Link className="btn btn-outline" href={`/aprender/${course.slug}/${course.modules[0]?.lessons[0]?.id}`}>
+            <Link
+              className="btn btn-outline"
+              href={
+                course.modules && course.modules.length > 0 && course.modules[0].lessons?.length > 0
+                  ? `/aprender/${course.slug}/${course.modules[0].lessons[0].id}`
+                  : `/aprender/${course.slug}`
+              }
+            >
               Repasar lecciones
             </Link>
             <button type="button" className="btn btn-primary" onClick={handleStart} style={{ padding: '12px 24px' }}>
@@ -218,7 +225,14 @@ export function StudentExamModule({ exam, course }: Props) {
                 >
                   Reintentar evaluación
                 </button>
-                <Link className="btn btn-outline" href={`/aprender/${course.slug}/${course.modules[0]?.lessons[0]?.id}`}>
+                <Link
+                  className="btn btn-outline"
+                  href={
+                    course.modules && course.modules.length > 0 && course.modules[0].lessons?.length > 0
+                      ? `/aprender/${course.slug}/${course.modules[0].lessons[0].id}`
+                      : `/aprender/${course.slug}`
+                  }
+                >
                   Repasar curso
                 </Link>
               </>

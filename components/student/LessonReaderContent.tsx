@@ -1,6 +1,7 @@
 'use client';
 import type { Lesson } from '@/lib/types';
 import { LessonNotesWidget } from './LessonNotesWidget';
+import { LessonMediaViewer } from './LessonMediaViewer';
 
 type Props = {
   courseSlug: string;
@@ -27,6 +28,15 @@ export function LessonReaderContent({
       </div>
 
       <h1 style={{ fontSize: 32, marginBottom: 24, lineHeight: 1.25 }}>{lesson.title}</h1>
+
+      {/* Visor Multimedia de la lección (Video de YouTube o directo, e imágenes/infografías) */}
+      <LessonMediaViewer
+        videoUrl={lesson.videoUrl}
+        videoType={lesson.videoType}
+        images={lesson.images}
+        imageUrl={lesson.imageUrl}
+        lessonTitle={lesson.title}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontSize: 16, lineHeight: 1.7, color: '#2d3748' }}>
         {lesson.content.map((paragraph, idx) => (

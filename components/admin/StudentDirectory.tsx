@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { Icon } from '@/lib/icons';
 import type { EnrichedStudent } from '@/lib/supabase/adminService';
 import { StudentDetailModal } from './StudentDetailModal';
+import { AddStudentModal } from './AddStudentModal';
 
 type FilterStatus = 'all' | 'active' | 'completed' | 'zero';
 
@@ -14,6 +15,7 @@ export function StudentDirectory({ students }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [selectedStudent, setSelectedStudent] = useState<EnrichedStudent | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const filtered = useMemo(() => {
     return students.filter(s => {
@@ -130,14 +132,25 @@ export function StudentDirectory({ students }: Props) {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-outline"
-          onClick={handleExportCSV}
-          style={{ fontSize: 13, padding: '9px 16px' }}
-        >
-          <Icon name="upload" /> Exportar CSV
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowAddModal(true)}
+            style={{ fontSize: 13, padding: '9px 16px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Icon name="user" size={15} /> Registrar estudiante
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={handleExportCSV}
+            style={{ fontSize: 13, padding: '9px 16px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Icon name="upload" size={15} /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Tabla de Estudiantes */}
@@ -155,82 +168,124 @@ export function StudentDirectory({ students }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
-              <tr key={s.id}>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: '#64748b' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 440, margin: '0 auto' }}>
                     <div
-                      className="avatar"
-                      style={{ width: 34, height: 34, fontSize: 12, borderRadius: 10 }}
-                    >
-                      {s.name
-                        .split(' ')
-                        .filter(Boolean)
-                        .map(x => x[0])
-                        .slice(0, 2)
-                        .join('')}
-                    </div>
-                    <div>
-                      <div className="table-title">{s.name}</div>
-                      <small style={{ color: '#7a8b9e' }}>{s.city || 'Colombia'}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div style={{ fontSize: 12 }}>
-                    <div>{s.email}</div>
-                    <small style={{ color: '#8b9bb4' }}>{s.phone || 'Sin teléfono'}</small>
-                  </div>
-                </td>
-                <td>
-                  <span className="badge">{s.coursesCount} cursos</span>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="progress" style={{ width: 85 }}>
-                      <span
-                        style={{
-                          width: `${s.progressAvg}%`,
-                          background: s.progressAvg >= 100 ? '#059669' : undefined,
-                        }}
-                      ></span>
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{s.progressAvg}%</span>
-                  </div>
-                </td>
-                <td>
-                  {s.certificatesCount > 0 ? (
-                    <span
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontSize: 12,
-                        color: '#059669',
-                        fontWeight: 600,
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: '#f1f5f9',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: '#94a3b8',
                       }}
                     >
-                      <Icon name="award" size={14} /> {s.certificatesCount}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>0</span>
-                  )}
-                </td>
-                <td>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>{s.registeredAt}</span>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className="btn btn-soft"
-                    onClick={() => setSelectedStudent(s)}
-                    style={{ fontSize: 12, padding: '6px 12px' }}
-                  >
-                    Ver ficha
-                  </button>
+                      <Icon name="user" size={24} />
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: 16 }}>
+                        {searchTerm ? 'No se encontraron resultados' : 'Sin estudiantes registrados'}
+                      </p>
+                      <p style={{ margin: '6px 0 0', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                        {searchTerm
+                          ? `No hay estudiantes que coincidan con "${searchTerm}". Intenta con otro término o limpia los filtros.`
+                          : 'La plataforma está sincronizada directamente con la base de datos de Supabase y actualmente no hay estudiantes registrados. Los nuevos estudiantes que se registren en la web o los agregados manualmente aparecerán aquí.'}
+                      </p>
+                    </div>
+                    {!searchTerm && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setShowAddModal(true)}
+                        style={{ marginTop: 8, fontSize: 13, padding: '9px 18px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Icon name="user" size={15} /> Registrar primer estudiante
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              filtered.map(s => (
+                <tr key={s.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        className="avatar"
+                        style={{ width: 34, height: 34, fontSize: 12, borderRadius: 10 }}
+                      >
+                        {s.name
+                          .split(' ')
+                          .filter(Boolean)
+                          .map(x => x[0])
+                          .slice(0, 2)
+                          .join('')}
+                      </div>
+                      <div>
+                        <div className="table-title">{s.name}</div>
+                        <small style={{ color: '#7a8b9e' }}>{s.city || 'Colombia'}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: 12 }}>
+                      <div>{s.email}</div>
+                      <small style={{ color: '#8b9bb4' }}>{s.phone || 'Sin teléfono'}</small>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="badge">{s.coursesCount} cursos</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="progress" style={{ width: 85 }}>
+                        <span
+                          style={{
+                            width: `${s.progressAvg}%`,
+                            background: s.progressAvg >= 100 ? '#059669' : undefined,
+                          }}
+                        ></span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>{s.progressAvg}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    {s.certificatesCount > 0 ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          color: '#059669',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Icon name="award" size={14} /> {s.certificatesCount}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#94a3b8' }}>0</span>
+                    )}
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>{s.registeredAt}</span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      className="btn btn-soft"
+                      onClick={() => setSelectedStudent(s)}
+                      style={{ fontSize: 12, padding: '6px 12px' }}
+                    >
+                      Ver ficha
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -242,6 +297,12 @@ export function StudentDirectory({ students }: Props) {
           onClose={() => setSelectedStudent(null)}
         />
       )}
+
+      {/* Modal Registrar Nuevo Estudiante */}
+      <AddStudentModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+      />
     </div>
   );
 }

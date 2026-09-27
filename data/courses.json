@@ -38,6 +38,12 @@
             "id": "fsc-l1",
             "title": "Principios rectores de la seguridad ciudadana",
             "minutes": 15,
+            "videoUrl": "https://www.youtube.com/watch?v=0k2ZzkwbO84",
+            "videoType": "youtube",
+            "images": [
+              "/images/courses/seguridad.jpg",
+              "/images/courses/liderazgo.jpg"
+            ],
             "content": [
               "La convivencia armónica se fundamenta en el respeto recíproco y la articulación eficaz entre ciudadanía y autoridades.",
               "En esta lección exploramos los criterios prioritarios para la prevención del delito y preservación del orden público."
@@ -306,6 +312,12 @@
             "id": "dp-l1",
             "title": "Concepto y finalidad",
             "minutes": 12,
+            "videoUrl": "https://www.youtube.com/watch?v=0k2ZzkwbO84",
+            "videoType": "youtube",
+            "images": [
+              "/images/courses/derecho.jpg",
+              "/images/courses/seguridad.jpg"
+            ],
             "content": [
               "El Derecho de Policía reúne principios, normas y competencias orientadas a mantener las condiciones necesarias para la convivencia. Su estudio exige comprender tanto la función preventiva como los límites de la actuación institucional.",
               "En esta lección revisamos la relación entre convivencia, protección de derechos, deberes ciudadanos y ejercicio legítimo de competencias."

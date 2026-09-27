@@ -1,5 +1,15 @@
 [
   {
+    "code": "EDDIP-2026-525678",
+    "student": "Sebastián Martínez",
+    "documentId": "1.032.456.789",
+    "courseSlug": "curso-avanzado-de-seguridad-ciudadana",
+    "course": "Curso Avanzado De Seguridad Ciudadana",
+    "hours": 80,
+    "date": "26 de septiembre de 2026",
+    "status": "Válido"
+  },
+  {
     "code": "EDDIP-2026-000145",
     "student": "Sebastián Martínez",
     "documentId": "1.032.456.789",

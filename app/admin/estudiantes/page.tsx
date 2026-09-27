@@ -19,6 +19,23 @@ export default function AdminStudentsPage() {
       }
     }
     loadStudents();
+
+    const handleUpdate = (e: Event) => {
+      const custom = e as CustomEvent<EnrichedStudent[]>;
+      if (custom.detail && Array.isArray(custom.detail)) {
+        setStudentList(custom.detail);
+      } else {
+        loadStudents();
+      }
+    };
+
+    window.addEventListener('eddip_students_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener('eddip_students_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, []);
 
   return (

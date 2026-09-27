@@ -31,54 +31,67 @@ export function AdminRecentStudents({ students, onSelectStudent }: Props) {
             </tr>
           </thead>
           <tbody>
-            {students.slice(0, 5).map(s => (
-              <tr key={s.id}>
-                <td className="table-title">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div
-                      className="avatar"
-                      style={{ width: 28, height: 28, fontSize: 11, borderRadius: 8 }}
-                    >
-                      {s.name.split(' ').map(x => x[0]).slice(0, 2).join('')}
-                    </div>
-                    <span>{s.name}</span>
-                  </div>
-                </td>
-                <td>{s.email}</td>
-                <td>
-                  <span className="badge">{s.courses} cursos</span>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="progress" style={{ width: 80 }}>
-                      <span style={{ width: `${s.progress}%` }}></span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600 }}>{s.progress}%</span>
-                  </div>
-                </td>
-                <td>{s.registeredAt}</td>
-                <td>
-                  {onSelectStudent ? (
-                    <button
-                      type="button"
-                      className="btn btn-soft"
-                      onClick={() => onSelectStudent(s)}
-                      style={{ fontSize: 12, padding: '4px 10px' }}
-                    >
-                      Ficha
-                    </button>
-                  ) : (
-                    <Link
-                      href="/admin/estudiantes"
-                      className="btn btn-soft"
-                      style={{ fontSize: 12, padding: '4px 10px' }}
-                    >
-                      <Icon name="search" size={12} /> Ver
+            {students.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>No hay estudiantes registrados en la base de datos todavía.</span>
+                    <Link href="/admin/estudiantes" className="btn btn-outline" style={{ fontSize: 12, padding: '6px 14px', marginTop: 4 }}>
+                      Ir al directorio de estudiantes
                     </Link>
-                  )}
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              students.slice(0, 5).map(s => (
+                <tr key={s.id}>
+                  <td className="table-title">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        className="avatar"
+                        style={{ width: 28, height: 28, fontSize: 11, borderRadius: 8 }}
+                      >
+                        {s.name.split(' ').map(x => x[0]).slice(0, 2).join('')}
+                      </div>
+                      <span>{s.name}</span>
+                    </div>
+                  </td>
+                  <td>{s.email}</td>
+                  <td>
+                    <span className="badge">{s.courses} cursos</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="progress" style={{ width: 80 }}>
+                        <span style={{ width: `${s.progress}%` }}></span>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>{s.progress}%</span>
+                    </div>
+                  </td>
+                  <td>{s.registeredAt}</td>
+                  <td>
+                    {onSelectStudent ? (
+                      <button
+                        type="button"
+                        className="btn btn-soft"
+                        onClick={() => onSelectStudent(s)}
+                        style={{ fontSize: 12, padding: '4px 10px' }}
+                      >
+                        Ficha
+                      </button>
+                    ) : (
+                      <Link
+                        href="/admin/estudiantes"
+                        className="btn btn-soft"
+                        style={{ fontSize: 12, padding: '4px 10px' }}
+                      >
+                        <Icon name="search" size={12} /> Ver
+                      </Link>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

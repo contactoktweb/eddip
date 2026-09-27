@@ -21,7 +21,10 @@ const adminNav = [
   ['/admin/certificados', 'Certificados', 'award'],
   ['/admin/ventas', 'Ventas', 'dollar'],
   ['/admin/contenido', 'Contenido web', 'edit'],
-  ['/admin/configuracion', 'Configuración', 'settings'],
+] as const;
+
+const designerNav = [
+  ['/admin/cursos', 'Cursos y Lecciones', 'book'],
 ] as const;
 
 export function DashboardShell({
@@ -34,19 +37,32 @@ export function DashboardShell({
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const { logout, user } = useDemo();
+  const { logout, user, role } = useDemo();
 
-  const items = kind === 'admin' ? adminNav : studentNav;
-  const initials =
-    kind === 'admin'
-      ? 'AD'
-      : user.name
-          .split(' ')
-          .filter(Boolean)
-          .map(n => n[0])
-          .slice(0, 2)
-          .join('')
-          .toUpperCase() || 'ES';
+  const isDesigner = role === 'designer';
+  const isStudent = kind === 'student';
+
+  const items = isStudent ? studentNav : (isDesigner ? designerNav : adminNav);
+  const initials = isDesigner
+    ? 'DI'
+    : kind === 'admin'
+    ? 'AD'
+    : user.name
+        .split(' ')
+        .filter(Boolean)
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || 'ES';
+
+  const profileHref = isStudent ? '/dashboard/perfil' : (isDesigner ? '/admin/cursos' : '/admin');
+
+  // Control estricto de acceso para Diseñador (únicamente crear y actualizar cursos)
+  const isDesignerAllowedPath =
+    path === '/admin/cursos' ||
+    path.startsWith('/admin/cursos/');
+
+  const isAccessBlocked = isDesigner && kind === 'admin' && !isDesignerAllowedPath;
 
   const handleLogout = async () => {
     await logout();
@@ -62,15 +78,20 @@ export function DashboardShell({
         </div>
 
         <Link
-          href={kind === 'student' ? '/dashboard/perfil' : '/admin/configuracion'}
+          href={profileHref}
           className="dash-profile"
           style={{ textDecoration: 'none', color: 'inherit' }}
           onClick={() => setOpen(false)}
         >
-          <div className="avatar">{initials}</div>
+          <div
+            className="avatar"
+            style={isDesigner ? { background: '#fef3c7', color: '#d97706' } : {}}
+          >
+            {initials}
+          </div>
           <div style={{ minWidth: 0 }}>
             <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {kind === 'admin' ? 'Administrador EDDIP' : user.name}
+              {isDesigner ? 'Diseñador Instruccional' : (kind === 'admin' ? 'Administrador EDDIP' : user.name)}
             </strong>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span
@@ -78,11 +99,11 @@ export function DashboardShell({
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: '#059669',
+                  background: isDesigner ? '#d97706' : '#059669',
                   display: 'inline-block',
                 }}
               />
-              {kind === 'admin' ? 'Control de plataforma' : 'Estudiante activo'}
+              {isDesigner ? 'Diseño de Cursos' : (kind === 'admin' ? 'Control de plataforma' : 'Estudiante activo')}
             </span>
           </div>
         </Link>
@@ -134,12 +155,15 @@ export function DashboardShell({
               <Logo compact />
               <div className="dash-topbar-titles">
                 <span className="dash-topbar-title">
-                  {kind === 'admin' ? 'Administración' : 'Campus Virtual'}
+                  {isDesigner ? 'Diseño Curricular' : (kind === 'admin' ? 'Administración' : 'Campus Virtual')}
                 </span>
                 <span className="dash-topbar-subtitle">EDDIP</span>
               </div>
-              <span className={`dash-topbar-badge ${kind === 'admin' ? 'admin' : 'student'}`}>
-                {kind === 'admin' ? 'Gestión' : 'Estudiante'}
+              <span
+                className={`dash-topbar-badge ${kind === 'admin' ? 'admin' : 'student'}`}
+                style={isDesigner ? { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' } : {}}
+              >
+                {isDesigner ? 'Diseñador' : (kind === 'admin' ? 'Gestión' : 'Estudiante')}
               </span>
             </div>
           </div>
@@ -155,23 +179,68 @@ export function DashboardShell({
               <span className="dash-topbar-public-text">Sitio Público</span>
             </Link>
             <Link
-              href={kind === 'student' ? '/dashboard/perfil' : '/admin/configuracion'}
+              href={profileHref}
               className="dash-topbar-user"
-              title={kind === 'admin' ? 'Panel de Configuración' : `Perfil de ${user.name}`}
+              title={isDesigner ? 'Diseñador Instruccional EDDIP' : (kind === 'admin' ? 'Administrador EDDIP' : `Perfil de ${user.name}`)}
             >
-              <div className="avatar dash-topbar-avatar">
+              <div
+                className="avatar dash-topbar-avatar"
+                style={isDesigner ? { background: '#fef3c7', color: '#d97706' } : {}}
+              >
                 {initials}
               </div>
               <span className="dash-topbar-username">
-                {kind === 'admin' ? 'Admin' : user.name.split(' ')[0]}
+                {isDesigner ? 'Diseñador' : (kind === 'admin' ? 'Admin' : user.name.split(' ')[0])}
               </span>
             </Link>
           </div>
         </header>
 
-        {/* Contenido dinámico del panel */}
+        {/* Contenido dinámico del panel o bloqueo por permisos */}
         <div style={{ padding: '28px 24px', flex: 1 }}>
-          {children}
+          {isAccessBlocked ? (
+            <div
+              className="panel"
+              style={{
+                background: '#fff',
+                borderRadius: 20,
+                border: '1px solid var(--line)',
+                padding: '48px 32px',
+                textAlign: 'center',
+                maxWidth: 620,
+                margin: '40px auto',
+                boxShadow: '0 10px 30px rgba(7, 31, 73, 0.05)',
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  background: '#fef3c7',
+                  color: '#d97706',
+                  display: 'grid',
+                  placeItems: 'center',
+                  margin: '0 auto 18px',
+                }}
+              >
+                <Icon name="shield" size={32} />
+              </div>
+              <h2 style={{ fontSize: 22, color: '#071F49', marginBottom: 10 }}>Acceso Restringido</h2>
+              <p style={{ color: '#64748b', fontSize: 14.5, lineHeight: 1.6, marginBottom: 24 }}>
+                Tu cuenta tiene asignado el rol de <strong>Diseñador Instruccional</strong>. Tus permisos en la plataforma están configurados exclusivamente para la <strong>creación, estructuración y actualización de cursos y programas académicos</strong>.
+              </p>
+              <Link
+                href="/admin/cursos"
+                className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px' }}
+              >
+                <Icon name="book" size={16} /> Ir al Módulo de Cursos
+              </Link>
+            </div>
+          ) : (
+            children
+          )}
         </div>
 
         {/* Footer institucional del panel */}

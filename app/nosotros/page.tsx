@@ -15,8 +15,17 @@ export default function AboutPage() {
     contentService.getSiteContent().then(res => {
       if (mounted) setContent(res);
     });
+
+    const handleUpdate = () => {
+      contentService.getSiteContent().then(res => {
+        if (mounted) setContent(res);
+      });
+    };
+
+    window.addEventListener('eddip_site_content_updated', handleUpdate);
     return () => {
       mounted = false;
+      window.removeEventListener('eddip_site_content_updated', handleUpdate);
     };
   }, []);
 

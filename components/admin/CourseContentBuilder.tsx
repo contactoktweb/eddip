@@ -7,6 +7,7 @@ import { useDemo } from '@/app/providers';
 import { adminService } from '@/lib/supabase/adminService';
 import { Icon } from '@/lib/icons';
 import { CourseImageSlider } from '@/components/CourseImageSlider';
+import { LessonMediaEditor } from './LessonMediaEditor';
 
 const slugify = (s: string) =>
   s
@@ -318,6 +319,25 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
           lessons: m.lessons.map((l, j) => {
             if (j !== lessonIndex) return l;
             return { ...l, [field]: value };
+          }),
+        };
+      })
+    );
+  };
+
+  const updateLessonFields = (
+    modIndex: number,
+    lessonIndex: number,
+    fields: Partial<Lesson>
+  ) => {
+    setModules(prev =>
+      prev.map((m, i) => {
+        if (i !== modIndex) return m;
+        return {
+          ...m,
+          lessons: m.lessons.map((l, j) => {
+            if (j !== lessonIndex) return l;
+            return { ...l, ...fields };
           }),
         };
       })
@@ -957,6 +977,12 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                             placeholder="Escribe o pega aquí el contenido de la lección..."
                           />
                         </div>
+
+                        {/* Recursos Multimedia de la Lección (Video de YouTube o Directo, e Imágenes) */}
+                        <LessonMediaEditor
+                          lesson={l}
+                          onUpdate={fields => updateLessonFields(mIdx, lIdx, fields)}
+                        />
                       </div>
                     ))}
 

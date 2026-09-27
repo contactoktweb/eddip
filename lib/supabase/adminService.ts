@@ -1,6 +1,6 @@
 import { supabase } from './client';
 import type { Course, Exam, ExamQuestion, Certificate, Sale } from '@/lib/types';
-import { baseCourses, certificates, sales, students, exams as baseExams } from '@/lib/data';
+import { baseCourses, certificates, exams as baseExams } from '@/lib/data';
 
 const STORAGE_PREFIX = 'eddip_admin_';
 
@@ -50,229 +50,6 @@ export type EnrichedStudent = {
     passed: boolean;
     date: string;
   }[];
-};
-
-const STUDENT_ENROLLMENTS: Record<string, {
-  enrolledCourses: {
-    slug: string;
-    title: string;
-    progress: number;
-    completedLessons: string[];
-    totalLessons: number;
-    certificateCode?: string;
-  }[];
-  examScores: {
-    courseSlug: string;
-    courseTitle: string;
-    score: number;
-    passed: boolean;
-    date: string;
-  }[];
-}> = {
-  'st-001': {
-    enrolledCourses: [
-      {
-        slug: 'derecho-de-policia',
-        title: 'Derecho de Policía',
-        progress: 100,
-        completedLessons: ['dp-l1'],
-        totalLessons: 1,
-        certificateCode: 'EDDIP-2026-000145',
-      },
-      {
-        slug: 'fundamentos-seguridad-convivencia',
-        title: 'Fundamentos de Seguridad y Convivencia Ciudadana',
-        progress: 75,
-        completedLessons: ['fsc-l1'],
-        totalLessons: 1,
-        certificateCode: 'EDDIP-2026-000139',
-      },
-    ],
-    examScores: [
-      {
-        courseSlug: 'derecho-de-policia',
-        courseTitle: 'Derecho de Policía',
-        score: 95,
-        passed: true,
-        date: '15 de agosto de 2026',
-      },
-    ],
-  },
-  'st-002': {
-    enrolledCourses: [
-      {
-        slug: 'derecho-de-policia',
-        title: 'Derecho de Policía',
-        progress: 100,
-        completedLessons: ['dp-l1'],
-        totalLessons: 1,
-        certificateCode: 'EDDIP-2026-000128',
-      },
-      {
-        slug: 'derecho-administrativo-contemporaneo',
-        title: 'Derecho Administrativo Contemporáneo',
-        progress: 30,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [
-      {
-        courseSlug: 'derecho-de-policia',
-        courseTitle: 'Derecho de Policía',
-        score: 90,
-        passed: true,
-        date: '23 de julio de 2026',
-      },
-    ],
-  },
-  'st-003': {
-    enrolledCourses: [
-      {
-        slug: 'derecho-de-policia',
-        title: 'Derecho de Policía',
-        progress: 100,
-        completedLessons: ['dp-l1'],
-        totalLessons: 1,
-        certificateCode: 'EDDIP-2026-000112',
-      },
-      {
-        slug: 'contratacion-estatal-normatividad',
-        title: 'Contratación Estatal y Normatividad',
-        progress: 85,
-        completedLessons: ['cen-l1'],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [
-      {
-        courseSlug: 'derecho-de-policia',
-        courseTitle: 'Derecho de Policía',
-        score: 92,
-        passed: true,
-        date: '12 de julio de 2026',
-      },
-    ],
-  },
-  'st-004': {
-    enrolledCourses: [
-      {
-        slug: 'ciberseguridad-entornos-publicos',
-        title: 'Ciberseguridad para Entornos Públicos',
-        progress: 35,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-005': {
-    enrolledCourses: [
-      {
-        slug: 'liderazgo-trabajo-equipo',
-        title: 'Liderazgo y Trabajo en Equipo',
-        progress: 60,
-        completedLessons: ['lte-l1'],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-006': {
-    enrolledCourses: [
-      {
-        slug: 'fundamentos-seguridad-convivencia',
-        title: 'Fundamentos de Seguridad y Convivencia Ciudadana',
-        progress: 80,
-        completedLessons: ['fsc-l1'],
-        totalLessons: 1,
-      },
-      {
-        slug: 'gestion-publica-resultados',
-        title: 'Gestión Pública por Resultados',
-        progress: 70,
-        completedLessons: ['gpr-l1'],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-007': {
-    enrolledCourses: [
-      {
-        slug: 'derecho-de-policia',
-        title: 'Derecho de Policía',
-        progress: 60,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-      {
-        slug: 'contratacion-estatal-normatividad',
-        title: 'Contratación Estatal y Normatividad',
-        progress: 40,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-008': {
-    enrolledCourses: [
-      {
-        slug: 'liderazgo-trabajo-equipo',
-        title: 'Liderazgo y Trabajo en Equipo',
-        progress: 80,
-        completedLessons: ['lte-l1'],
-        totalLessons: 1,
-      },
-      {
-        slug: 'gestion-publica-resultados',
-        title: 'Gestión Pública por Resultados',
-        progress: 60,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-009': {
-    enrolledCourses: [
-      {
-        slug: 'liderazgo-trabajo-equipo',
-        title: 'Liderazgo y Trabajo en Equipo',
-        progress: 60,
-        completedLessons: ['lte-l1'],
-        totalLessons: 1,
-      },
-      {
-        slug: 'ciberseguridad-entornos-publicos',
-        title: 'Ciberseguridad para Entornos Públicos',
-        progress: 50,
-        completedLessons: [],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
-  'st-010': {
-    enrolledCourses: [
-      {
-        slug: 'fundamentos-seguridad-convivencia',
-        title: 'Fundamentos de Seguridad y Convivencia Ciudadana',
-        progress: 85,
-        completedLessons: ['fsc-l1'],
-        totalLessons: 1,
-      },
-      {
-        slug: 'derecho-administrativo-contemporaneo',
-        title: 'Derecho Administrativo Contemporáneo',
-        progress: 75,
-        completedLessons: ['dac-l1'],
-        totalLessons: 1,
-      },
-    ],
-    examScores: [],
-  },
 };
 
 export const adminService = {
@@ -393,43 +170,353 @@ export const adminService = {
   },
 
   // ==========================================
-  // ESTUDIANTES / JUGADORES
+  // ESTUDIANTES / DIRECTORIO SINCRONIZADO CON BASE DE DATOS REAL
   // ==========================================
   async getAllStudents(): Promise<EnrichedStudent[]> {
-    const baseList: EnrichedStudent[] = students.map((s, idx) => {
-      const customData = STUDENT_ENROLLMENTS[s.id] || {
-        enrolledCourses: [
-          {
-            slug: 'derecho-de-policia',
-            title: 'Derecho de Policía',
-            progress: s.progress,
-            completedLessons: ['dp-l1'],
-            totalLessons: 1,
-            certificateCode: s.certificates > 0 ? `EDDIP-2026-00014${idx}` : undefined,
-          },
-        ],
-        examScores: [],
-      };
+    // 1. Helper para descartar datos mock o semillas heredadas de pruebas de demostración
+    const isMockSeed = (s: Partial<EnrichedStudent>) => {
+      if (!s || !s.id) return false;
+      if (/^st-00\d$/.test(s.id)) return true;
+      if (
+        s.email &&
+        s.email.endsWith('@eddip.edu.co') &&
+        ['estudiante', 'laura', 'carlos', 'natalia', 'andres', 'juliana', 'felipe', 'valeria', 'daniel', 'mariana'].includes(
+          s.email.split('@')[0]
+        )
+      ) {
+        return true;
+      }
+      return false;
+    };
 
+    // 2. Consultar estudiantes en la base de datos Supabase (tabla site_content clave 'admin_students_list')
+    let remoteStudents: EnrichedStudent[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', 'admin_students_list')
+        .maybeSingle();
+
+      if (!error && data?.value && Array.isArray(data.value)) {
+        remoteStudents = (data.value as EnrichedStudent[]).filter(s => !isMockSeed(s));
+      }
+    } catch (err) {
+      console.warn('Advertencia al consultar estudiantes en Supabase site_content:', err);
+    }
+
+    // 3. Consultar perfiles registrados en la tabla profiles de Supabase
+    let profileStudents: EnrichedStudent[] = [];
+    try {
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!pError && profiles && Array.isArray(profiles)) {
+        profileStudents = profiles
+          .filter(p => p.role !== 'admin' && p.email && !p.email.includes('admin') && !isMockSeed(p))
+          .map(p => ({
+            id: p.id,
+            name: p.full_name || p.email?.split('@')[0] || 'Estudiante',
+            email: p.email,
+            documentId: p.document_id || '',
+            phone: p.phone || '',
+            city: p.city || 'Colombia',
+            coursesCount: 0,
+            progressAvg: 0,
+            certificatesCount: 0,
+            registeredAt: p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            status: 'Activo' as const,
+            enrolledCourses: [],
+            examScores: [],
+          }));
+      }
+    } catch {
+      // Ignorar si la tabla profiles no permite lectura pública
+    }
+
+    // 4. Leer respaldo local en localStorage (limpiando cualquier residuo de mock)
+    const rawLocal = getLocalData<EnrichedStudent[]>('custom_students', []);
+    const localStudents = rawLocal.filter(s => !isMockSeed(s));
+    if (rawLocal.length !== localStudents.length && typeof window !== 'undefined') {
+      setLocalData('custom_students', localStudents);
+    }
+
+    // 5. MOTOR DE DEDUPLICACIÓN ESTRICTA:
+    // Nunca permitir duplicados por correo electrónico ni por número de cédula / documento
+    const deduplicatedMap = new Map<string, EnrichedStudent>();
+    const docIndex = new Map<string, string>(); // normDoc -> targetKey
+
+    const normalizeEmail = (email?: string) => (email || '').trim().toLowerCase();
+    const normalizeDoc = (doc?: string) => (doc || '').replace(/[\s.-]/g, '').trim();
+
+    const insertOrMerge = (s: EnrichedStudent) => {
+      if (!s || !s.email) return;
+      const nEmail = normalizeEmail(s.email);
+      const nDoc = normalizeDoc(s.documentId);
+
+      let targetKey = nEmail;
+      if (!targetKey && nDoc) {
+        targetKey = docIndex.get(nDoc) || `doc_${nDoc}`;
+      } else if (nDoc && docIndex.has(nDoc)) {
+        targetKey = docIndex.get(nDoc)!;
+      }
+
+      if (deduplicatedMap.has(targetKey)) {
+        const existing = deduplicatedMap.get(targetKey)!;
+        // Fusionar datos preservando la información más completa y reciente
+        if (!existing.name || existing.name === 'Estudiante') existing.name = s.name;
+        if (!existing.documentId && s.documentId) existing.documentId = s.documentId;
+        if (!existing.phone && s.phone) existing.phone = s.phone;
+        if ((!existing.city || existing.city === 'Colombia') && s.city) existing.city = s.city;
+        if (s.registeredAt && (!existing.registeredAt || s.registeredAt < existing.registeredAt)) {
+          existing.registeredAt = s.registeredAt;
+        }
+
+        // Fusionar cursos inscritos sin duplicar slugs
+        const currentSlugs = new Set((existing.enrolledCourses || []).map(c => c.slug));
+        for (const ec of s.enrolledCourses || []) {
+          if (!currentSlugs.has(ec.slug)) {
+            existing.enrolledCourses.push(ec);
+            currentSlugs.add(ec.slug);
+          }
+        }
+        existing.coursesCount = existing.enrolledCourses.length;
+        existing.progressAvg = Math.max(existing.progressAvg || 0, s.progressAvg || 0);
+        existing.certificatesCount = Math.max(existing.certificatesCount || 0, s.certificatesCount || 0);
+
+        if (existing.progressAvg >= 100 || s.progressAvg >= 100) {
+          existing.status = 'Completado';
+        } else if (existing.progressAvg > 0 || s.progressAvg > 0 || existing.coursesCount > 0) {
+          existing.status = 'Activo';
+        }
+
+        deduplicatedMap.set(targetKey, existing);
+      } else {
+        const clone = {
+          ...s,
+          email: nEmail,
+          enrolledCourses: [...(s.enrolledCourses || [])],
+          examScores: [...(s.examScores || [])],
+        };
+        deduplicatedMap.set(targetKey, clone);
+        if (nDoc) {
+          docIndex.set(nDoc, targetKey);
+        }
+      }
+    };
+
+    // Orden de prioridad: datos remotos de Supabase primero, luego perfiles de auth, luego locales reales.
+    // NOTA: No insertamos baseList (mock data). El directorio refleja exclusivamente la base de datos real.
+    for (const s of remoteStudents) insertOrMerge(s);
+    for (const s of profileStudents) insertOrMerge(s);
+    for (const s of localStudents) insertOrMerge(s);
+
+    const consolidated = Array.from(deduplicatedMap.values());
+    return consolidated;
+  },
+
+  // ==========================================
+  // VALIDACIÓN DE NO DUPLICIDAD DE ESTUDIANTE
+  // ==========================================
+  async isStudentDuplicate(
+    email: string,
+    documentId?: string,
+    excludeId?: string
+  ): Promise<{ isDuplicate: boolean; field?: 'email' | 'documentId'; message?: string; existingStudent?: EnrichedStudent }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanDoc = (documentId || '').trim();
+    const normDoc = cleanDoc.replace(/[\s.-]/g, '');
+
+    // 1. Obtener la lista consolidada
+    const allStudents = await this.getAllStudents();
+
+    // 2. Validar duplicidad de correo electrónico
+    if (cleanEmail) {
+      const byEmail = allStudents.find(
+        s => s.email.toLowerCase() === cleanEmail && (!excludeId || s.id !== excludeId)
+      );
+      if (byEmail) {
+        return {
+          isDuplicate: true,
+          field: 'email',
+          message: `El correo electrónico "${cleanEmail}" ya se encuentra registrado en el sistema.`,
+          existingStudent: byEmail,
+        };
+      }
+
+      // Validar también en la base de datos Supabase (tabla profiles)
+      try {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .ilike('email', cleanEmail);
+
+        if (profs && profs.length > 0) {
+          const match = profs.find(p => !excludeId || p.id !== excludeId);
+          if (match) {
+            return {
+              isDuplicate: true,
+              field: 'email',
+              message: `El correo electrónico "${cleanEmail}" ya está registrado en la base de datos (${match.full_name}).`,
+            };
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    // 3. Validar duplicidad de documento de identidad / cédula
+    if (normDoc && normDoc.length >= 4) {
+      const byDoc = allStudents.find(s => {
+        const sDoc = (s.documentId || '').replace(/[\s.-]/g, '');
+        return sDoc === normDoc && (!excludeId || s.id !== excludeId);
+      });
+      if (byDoc) {
+        return {
+          isDuplicate: true,
+          field: 'documentId',
+          message: `El documento de identidad "${cleanDoc}" ya se encuentra registrado con el estudiante ${byDoc.name}.`,
+          existingStudent: byDoc,
+        };
+      }
+
+      // Validar también en la base de datos Supabase (tabla profiles)
+      try {
+        const { data: profsDoc } = await supabase
+          .from('profiles')
+          .select('id, full_name, document_id')
+          .not('document_id', 'is', null);
+
+        if (profsDoc && profsDoc.length > 0) {
+          const match = profsDoc.find(p => {
+            const pDoc = (p.document_id || '').replace(/[\s.-]/g, '');
+            return pDoc === normDoc && (!excludeId || p.id !== excludeId);
+          });
+          if (match) {
+            return {
+              isDuplicate: true,
+              field: 'documentId',
+              message: `El documento de identidad "${cleanDoc}" ya se encuentra registrado en la base de datos (${match.full_name}).`,
+            };
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    return { isDuplicate: false };
+  },
+
+  // ==========================================
+  // GUARDAR Y PERSISTIR ESTUDIANTE EN BASE DE DATOS
+  // ==========================================
+  async saveStudent(studentData: Partial<EnrichedStudent> & { name: string; email: string }): Promise<{
+    success: boolean;
+    error: string | null;
+    student?: EnrichedStudent;
+  }> {
+    const cleanEmail = (studentData.email || '').trim().toLowerCase();
+    const cleanDoc = (studentData.documentId || '').trim();
+    const cleanName = (studentData.name || '').trim();
+
+    if (!cleanEmail) {
+      return { success: false, error: 'El correo electrónico es obligatorio.' };
+    }
+    if (!cleanName) {
+      return { success: false, error: 'El nombre completo es obligatorio.' };
+    }
+
+    // 1. Comprobar que no haya duplicados
+    const dupCheck = await this.isStudentDuplicate(cleanEmail, cleanDoc, studentData.id);
+    if (dupCheck.isDuplicate) {
       return {
-        id: s.id,
-        name: s.name,
-        email: s.email,
-        documentId: `1.0${30 + idx}.456.${780 + idx}`,
-        phone: `300 ${500 + idx} 01${idx}`,
-        city: idx % 2 === 0 ? 'Bogotá D.C.' : 'Medellín',
-        coursesCount: customData.enrolledCourses.length,
-        progressAvg: s.progress,
-        certificatesCount: s.certificates,
-        registeredAt: s.registeredAt,
-        status: s.progress >= 100 ? 'Completado' : s.progress > 0 ? 'Activo' : 'Inactivo',
-        enrolledCourses: customData.enrolledCourses,
-        examScores: customData.examScores,
+        success: false,
+        error: dupCheck.message || 'Ya existe un estudiante registrado con estos datos.',
       };
-    });
+    }
 
-    const localStudents = getLocalData<EnrichedStudent[]>('custom_students', []);
-    return [...localStudents, ...baseList];
+    // 2. Obtener lista consolidada actual
+    const currentList = await this.getAllStudents();
+    const existingIndex = currentList.findIndex(
+      s => (studentData.id && s.id === studentData.id) || s.email.toLowerCase() === cleanEmail
+    );
+
+    let resolvedStudent: EnrichedStudent;
+    if (existingIndex >= 0) {
+      resolvedStudent = {
+        ...currentList[existingIndex],
+        ...studentData,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: cleanDoc || currentList[existingIndex].documentId,
+        phone: studentData.phone?.trim() || currentList[existingIndex].phone || '',
+        city: studentData.city?.trim() || currentList[existingIndex].city || 'Colombia',
+      };
+      currentList[existingIndex] = resolvedStudent;
+    } else {
+      resolvedStudent = {
+        id: studentData.id || `st-${Date.now()}`,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: cleanDoc,
+        phone: studentData.phone?.trim() || '',
+        city: studentData.city?.trim() || 'Colombia',
+        coursesCount: studentData.coursesCount || (studentData.enrolledCourses?.length || 0),
+        progressAvg: studentData.progressAvg || 0,
+        certificatesCount: studentData.certificatesCount || 0,
+        registeredAt: studentData.registeredAt || new Date().toISOString().slice(0, 10),
+        status: studentData.status || 'Activo',
+        enrolledCourses: studentData.enrolledCourses || [],
+        examScores: studentData.examScores || [],
+      };
+      currentList.unshift(resolvedStudent);
+    }
+
+    // 3. PERSISTENCIA EN SUPABASE:
+    // a) En la tabla site_content con clave 'admin_students_list'
+    try {
+      await supabase.from('site_content').upsert({
+        key: 'admin_students_list',
+        value: currentList,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Error al guardar en Supabase site_content:', err);
+    }
+
+    // b) En la tabla profiles de Supabase
+    try {
+      await supabase.from('profiles').upsert({
+        id: resolvedStudent.id,
+        email: cleanEmail,
+        full_name: resolvedStudent.name,
+        document_id: cleanDoc,
+        phone: resolvedStudent.phone || '',
+        city: resolvedStudent.city || '',
+        role: 'student',
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Error al guardar en tabla profiles de Supabase:', err);
+    }
+
+    // 4. Respaldo local
+    setLocalData('custom_students', currentList);
+    setLocalData('eddip_admin_custom_students', currentList);
+
+    // 5. Notificación reactiva
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: currentList }));
+      try {
+        localStorage.setItem('eddip_students_ping', Date.now().toString());
+      } catch {}
+    }
+
+    return { success: true, error: null, student: resolvedStudent };
   },
 
   // ==========================================
@@ -502,7 +589,20 @@ export const adminService = {
   },
 
   async getExamBySlug(slug: string, course?: Course): Promise<Exam> {
-    // 1. Revisar primero en LocalStorage para reactividad instantánea en cliente
+    // 1. Revisar primero clave directa atómica en LocalStorage para reactividad instantánea
+    if (typeof window !== 'undefined') {
+      try {
+        const directKey = localStorage.getItem(`eddip_exam_${slug}`);
+        if (directKey) {
+          const parsed = JSON.parse(directKey);
+          if (parsed && parsed.questions && parsed.questions.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Revisar en lista de custom_exams en LocalStorage
     const localExams = getLocalData<Exam[]>('custom_exams', []);
     const foundLocal = localExams.find(e => e.courseSlug === slug);
     if (foundLocal && foundLocal.questions && foundLocal.questions.length > 0) {
@@ -522,7 +622,7 @@ export const adminService = {
       } catch {}
     }
 
-    // 2. Revisar en Supabase (site_content y exams)
+    // 3. Revisar en Supabase site_content (clave individual y lista general)
     try {
       const { data, error } = await supabase
         .from('site_content')
@@ -534,6 +634,24 @@ export const adminService = {
         const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         if (parsed && parsed.questions && parsed.questions.length > 0) {
           return parsed as Exam;
+        }
+      }
+    } catch {}
+
+    try {
+      const { data, error } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', 'admin_exams_list')
+        .single();
+
+      if (!error && data?.value) {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (Array.isArray(parsed)) {
+          const found = parsed.find((e: any) => e.courseSlug === slug);
+          if (found && found.questions && found.questions.length > 0) {
+            return found as Exam;
+          }
         }
       }
     } catch {}
@@ -641,7 +759,7 @@ export const adminService = {
       });
     } catch {}
 
-    // 2. Almacenamiento local redundante
+    // 2. Almacenamiento local redundante y atómico
     const customExams = getLocalData<Exam[]>('custom_exams', []);
     const idx = customExams.findIndex(e => e.courseSlug === exam.courseSlug);
     if (idx >= 0) {
@@ -653,11 +771,22 @@ export const adminService = {
 
     if (typeof window !== 'undefined') {
       try {
+        localStorage.setItem(`eddip_exam_${exam.courseSlug}`, JSON.stringify(exam));
         localStorage.setItem('custom_exams', JSON.stringify(customExams));
+        localStorage.setItem('eddip_exam_ping', Date.now().toString());
         // Notificar reactivamente a la vista de evaluación del estudiante y al panel admin
         window.dispatchEvent(new CustomEvent('eddip_exam_updated', { detail: exam }));
+        window.dispatchEvent(new CustomEvent('eddip_exams_updated', { detail: exam }));
       } catch {}
     }
+
+    try {
+      await supabase.from('site_content').upsert({
+        key: 'admin_exams_list',
+        value: customExams,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    } catch {}
 
     return true;
   },
@@ -666,6 +795,8 @@ export const adminService = {
   // CERTIFICADOS Y VENTAS
   // ==========================================
   async issueManualCertificate(cert: Certificate): Promise<boolean> {
+    const lower = cert.code.trim().toLowerCase();
+
     try {
       await supabase.from('certificates').upsert({
         code: cert.code,
@@ -673,49 +804,240 @@ export const adminService = {
         course_slug: cert.courseSlug,
         course_title: cert.course,
         hours: cert.hours,
-        status: cert.status,
+        status: cert.status || 'Válido',
         issue_date: cert.date,
       });
-    } catch {
-      // Fallback
+    } catch (e) {
+      console.warn('Aviso tabla certificates:', e);
+    }
+
+    try {
+      await supabase.from('site_content').upsert({
+        key: `certificate_${lower}`,
+        value: {
+          code: cert.code,
+          student: cert.student,
+          studentName: cert.student,
+          documentId: cert.documentId,
+          courseSlug: cert.courseSlug,
+          course: cert.course,
+          courseTitle: cert.course,
+          hours: cert.hours,
+          status: cert.status || 'Válido',
+          date: cert.date,
+          issueDate: cert.date,
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (e) {
+      console.warn('Aviso site_content certificado:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`eddip_cert_${lower}`, JSON.stringify(cert));
+      } catch {}
     }
 
     const allCerts = getLocalData<Certificate[]>('admin_certs', certificates);
-    allCerts.unshift(cert);
+    const existingIdx = allCerts.findIndex(c => c.code.toLowerCase() === lower);
+    if (existingIdx >= 0) {
+      allCerts[existingIdx] = cert;
+    } else {
+      allCerts.unshift(cert);
+    }
     setLocalData('admin_certs', allCerts);
+    setLocalData('eddip_student_certificates_list', allCerts);
     return true;
   },
 
-  recordSale(sale: Sale): void {
-    const list = getLocalData<Sale[]>('admin_sales', sales);
-    list.unshift(sale);
-    setLocalData('admin_sales', list);
-  },
-
+  // ==========================================
+  // VENTAS / GESTIÓN COMERCIAL SINCRONIZADA CON BASE DE DATOS REAL
+  // ==========================================
   async getSalesHistory(): Promise<Sale[]> {
-    return getLocalData<Sale[]>('admin_sales', sales);
+    // 1. Helper para descartar transacciones mock de prueba (VEN-1001 a VEN-1018)
+    const isMockSale = (s: Partial<Sale>) => {
+      if (!s || !s.id) return false;
+      if (
+        /^VEN-10[0-1]\d$/.test(s.id) &&
+        [
+          'Sebastián Martínez',
+          'Laura Gómez',
+          'Carlos Rodríguez',
+          'Natalia Pérez',
+          'Andrés Torres',
+          'Juliana Castro',
+          'Felipe Vargas',
+          'Valeria Morales',
+          'Daniel Ruiz',
+          'Mariana Duarte',
+        ].includes(s.student || '')
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    // 2. Intentar cargar desde Supabase site_content con clave 'admin_sales_list'
+    try {
+      const { data, error } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', 'admin_sales_list')
+        .maybeSingle();
+
+      if (!error && data && data.value && Array.isArray(data.value)) {
+        const filteredRemote = (data.value as Sale[]).filter(s => !isMockSale(s));
+        setLocalData('admin_sales', filteredRemote);
+        return filteredRemote;
+      }
+    } catch (err) {
+      console.warn('Error fetching sales from Supabase:', err);
+    }
+
+    // 3. Almacenamiento local real (limpiando cualquier residuo de mock)
+    const rawLocal = getLocalData<Sale[]>('admin_sales', []);
+    const sanitizedLocal = rawLocal.filter(s => !isMockSale(s));
+    if (rawLocal.length !== sanitizedLocal.length && typeof window !== 'undefined') {
+      setLocalData('admin_sales', sanitizedLocal);
+    }
+
+    return sanitizedLocal;
   },
 
-  enrollStudentInCourse(studentName: string, studentEmail: string, courseSlug: string, courseTitle: string): void {
-    const localStudents = getLocalData<EnrichedStudent[]>('custom_students', []);
-    const existing = localStudents.find(s => s.email.toLowerCase() === studentEmail.toLowerCase());
-    if (existing) {
-      if (!existing.enrolledCourses.some(c => c.slug === courseSlug)) {
-        existing.enrolledCourses.push({
+  async recordSale(sale: Sale): Promise<boolean> {
+    const list = await this.getSalesHistory();
+    const existingIdx = list.findIndex(s => s.id === sale.id);
+    let updated: Sale[];
+    if (existingIdx >= 0) {
+      updated = [...list];
+      updated[existingIdx] = sale;
+    } else {
+      updated = [sale, ...list];
+    }
+    setLocalData('admin_sales', updated);
+
+    // Persistir directamente en Supabase tabla site_content
+    try {
+      await supabase.from('site_content').upsert(
+        {
+          key: 'admin_sales_list',
+          value: updated,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
+    } catch (err) {
+      console.warn('Error recording sale in Supabase site_content:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_sales_updated', { detail: updated }));
+      try {
+        localStorage.setItem('eddip_sales_ping', Date.now().toString());
+      } catch {}
+    }
+    return true;
+  },
+
+  async updateSaleStatus(saleId: string, newStatus: string): Promise<boolean> {
+    const list = await this.getSalesHistory();
+    const updated = list.map(s => (s.id === saleId ? { ...s, status: newStatus } : s));
+    setLocalData('admin_sales', updated);
+
+    try {
+      await supabase.from('site_content').upsert(
+        {
+          key: 'admin_sales_list',
+          value: updated,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
+    } catch (err) {
+      console.warn('Error updating sale status in Supabase:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_sales_updated', { detail: updated }));
+      try {
+        localStorage.setItem('eddip_sales_ping', Date.now().toString());
+      } catch {}
+    }
+    return true;
+  },
+
+  async deleteSale(saleId: string): Promise<boolean> {
+    const list = await this.getSalesHistory();
+    const updated = list.filter(s => s.id !== saleId);
+    setLocalData('admin_sales', updated);
+
+    try {
+      await supabase.from('site_content').upsert(
+        {
+          key: 'admin_sales_list',
+          value: updated,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
+    } catch (err) {
+      console.warn('Error deleting sale in Supabase:', err);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_sales_updated', { detail: updated }));
+      try {
+        localStorage.setItem('eddip_sales_ping', Date.now().toString());
+      } catch {}
+    }
+    return true;
+  },
+
+  async enrollStudentInCourse(
+    studentName: string,
+    studentEmail: string,
+    courseSlug: string,
+    courseTitle: string,
+    extraData?: { documentId?: string; phone?: string; city?: string }
+  ): Promise<void> {
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    const cleanName = (studentName || '').trim() || 'Estudiante Matriculado';
+    const studentsList = await this.getAllStudents();
+
+    let student = studentsList.find(s => s.email.toLowerCase() === cleanEmail);
+    if (!student && extraData?.documentId) {
+      const normDoc = extraData.documentId.replace(/[\s.-]/g, '');
+      if (normDoc) {
+        student = studentsList.find(s => (s.documentId || '').replace(/[\s.-]/g, '') === normDoc);
+      }
+    }
+
+    if (student) {
+      if (extraData?.documentId && !student.documentId) student.documentId = extraData.documentId.trim();
+      if (extraData?.phone && !student.phone) student.phone = extraData.phone.trim();
+      if (extraData?.city && (!student.city || student.city === 'Colombia')) student.city = extraData.city.trim();
+
+      const existsCourse = student.enrolledCourses.some(c => c.slug === courseSlug);
+      if (!existsCourse) {
+        student.enrolledCourses.push({
           slug: courseSlug,
           title: courseTitle,
           progress: 0,
           completedLessons: [],
           totalLessons: 1,
         });
-        existing.coursesCount = existing.enrolledCourses.length;
-        setLocalData('custom_students', localStudents);
+        student.coursesCount = student.enrolledCourses.length;
       }
+      student.status = 'Activo';
     } else {
-      const newStudent: EnrichedStudent = {
+      student = {
         id: `st-${Date.now()}`,
-        name: studentName,
-        email: studentEmail,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: extraData?.documentId?.trim() || '',
+        phone: extraData?.phone?.trim() || '',
+        city: extraData?.city?.trim() || 'Colombia',
         coursesCount: 1,
         progressAvg: 0,
         certificatesCount: 0,
@@ -732,8 +1054,67 @@ export const adminService = {
         ],
         examScores: [],
       };
-      localStudents.unshift(newStudent);
-      setLocalData('custom_students', localStudents);
+      studentsList.unshift(student);
     }
+
+    // Persistir en Supabase
+    try {
+      await supabase.from('site_content').upsert({
+        key: 'admin_students_list',
+        value: studentsList,
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('profiles').upsert({
+        id: student.id,
+        email: cleanEmail,
+        full_name: student.name,
+        document_id: student.documentId || '',
+        phone: student.phone || '',
+        city: student.city || '',
+        role: 'student',
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('enrollments').upsert({
+        student_id: student.id,
+        course_slug: courseSlug,
+        enrolled_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Error saving enrollment to Supabase:', err);
+    }
+
+    setLocalData('custom_students', studentsList);
+    setLocalData('eddip_admin_custom_students', studentsList);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: studentsList }));
+      try {
+        localStorage.setItem('eddip_students_ping', Date.now().toString());
+      } catch {}
+    }
+  },
+
+  async deleteStudent(studentId: string): Promise<boolean> {
+    const list = await this.getAllStudents();
+    const updated = list.filter(s => s.id !== studentId);
+
+    try {
+      await supabase.from('site_content').upsert({
+        key: 'admin_students_list',
+        value: updated,
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('profiles').delete().eq('id', studentId);
+    } catch (err) {
+      console.warn('Error deleting student from Supabase:', err);
+    }
+
+    setLocalData('custom_students', updated);
+    setLocalData('eddip_admin_custom_students', updated);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: updated }));
+    }
+    return true;
   },
 };

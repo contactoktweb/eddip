@@ -52,6 +52,10 @@ export function SiteHeader() {
             <Link className="nav-user-link" href="/admin">
               Panel admin
             </Link>
+          ) : role === 'designer' ? (
+            <Link className="nav-user-link" href="/admin/cursos">
+              Gestión de Cursos
+            </Link>
           ) : (
             <Link className="nav-user-link desktop-only" href="/login">
               Iniciar sesión

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   document_id TEXT,
   phone TEXT,
   city TEXT,
-  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin')),
+  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin', 'designer')),
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -267,8 +267,9 @@ CREATE POLICY "Site content can be modified by authenticated users" ON public.si
 -- Semillas de contenido institucional
 INSERT INTO public.site_content (key, value) VALUES ('aboutHero', '{"eyebrow":"Institución de Educación Superior y Doctrina","title":"Excelencia académica para profesionales de la seguridad y el derecho","description":"La Escuela de Desarrollo y Doctrina Policial (EDDIP) lidera programas de educación continua, doctrina normativa y actualización profesional orientados a servidores públicos, personal de seguridad y juristas en todo el territorio nacional."}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 INSERT INTO public.site_content (key, value) VALUES ('mission', '{"title":"Nuestra Misión","description":"Formar y capacitar integralmente a profesionales en seguridad, derecho de policía, derechos humanos y gestión pública mediante programas estructurados bajo los más altos estándares éticos, técnicos y normativos vigentes en Colombia.","pillars":["Rigor doctrinario y fundamentación jurídica","Actualización normativa y jurisprudencial constante","Certificaciones verificables con trazabilidad criptográfica QR","Docentes de amplia trayectoria institucional y académica"]}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
-INSERT INTO public.site_content (key, value) VALUES ('vision', '{"title":"Nuestra Visión","description":"Ser reconocidos como la plataforma referente a nivel nacional e internacional en formación virtual especializada en convivencia ciudadana, seguridad integral y administración pública, fortaleciendo el ejercicio profesional transparente y efectivo."}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
-INSERT INTO public.site_content (key, value) VALUES ('stats', '{"students":"12.500+","courses":"25+","certificates":"8.900+","countries":"15+"}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+INSERT INTO public.site_content (key, value) VALUES ('homeHero', '{"eyebrow":"Bienvenido a EDDIP","headline":"Educación online para profesionales que transforman el mundo","headlineHighlight":"transforman el mundo","lead":"Capacítate con cursos especializados diseñados por expertos. Aprende a tu ritmo, obtén certificados verificables y avanza en tu carrera profesional.","primaryBtnText":"Explorar cursos","primaryBtnLink":"/cursos","secondaryBtnText":"Conoce más","secondaryBtnLink":"/nosotros"}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+INSERT INTO public.site_content (key, value) VALUES ('homeStats', '{"students":"12.500+","courses":"250+","certificates":"8.900+","countries":"15+","rating":"4.9 / 5"}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+INSERT INTO public.site_content (key, value) VALUES ('stats', '{"students":"12.500+","courses":"250+","certificates":"8.900+","countries":"15+"}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
 
 -- =======================================================
 -- 9. Semillas de Certificados Iniciales Verificables
