@@ -1,3 +1,19 @@
+## [2026-09-29] Módulo de Gestión y Asignación de Roles en Panel de Administración (/admin/roles)
+- **Sección de Roles y Permisos en Barra Lateral de Administración** ([`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx)):
+  - Incorporado el elemento permanente `['/admin/roles', 'Roles y Permisos', 'shield']` en `adminNav`, posicionado estratégicamente entre *Estudiantes* y *Certificados*.
+  - Restricción estricta de seguridad: accesible exclusivamente por usuarios con rol de Administrador (`admin`).
+- **Página Semántica y Metadatos SEO (`/admin/roles`)** ([`app/admin/roles/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/admin/roles/page.tsx)):
+  - Implementación con exactamente una sola etiqueta `<h1>` (`Roles y Asignación de Permisos`) respetando la estricta jerarquía de encabezados (Regla 6).
+  - Configuración de metadatos Next.js (Título descriptivo y Meta Description optimizados para SEO y accesibilidad).
+- **Componente Integral de Administración de Roles (`AdminRoleManager.tsx`)** ([`components/admin/AdminRoleManager.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminRoleManager.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
+  - **Métricas Consolidadas de Roles**: 4 tarjetas de estadísticas con micro-animaciones (Total de Usuarios, Administradores, Diseñadores Instruccionales y Estudiantes).
+  - **Matriz de Privilegios y Alcance Institucional**: Sección comparativa desplegable que clarifica los alcances de cada perfil (Administrador: Control Total; Diseñador Instruccional: Gestión Curricular y Contenidos; Estudiante: Campus Virtual y Evaluaciones).
+  - **Conmutador Rápido de Rol (1-Click)**: Selector segmented interactivo con feedback visual instantáneo (toast notification animado) y actualización multi-capa en tiempo real (Supabase `profiles`, `site_content` `eddip_registered_users`, sincronización del directorio de estudiantes y actualización reactiva de sesión activa).
+  - **Protección Antilockout**: Cuadro de diálogo de confirmación sensible si el administrador activo intenta modificar su propio rol o si se intenta degradar al último administrador existente.
+  - **Modal de Creación y Asignación Directa de Rol**: Formulario con tarjetas seleccionables para registrar un nuevo usuario con rol explícito (`designer`, `admin`, `student`) con validación de duplicidad por correo y cédula.
+  - **Diseño Responsivo Dual (Desktop & Mobile - Reglas 10-15)**: Tabla de datos en resoluciones amplias (`.role-desktop-view`) y tarjetas táctiles individuales en pantallas móviles (`.role-mobile-view`) con zonas de pulsación táctil ≥ 44px y cero desbordamiento horizontal.
+  - **Exportación de Datos**: Botón para exportar el censo de usuarios y roles asignados a formato CSV.
+
 ## [2026-09-29] Designación de Roles a Usuarios en el Registro de la Plataforma
 - **Selector Interactivo de Roles en Registro Oficial (`/login?mode=register`)** ([`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
   - **Selector de Roles con Tarjetas Táctiles Interactivas**: Se implementó el componente `.auth-role-select-grid` con 3 tarjetas diseñadas con micro-animaciones, iconos temáticos (`cap`, `edit`, `shield`), insignias de perfil y radio-indicators activos:

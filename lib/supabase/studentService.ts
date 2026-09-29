@@ -27,7 +27,7 @@ function setLocalData<T>(key: string, data: T): void {
 export type RegisteredAccount = {
   id: string;
   email: string;
-  password: string;
+  password?: string;
   fullName: string;
   documentId?: string;
   phone?: string;
@@ -37,7 +37,7 @@ export type RegisteredAccount = {
 };
 
 // Generador de UUID v4 estándar compatible con PostgreSQL y navegadores
-function generateUUID(): string {
+export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }

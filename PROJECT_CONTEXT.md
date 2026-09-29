@@ -64,6 +64,15 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
   - Persistencia multi-capa: guarda en `supabase.auth.signUp` con metadata `role`, tabla `public.profiles`, tabla `site_content` (`eddip_registered_users`) y almacenamiento local reactivo.
   - Al iniciar sesión con credenciales, la plataforma detecta automáticamente el rol designado del usuario y lo conduce a su área correspondiente.
   - Los administradores también pueden designar roles explícitos al agregar nuevos usuarios desde el modal de `/admin/estudiantes` (`AddStudentModal.tsx`).
+- **Módulo de Gestión y Asignación de Roles (`/admin/roles`)**:
+  - `AdminRoleManager.tsx`: Panel administrativo avanzado de RBAC integrado en la barra lateral (`DashboardShell.tsx` con icono `shield`).
+  - **Métricas de Roles**: 4 tarjetas de estadísticas con micro-interacciones (Total Usuarios, Administradores, Diseñadores Instruccionales y Estudiantes).
+  - **Matriz de Privilegios**: Guía visual comparativa desplegable que detalla las facultades y restricciones de cada rol.
+  - **Asignación Rápida de Rol**: Conmutador segmented de 1-clic con feedback visual instantáneo (toast notification) y persistencia reactiva en Supabase (`profiles` y `site_content`) y sincronización de sesiones activas.
+  - **Protección Antilockout**: Alerta modal de confirmación antes de degradar la cuenta del administrador en sesión activa o el último administrador.
+  - **Creación / Asignación Directa de Rol**: Modal para agregar nuevos usuarios institucionales designando su rol (Diseñador, Administrador o Estudiante) con validación de no duplicidad.
+  - **Diseño Responsive & Touch Mobile (Regla 10-15)**: Tabla de datos en desktop y tarjetas táctiles optimizadas en móviles (`role-mobile-view`) con zonas de pulsación ≥ 44px y sin desbordamiento horizontal.
+  - **Exportación CSV**: Descarga inmediata del censo de usuarios y roles asignados.
 - **Administrador (`admin`)**:
   - Acceso total y completo a la plataforma: Dashboard general, Cursos, Evaluaciones, Estudiantes, Certificados, Ventas y Contenido web.
   - Gestión integral de usuarios, finanzas, métricas y eliminación de registros.

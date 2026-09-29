@@ -18,6 +18,7 @@ const adminNav = [
   ['/admin/cursos', 'Cursos', 'book'],
   ['/admin/evaluaciones', 'Evaluaciones', 'file'],
   ['/admin/estudiantes', 'Estudiantes', 'users'],
+  ['/admin/roles', 'Roles y Permisos', 'shield'],
   ['/admin/certificados', 'Certificados', 'award'],
   ['/admin/ventas', 'Ventas', 'dollar'],
   ['/admin/contenido', 'Contenido web', 'edit'],

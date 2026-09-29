@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import type { Course, Exam, ExamQuestion, Certificate, Sale } from '@/lib/types';
 import { baseCourses, certificates, exams as baseExams } from '@/lib/data';
+import { getRegisteredAccounts, saveRegisteredAccount, type RegisteredAccount, generateUUID } from './studentService';
 
 const STORAGE_PREFIX = 'eddip_admin_';
 
@@ -1118,6 +1119,323 @@ export const adminService = {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: updated }));
+    }
+    return true;
+  },
+
+  // ==========================================
+  // GESTIÓN INTEGRAL DE ROLES Y USUARIOS (RBAC)
+  // ==========================================
+  async getUserAccounts(): Promise<RegisteredAccount[]> {
+    // 1. Obtener cuentas registradas en site_content y local
+    const registered = await getRegisteredAccounts();
+
+    // 2. Obtener perfiles de la tabla profiles de Supabase
+    let profilesList: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data && Array.isArray(data)) {
+        profilesList = data;
+      }
+    } catch {}
+
+    // 3. Obtener estudiantes del directorio institucional
+    const students = await this.getAllStudents();
+
+    // 4. Consolidar en un mapa unificado por correo electrónico
+    const userMap = new Map<string, RegisteredAccount>();
+
+    // Cuentas institucionales preconfiguradas garantizadas
+    const defaultAccounts: RegisteredAccount[] = [
+      {
+        id: 'admin-seed-01',
+        email: 'admin@eddip.edu.co',
+        fullName: 'Administrador EDDIP',
+        documentId: '99.888.777',
+        phone: '310 999 0000',
+        city: 'Bogotá D.C.',
+        role: 'admin',
+        createdAt: '2026-01-10T08:00:00.000Z',
+      },
+      {
+        id: 'designer-seed-01',
+        email: 'disenador@eddip.edu.co',
+        fullName: 'Diseñador Instruccional',
+        documentId: '88.777.666',
+        phone: '312 444 5566',
+        city: 'Bogotá D.C.',
+        role: 'designer',
+        createdAt: '2026-01-12T08:00:00.000Z',
+      },
+      {
+        id: 'student-seed-01',
+        email: 'estudiante@eddip.edu.co',
+        fullName: 'Sebastián Martínez',
+        documentId: '1.032.456.789',
+        phone: '300 555 0182',
+        city: 'Bogotá D.C.',
+        role: 'student',
+        createdAt: '2026-01-15T08:00:00.000Z',
+      },
+    ];
+
+    for (const d of defaultAccounts) {
+      userMap.set(d.email.toLowerCase().trim(), d);
+    }
+
+    // Agregar cuentas de estudiantes
+    for (const s of students) {
+      if (!s.email) continue;
+      const clean = s.email.toLowerCase().trim();
+      const existing = userMap.get(clean);
+      userMap.set(clean, {
+        id: s.id,
+        email: clean,
+        fullName: s.name,
+        documentId: s.documentId || existing?.documentId || '',
+        phone: s.phone || existing?.phone || '',
+        city: s.city || existing?.city || 'Colombia',
+        role: s.role || existing?.role || 'student',
+        createdAt: s.registeredAt || existing?.createdAt || new Date().toISOString(),
+      });
+    }
+
+    // Agregar o actualizar con cuentas registradas (mayor fidelidad de credenciales/roles)
+    for (const r of registered) {
+      if (!r.email) continue;
+      const clean = r.email.toLowerCase().trim();
+      const existing = userMap.get(clean);
+      userMap.set(clean, {
+        id: r.id || existing?.id || generateUUID(),
+        email: clean,
+        fullName: r.fullName || existing?.fullName || clean.split('@')[0],
+        documentId: r.documentId || existing?.documentId || '',
+        phone: r.phone || existing?.phone || '',
+        city: r.city || existing?.city || 'Colombia',
+        role: r.role || existing?.role || 'student',
+        createdAt: r.createdAt || existing?.createdAt || new Date().toISOString(),
+      });
+    }
+
+    // Combinar perfiles de Supabase
+    for (const p of profilesList) {
+      if (!p.email) continue;
+      const clean = p.email.toLowerCase().trim();
+      const existing = userMap.get(clean);
+      userMap.set(clean, {
+        id: p.id || existing?.id || generateUUID(),
+        email: clean,
+        fullName: p.full_name || existing?.fullName || clean.split('@')[0],
+        documentId: p.document_id || existing?.documentId || '',
+        phone: p.phone || existing?.phone || '',
+        city: p.city || existing?.city || 'Colombia',
+        role: (p.role as 'student' | 'designer' | 'admin') || existing?.role || 'student',
+        createdAt: p.created_at || existing?.createdAt || new Date().toISOString(),
+      });
+    }
+
+    return Array.from(userMap.values());
+  },
+
+  async updateUserRole(
+    emailOrId: string,
+    newRole: 'student' | 'designer' | 'admin'
+  ): Promise<{ success: boolean; error?: string }> {
+    const list = await this.getUserAccounts();
+    const cleanKey = emailOrId.toLowerCase().trim();
+    const target = list.find(u => u.email.toLowerCase().trim() === cleanKey || u.id === emailOrId);
+
+    if (!target) {
+      return { success: false, error: 'Usuario no encontrado en el sistema.' };
+    }
+
+    const updatedUser: RegisteredAccount = {
+      ...target,
+      role: newRole,
+    };
+
+    // 1. Guardar en registered accounts
+    await saveRegisteredAccount(updatedUser);
+
+    // 2. Actualizar en Supabase tabla profiles
+    try {
+      await supabase.from('profiles').upsert({
+        id: target.id,
+        email: target.email.toLowerCase().trim(),
+        full_name: target.fullName,
+        document_id: target.documentId || '',
+        phone: target.phone || '',
+        city: target.city || 'Colombia',
+        role: newRole,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('Advertencia al actualizar rol en tabla profiles de Supabase:', e);
+    }
+
+    // 3. Sincronizar directorio de estudiantes
+    try {
+      const students = await this.getAllStudents();
+      const studentIdx = students.findIndex(s => s.email.toLowerCase().trim() === target.email.toLowerCase().trim());
+      if (studentIdx >= 0) {
+        students[studentIdx] = {
+          ...students[studentIdx],
+          role: newRole,
+        };
+        await supabase.from('site_content').upsert({
+          key: 'admin_students_list',
+          value: students,
+          updated_at: new Date().toISOString(),
+        });
+        setLocalData('custom_students', students);
+        setLocalData('eddip_admin_custom_students', students);
+      } else if (newRole === 'student') {
+        await this.saveStudent({
+          id: target.id,
+          name: target.fullName,
+          email: target.email,
+          documentId: target.documentId,
+          phone: target.phone,
+          city: target.city,
+          role: 'student',
+          status: 'Activo',
+        });
+      }
+    } catch (e) {
+      console.warn('Advertencia al sincronizar lista de estudiantes:', e);
+    }
+
+    // 4. Si es la cuenta en sesión activa, actualizar sesión local
+    if (typeof window !== 'undefined') {
+      try {
+        const rawLocalUser = localStorage.getItem(`eddip_user_${target.email.toLowerCase().trim()}`);
+        if (rawLocalUser) {
+          const parsed = JSON.parse(rawLocalUser);
+          parsed.role = newRole;
+          localStorage.setItem(`eddip_user_${target.email.toLowerCase().trim()}`, JSON.stringify(parsed));
+        }
+        const currentActive = localStorage.getItem('eddip-demo-v2');
+        if (currentActive) {
+          const parsedActive = JSON.parse(currentActive);
+          if (parsedActive.userProfile?.email?.toLowerCase().trim() === target.email.toLowerCase().trim()) {
+            parsedActive.role = newRole;
+            localStorage.setItem('eddip-demo-v2', JSON.stringify(parsedActive));
+          }
+        }
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: { email: target.email, role: newRole } }));
+      window.dispatchEvent(new CustomEvent('eddip_students_updated'));
+    }
+
+    return { success: true };
+  },
+
+  async createUserWithRole(data: {
+    fullName: string;
+    email: string;
+    role: 'student' | 'designer' | 'admin';
+    documentId?: string;
+    phone?: string;
+    city?: string;
+    password?: string;
+  }): Promise<{ success: boolean; error?: string; account?: RegisteredAccount }> {
+    const cleanEmail = (data.email || '').toLowerCase().trim();
+    const cleanName = (data.fullName || '').trim();
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Por favor ingresa un correo electrónico válido.' };
+    }
+    if (!cleanName) {
+      return { success: false, error: 'Por favor ingresa el nombre completo del usuario.' };
+    }
+
+    const dupCheck = await this.isStudentDuplicate(cleanEmail, data.documentId?.trim() || '');
+    if (dupCheck.isDuplicate) {
+      return { success: false, error: dupCheck.message || 'Ya existe un usuario con este correo o documento.' };
+    }
+
+    const newAcc: RegisteredAccount = {
+      id: generateUUID(),
+      email: cleanEmail,
+      fullName: cleanName,
+      documentId: data.documentId?.trim() || '',
+      phone: data.phone?.trim() || '',
+      city: data.city?.trim() || 'Colombia',
+      password: data.password || 'ChangeMe123*',
+      role: data.role,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Guardar en registered accounts
+    await saveRegisteredAccount(newAcc);
+
+    // 2. Guardar en tabla profiles de Supabase
+    try {
+      await supabase.from('profiles').upsert({
+        id: newAcc.id,
+        email: cleanEmail,
+        full_name: cleanName,
+        document_id: newAcc.documentId,
+        phone: newAcc.phone,
+        city: newAcc.city,
+        role: data.role,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Advertencia al guardar perfil en Supabase:', err);
+    }
+
+    // 3. Si el rol es estudiante, agregarlo al directorio
+    if (data.role === 'student') {
+      await this.saveStudent({
+        id: newAcc.id,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: newAcc.documentId,
+        phone: newAcc.phone,
+        city: newAcc.city,
+        role: 'student',
+        status: 'Activo',
+        coursesCount: 0,
+        progressAvg: 0,
+        certificatesCount: 0,
+        registeredAt: new Date().toISOString().slice(0, 10),
+        enrolledCourses: [],
+        examScores: [],
+      });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: newAcc }));
+    }
+
+    return { success: true, account: newAcc };
+  },
+
+  async deleteUserAccount(userIdOrEmail: string): Promise<boolean> {
+    const accounts = await this.getUserAccounts();
+    const clean = userIdOrEmail.toLowerCase().trim();
+    const updated = accounts.filter(a => a.id !== userIdOrEmail && a.email.toLowerCase().trim() !== clean);
+
+    try {
+      await supabase.from('site_content').upsert({
+        key: 'eddip_registered_users',
+        value: updated,
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('profiles').delete().or(`id.eq.${userIdOrEmail},email.eq.${clean}`);
+    } catch (err) {
+      console.warn('Error al eliminar cuenta en Supabase:', err);
+    }
+
+    setLocalData('registered_accounts', updated);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: updated }));
     }
     return true;
   },
