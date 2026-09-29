@@ -1365,7 +1365,7 @@ export const adminService = {
       documentId: data.documentId?.trim() || '',
       phone: data.phone?.trim() || '',
       city: data.city?.trim() || 'Colombia',
-      password: data.password || 'ChangeMe123*',
+      password: data.password || generateUUID().slice(0, 12),
       role: data.role,
       createdAt: new Date().toISOString(),
     };

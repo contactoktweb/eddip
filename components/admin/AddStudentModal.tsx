@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@/lib/icons';
 import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
-import { saveRegisteredAccount } from '@/lib/supabase/studentService';
+import { saveRegisteredAccount, generateUUID } from '@/lib/supabase/studentService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { Course } from '@/lib/types';
 
@@ -114,7 +114,7 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         await saveRegisteredAccount({
           id: res.student?.id || `usr-${Date.now()}`,
           email: cleanEmail,
-          password: 'ChangeMe123*',
+          password: generateUUID().slice(0, 12),
           fullName: cleanName,
           documentId: cleanDoc,
           phone: phone.trim(),

@@ -189,7 +189,7 @@ export function AdminRoleManager() {
         documentId: cleanDoc,
         phone: newPhone.trim(),
         city: newCity.trim() || 'Colombia',
-        password: newPassword.trim() || 'Eddip2026*',
+        password: newPassword.trim() || undefined,
         role: newRole,
       });
 
@@ -1563,7 +1563,7 @@ export function AdminRoleManager() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Por defecto: Eddip2026*"
+                  placeholder="Contraseña de acceso (o se genera automáticamente)"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   style={{

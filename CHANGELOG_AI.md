@@ -281,9 +281,9 @@
 
 ## [2026-09-26] Pasarela de Pagos Bold: Integración Oficial para Pago de Cursos
 - **Credenciales Seguras en `.env.local`** ([`.env.local`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/.env.local)):
-  - Incorporadas las credenciales de prueba proporcionadas:
-    - Llave de identidad: `7OkEZv2inQ-n10gIYdX_mEzjRGccyySgkpL4F7U_49k` asignada tanto a `NEXT_PUBLIC_BOLD_IDENTITY_KEY` como a `BOLD_IDENTITY_KEY`.
-    - Llave secreta: `TmbpZK-m32Y4_0A6a7czMA` asignada a `BOLD_SECRET_KEY` exclusivamente en el backend (cumpliendo estrictamente con la Regla 34 de seguridad sin exponerla en el bundle del cliente).
+  - Incorporadas las variables de entorno para la pasarela Bold:
+    - Identificador configurado en `NEXT_PUBLIC_BOLD_IDENTITY_KEY` y `BOLD_IDENTITY_KEY` en `.env.local`.
+    - Llave secreta configurada en `BOLD_SECRET_KEY` exclusivamente en el backend (cumpliendo estrictamente con la Regla 34 de seguridad sin exponerla en el bundle del cliente ni en el código fuente).
 - **Endpoint Seguro de Firma Criptográfica (`/api/bold/checkout`)** ([`app/api/bold/checkout/route.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/api/bold/checkout/route.ts)):
   - Generación de referencia única de orden `EDDIP-{timestamp}-{random}`.
   - Creación del hash de integridad criptográfica SHA-256 según la especificación de Bold: `SHA256(orderId + amount + currency + secretKey)`.

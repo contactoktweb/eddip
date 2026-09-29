@@ -9,10 +9,16 @@ export async function POST(req: NextRequest) {
     const apiKey =
       process.env.BOLD_IDENTITY_KEY ||
       process.env.NEXT_PUBLIC_BOLD_IDENTITY_KEY ||
-      '7OkEZv2inQ-n10gIYdX_mEzjRGccyySgkpL4F7U_49k';
+      '';
 
-    const secretKey =
-      process.env.BOLD_SECRET_KEY || 'TmbpZK-m32Y4_0A6a7czMA';
+    const secretKey = process.env.BOLD_SECRET_KEY || '';
+
+    if (!apiKey || !secretKey) {
+      return NextResponse.json(
+        { error: 'Credenciales de pasarela Bold no configuradas en el entorno (.env.local).' },
+        { status: 500 }
+      );
+    }
 
     const numericAmount = Math.max(0, Math.round(Number(amount) || 0));
     const orderId = `EDDIP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
