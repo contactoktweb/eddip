@@ -12,6 +12,7 @@
   - **Protección Antilockout**: Cuadro de diálogo de confirmación sensible si el administrador activo intenta modificar su propio rol o si se intenta degradar al último administrador existente.
   - **Modal de Creación y Asignación Directa de Rol**: Formulario con tarjetas seleccionables para registrar un nuevo usuario con rol explícito (`designer`, `admin`, `student`) con validación de duplicidad por correo y cédula.
   - **Diseño Responsivo Dual (Desktop & Mobile - Reglas 10-15)**: Tabla de datos en resoluciones amplias (`.role-desktop-view`) y tarjetas táctiles individuales en pantallas móviles (`.role-mobile-view`) con zonas de pulsación táctil ≥ 44px y cero desbordamiento horizontal.
+  - **Eliminación del Banner "Rol Activo"**: Se eliminó de manera definitiva el banner amarillo de "Rol Activo: Diseñador Instruccional" en [`components/admin/AdminCourseTable.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AdminCourseTable.tsx) para no exhibir mensajes redundantes a ningún usuario, y se unificaron los badges de cabecera en [`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx) con la paleta de tokens azules oficiales.
   - **Exportación de Datos**: Botón para exportar el censo de usuarios y roles asignados a formato CSV.
 
 ## [2026-09-29] Designación de Roles a Usuarios en el Registro de la Plataforma

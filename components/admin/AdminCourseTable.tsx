@@ -36,40 +36,6 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {isDesigner && (
-        <div
-          style={{
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
-            borderRadius: 14,
-            padding: '12px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            fontSize: 13,
-            color: '#92400e',
-          }}
-        >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: '#fef3c7',
-              color: '#d97706',
-              display: 'grid',
-              placeItems: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Icon name="book" size={16} />
-          </div>
-          <div>
-            <strong style={{ display: 'block', color: '#78350f' }}>Rol Activo: Diseñador Instruccional</strong>
-            <span>Tienes permisos exclusivos para crear nuevos cursos y actualizar módulos, lecciones y contenidos existentes.</span>
-          </div>
-        </div>
-      )}
 
       {/* Controles de catálogo */}
       <div

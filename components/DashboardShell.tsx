@@ -102,7 +102,7 @@ export function DashboardShell({
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: isDesigner ? '#d97706' : '#059669',
+                  background: '#059669',
                   display: 'inline-block',
                 }}
               />
@@ -164,7 +164,7 @@ export function DashboardShell({
               </div>
               <span
                 className={`dash-topbar-badge ${kind === 'admin' ? 'admin' : 'student'}`}
-                style={isDesigner ? { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' } : {}}
+                style={isDesigner ? { background: 'var(--blue-3)', color: 'var(--blue)', border: '1px solid var(--blue-4)' } : {}}
               >
                 {isDesigner ? 'Diseñador' : (kind === 'admin' ? 'Gestión' : 'Estudiante')}
               </span>
@@ -188,7 +188,7 @@ export function DashboardShell({
             >
               <div
                 className="avatar dash-topbar-avatar"
-                style={isDesigner ? { background: '#fef3c7', color: '#d97706' } : {}}
+                style={isDesigner ? { background: 'var(--blue-3)', color: 'var(--blue)' } : {}}
               >
                 {initials}
               </div>
