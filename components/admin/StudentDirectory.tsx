@@ -225,7 +225,25 @@ export function StudentDirectory({ students }: Props) {
                           .join('')}
                       </div>
                       <div>
-                        <div className="table-title">{s.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="table-title">{s.name}</span>
+                          {s.role && s.role !== 'student' && (
+                            <span
+                              style={{
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: 6,
+                                background: s.role === 'admin' ? '#ede9fe' : '#fef3c7',
+                                color: s.role === 'admin' ? '#6d28d9' : '#b45309',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                              }}
+                            >
+                              {s.role === 'admin' ? 'Admin' : 'Diseñador'}
+                            </span>
+                          )}
+                        </div>
                         <small style={{ color: '#7a8b9e' }}>{s.city || 'Colombia'}</small>
                       </div>
                     </div>

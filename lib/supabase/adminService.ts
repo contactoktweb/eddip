@@ -35,6 +35,7 @@ export type EnrichedStudent = {
   certificatesCount: number;
   registeredAt: string;
   status: 'Activo' | 'Inactivo' | 'Completado';
+  role?: 'student' | 'admin' | 'designer';
   enrolledCourses: {
     slug: string;
     title: string;
@@ -228,6 +229,7 @@ export const adminService = {
             certificatesCount: 0,
             registeredAt: p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
             status: 'Activo' as const,
+            role: (p.role as 'student' | 'admin' | 'designer') || 'student',
             enrolledCourses: [],
             examScores: [],
           }));
@@ -455,6 +457,7 @@ export const adminService = {
         documentId: cleanDoc || currentList[existingIndex].documentId,
         phone: studentData.phone?.trim() || currentList[existingIndex].phone || '',
         city: studentData.city?.trim() || currentList[existingIndex].city || 'Colombia',
+        role: studentData.role || currentList[existingIndex].role || 'student',
       };
       currentList[existingIndex] = resolvedStudent;
     } else {
@@ -470,6 +473,7 @@ export const adminService = {
         certificatesCount: studentData.certificatesCount || 0,
         registeredAt: studentData.registeredAt || new Date().toISOString().slice(0, 10),
         status: studentData.status || 'Activo',
+        role: studentData.role || 'student',
         enrolledCourses: studentData.enrolledCourses || [],
         examScores: studentData.examScores || [],
       };
@@ -497,7 +501,7 @@ export const adminService = {
         document_id: cleanDoc,
         phone: resolvedStudent.phone || '',
         city: resolvedStudent.city || '',
-        role: 'student',
+        role: resolvedStudent.role || 'student',
         updated_at: new Date().toISOString(),
       });
     } catch (err) {

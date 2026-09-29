@@ -117,12 +117,14 @@ export const studentService = {
     documentId?: string;
     phone?: string;
     city?: string;
+    role?: 'student' | 'admin' | 'designer';
   }) {
     const cleanEmail = (params.email || '').trim().toLowerCase();
     const cleanName = (params.fullName || '').trim();
     const cleanDoc = (params.documentId || '').trim();
     const cleanPhone = (params.phone || '').trim();
     const cleanCity = (params.city || '').trim();
+    const selectedRole: 'student' | 'admin' | 'designer' = params.role || 'student';
 
     if (!cleanEmail) {
       return { user: null, session: null, error: 'Por favor ingresa un correo electrónico válido.' };
@@ -170,7 +172,7 @@ export const studentService = {
             document_id: cleanDoc,
             phone: cleanPhone,
             city: cleanCity,
-            role: 'student',
+            role: selectedRole,
           },
         },
       });
@@ -192,30 +194,49 @@ export const studentService = {
       documentId: cleanDoc,
       phone: cleanPhone,
       city: cleanCity || 'Colombia',
-      role: 'student',
+      role: selectedRole,
       createdAt: new Date().toISOString(),
     };
     await saveRegisteredAccount(newAccount);
 
     // 4. PERSISTENCIA EN EL DIRECTORIO INSTITUCIONAL DE ESTUDIANTES (adminService)
-    // Para que el administrador vea al nuevo usuario registrado al instante en /admin/estudiantes
-    await adminService.saveStudent({
-      id: newAccount.id,
-      name: cleanName,
-      email: cleanEmail,
-      documentId: cleanDoc,
-      phone: cleanPhone,
-      city: cleanCity || 'Colombia',
-      coursesCount: 0,
-      progressAvg: 0,
-      certificatesCount: 0,
-      registeredAt: new Date().toISOString().slice(0, 10),
-      status: 'Activo',
-      enrolledCourses: [],
-      examScores: [],
-    });
+    // Si el usuario se registra con rol de estudiante, se incluye en el directorio académico
+    if (selectedRole === 'student') {
+      await adminService.saveStudent({
+        id: newAccount.id,
+        name: cleanName,
+        email: cleanEmail,
+        documentId: cleanDoc,
+        phone: cleanPhone,
+        city: cleanCity || 'Colombia',
+        coursesCount: 0,
+        progressAvg: 0,
+        certificatesCount: 0,
+        registeredAt: new Date().toISOString().slice(0, 10),
+        status: 'Activo',
+        enrolledCourses: [],
+        examScores: [],
+        role: 'student',
+      });
+    }
 
-    // 5. Guardar perfil local del estudiante
+    // Guardar en la tabla profiles de Supabase para consistencia directa
+    try {
+      await supabase.from('profiles').upsert({
+        id: newAccount.id,
+        email: cleanEmail,
+        full_name: cleanName,
+        document_id: cleanDoc,
+        phone: cleanPhone,
+        city: cleanCity || 'Colombia',
+        role: selectedRole,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Advertencia al guardar perfil en tabla profiles:', err);
+    }
+
+    // 5. Guardar perfil local del usuario con su rol designado
     const profile: StudentProfile = {
       id: newAccount.id,
       email: cleanEmail,
@@ -223,7 +244,7 @@ export const studentService = {
       documentId: cleanDoc,
       phone: cleanPhone,
       city: cleanCity,
-      role: 'student',
+      role: selectedRole,
       createdAt: new Date().toISOString(),
     };
     setLocalData('profile_' + newAccount.id, profile);
@@ -238,7 +259,7 @@ export const studentService = {
         document_id: cleanDoc,
         phone: cleanPhone,
         city: cleanCity,
-        role: 'student',
+        role: selectedRole,
       },
       app_metadata: {},
       aud: 'authenticated',
@@ -267,6 +288,16 @@ export const studentService = {
       });
 
       if (!error && data.user) {
+        if (!data.user.user_metadata?.role) {
+          const accounts = await getRegisteredAccounts();
+          const acc = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
+          if (acc?.role) {
+            data.user.user_metadata = {
+              ...(data.user.user_metadata || {}),
+              role: acc.role,
+            };
+          }
+        }
         return { user: data.user, session: data.session, error: null };
       }
     } catch {
@@ -311,7 +342,7 @@ export const studentService = {
         email: student.email,
         user_metadata: {
           full_name: student.name,
-          role: 'student',
+          role: student.role || 'student',
           document_id: student.documentId || '',
           phone: student.phone || '',
           city: student.city || '',

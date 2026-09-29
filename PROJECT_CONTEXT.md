@@ -55,7 +55,15 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
     - En PC / escritorio, el botón de navegación con las tres líneas (`.dash-topbar-menu-btn`) se oculta automáticamente (`display: none`), dado que la barra lateral (`dash-sidebar`) ya se encuentra fija y desplegada al 100%.
     - En dispositivos móviles y tabletas (`<= 820px`), el botón de 3 líneas se muestra como un control táctil (`display: inline-flex`) para desplegar la navegación lateral.
     - En pantallas móviles (`< 620px`), el header se optimiza automáticamente: el botón "Sitio Público" oculta su texto y adopta formato de icono cuadrado, el usuario oculta su nombre para mostrar únicamente el avatar circular, y el badge de rol se oculta para garantizar que ningún botón o texto se desborde o corte.
-## Sistema de Roles y Control de Acceso (RBAC)
+## Sistema de Roles y Control de Acceso (RBAC) y Designación en Registro
+- **Designación de Roles en el Registro Oficial (`/login?mode=register`)**:
+  - Al crear una cuenta en la plataforma, el usuario puede designar libremente su rol institucional mediante tarjetas interactivas táctiles y accesibles con micro-animaciones:
+    - **Estudiante (`student`)**: Perfil de alumno con acceso directo a aula virtual, temarios, notas, exámenes y certificados oficiales. Al registrarse redirige de inmediato a `/dashboard` (o al checkout si procedía de una compra).
+    - **Diseñador Instruccional (`designer`)**: Perfil docente/curricular con permisos exclusivos para estructurar programas académicos, lecciones y multimedia. Al registrarse redirige a `/admin/cursos`.
+    - **Administrador (`admin`)**: Perfil directivo con control total de la plataforma, métricas, ventas, usuarios y contenidos. Al registrarse redirige a `/admin`.
+  - Persistencia multi-capa: guarda en `supabase.auth.signUp` con metadata `role`, tabla `public.profiles`, tabla `site_content` (`eddip_registered_users`) y almacenamiento local reactivo.
+  - Al iniciar sesión con credenciales, la plataforma detecta automáticamente el rol designado del usuario y lo conduce a su área correspondiente.
+  - Los administradores también pueden designar roles explícitos al agregar nuevos usuarios desde el modal de `/admin/estudiantes` (`AddStudentModal.tsx`).
 - **Administrador (`admin`)**:
   - Acceso total y completo a la plataforma: Dashboard general, Cursos, Evaluaciones, Estudiantes, Certificados, Ventas y Contenido web.
   - Gestión integral de usuarios, finanzas, métricas y eliminación de registros.
@@ -67,6 +75,7 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
 - **Estudiante (`student`)**:
   - Acceso a su campus virtual (`/dashboard`, `/dashboard/cursos`, `/dashboard/certificados`, `/dashboard/perfil`).
   - Visualización del reproductor multimedia en lecciones y presentación de exámenes.
+  - Bloqueo de seguridad en `DashboardShell.tsx` si intenta acceder a rutas administrativas, con mensaje institucional y botón de regreso al aula virtual.
 
 - **Panel General (`/admin`)**:
   - `AdminStatGrid.tsx`: Métricas consolidadas 100% exactas y consistentes sincronizadas con la base de datos real (estudiantes registrados calculados en tiempo real desde Supabase, cursos publicados, ventas procesadas y certificados emitidos).

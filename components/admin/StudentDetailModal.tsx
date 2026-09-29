@@ -96,6 +96,31 @@ export function StudentDetailModal({ student, onClose }: Props) {
               >
                 {student.status}
               </span>
+              <span
+                className="cover-chip"
+                style={{
+                  fontSize: 10,
+                  background:
+                    student.role === 'admin'
+                      ? '#ede9fe'
+                      : student.role === 'designer'
+                      ? '#fef3c7'
+                      : '#e0f2fe',
+                  color:
+                    student.role === 'admin'
+                      ? '#6d28d9'
+                      : student.role === 'designer'
+                      ? '#b45309'
+                      : '#0369a1',
+                  fontWeight: 700,
+                }}
+              >
+                {student.role === 'admin'
+                  ? 'Administrador'
+                  : student.role === 'designer'
+                  ? 'Diseñador'
+                  : 'Estudiante'}
+              </span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 14px', marginTop: 6, fontSize: 12, color: '#64748b' }}>

@@ -1,3 +1,24 @@
+## [2026-09-29] Designación de Roles a Usuarios en el Registro de la Plataforma
+- **Selector Interactivo de Roles en Registro Oficial (`/login?mode=register`)** ([`components/student/StudentAuth.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/student/StudentAuth.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
+  - **Selector de Roles con Tarjetas Táctiles Interactivas**: Se implementó el componente `.auth-role-select-grid` con 3 tarjetas diseñadas con micro-animaciones, iconos temáticos (`cap`, `edit`, `shield`), insignias de perfil y radio-indicators activos:
+    - **Estudiante (`student`)**: Perfil de alumno con acceso a asignaturas, evaluaciones, notas y certificados oficiales con código QR.
+    - **Diseñador Instruccional (`designer`)**: Perfil docente con permisos dedicados para crear y estructurar cursos, módulos, lecciones y multimedia.
+    - **Administrador (`admin`)**: Perfil directivo con control integral de la plataforma, métricas consolidadas, finanzas, ventas y contenidos.
+  - **Adaptación Responsiva y Accesibilidad Mobile-First**: Distribución a 3 columnas en desktop y tablet con transición suave a 1 columna en móviles (≤ 640px) garantizando zonas táctiles amplias (>48px), soporte para lectores de pantalla con `role="radiogroup"` y `role="radio"`.
+  - **Botón Dinámico y Mensajes Personalizados**: El CTA principal adapta su texto reactivamente al rol seleccionado (*"Registrar como Administrador"*, *"Registrar como Diseñador"*, *"Registrar como Estudiante"*) con spinner y mensajes de éxito contextuales.
+  - **Enrutamiento y Redirección Inteligente Post-Registro**: Al completarse el registro, la plataforma redirige automáticamente al usuario según su rol designado:
+    - `student` -> `/dashboard` (o URL de matrícula en `redirectParam` si procedía de checkout).
+    - `designer` -> `/admin/cursos`.
+    - `admin` -> `/admin`.
+- **Persistencia Multi-Capa de Roles (`studentService.ts` y `adminService.ts`)** ([`lib/supabase/studentService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/studentService.ts), [`lib/supabase/adminService.ts`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/lib/supabase/adminService.ts), [`app/providers.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/providers.tsx)):
+  - **Sincronización en Supabase**: `studentService.signUp` propaga el rol a los metadatos de Supabase Auth (`options.data.role`), a la tabla `public.profiles` (`role`), a `site_content` (`eddip_registered_users`) y a `localStorage`.
+  - **Detección Automática en Inicio de Sesión**: `signInStudent` y la sesión en segundo plano (`initSupabaseAuth`) identifican el rol asignado a la cuenta (sea estudiante, diseñador o administrador) y sincronizan el estado institucional en la sesión.
+- **Designación de Roles desde el Panel Administrativo** ([`components/admin/AddStudentModal.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/AddStudentModal.tsx), [`components/admin/StudentDetailModal.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/StudentDetailModal.tsx), [`components/admin/StudentDirectory.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/admin/StudentDirectory.tsx)):
+  - **Selector de Rol en Modal de Alta de Usuario**: Al ingresar un nuevo usuario desde `/admin/estudiantes`, el administrador puede elegir explícitamente si se registra como Estudiante, Diseñador Instruccional o Administrador.
+  - **Insignias Visuales de Rol**: Visualización de chips de rol (`Estudiante`, `Diseñador`, `Administrador`) en la ficha de detalle de usuario y en el directorio institucional.
+- **Control de Acceso en Shell (`DashboardShell.tsx`)** ([`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx)):
+  - Bloqueo y protección de rutas administrativas para cuentas con rol de estudiante con tarjeta amigable de *"Portal de Administración Restringido"* y botón de regreso al aula virtual.
+
 ## [2026-09-26] Adaptación Móvil Horizontal Desplazable del Diploma y Purga Institucional de Textos
 - **Diploma en Formato Horizontal Desplazable para Móviles (Regla 15)** ([`app/certificados/[code]/page.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/certificados/[code]/page.tsx), [`app/globals.css`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/app/globals.css)):
   - **Preservación Estricta del Formato Horizontal**: En dispositivos móviles y tabletas, el diploma ya no se colapsa ni se deforma verticalmente. Se mantiene en su ancho apaisado oficial (`min-width: 920px`, con grid de metadatos de 4 columnas, doble borde azul, cédula de ciudadanía, nombre destacado y QR centrado).

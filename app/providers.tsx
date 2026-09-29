@@ -32,7 +32,7 @@ export type StudentContextType = {
   resetDemo: () => void;
   updateProfile: (data: Partial<StudentProfile>) => Promise<boolean>;
   saveNote: (courseSlug: string, lessonId: string, text: string) => Promise<void>;
-  signUpStudent: (params: { email: string; password: string; fullName: string; documentId?: string; phone?: string; city?: string }) => Promise<{ success: boolean; error: string | null }>;
+  signUpStudent: (params: { email: string; password: string; fullName: string; documentId?: string; phone?: string; city?: string; role?: 'student' | 'admin' | 'designer' }) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' | 'designer' }>;
   signInStudent: (email: string, pass: string) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' | 'designer' }>;
 };
 
@@ -174,19 +174,31 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
         if (data.session?.user) {
           const u = data.session.user;
+          const email = (u.email || '').trim().toLowerCase();
           const meta = u.user_metadata || {};
+
+          let registeredRole: Role | undefined;
+          try {
+            const rawAcc = localStorage.getItem('eddip_registered_accounts') || localStorage.getItem('registered_accounts');
+            if (rawAcc) {
+              const accounts = JSON.parse(rawAcc);
+              const acc = accounts.find((a: any) => a.email?.toLowerCase().trim() === email);
+              if (acc?.role) registeredRole = acc.role;
+            }
+          } catch {}
+
+          const effectiveRole = meta.role || registeredRole;
           const role: Role =
-            meta.role === 'admin'
+            effectiveRole === 'admin' || email.includes('admin')
               ? 'admin'
-              : meta.role === 'designer' || (u.email || '').includes('disenador') || (u.email || '').includes('designer')
+              : effectiveRole === 'designer' || email.includes('disenador') || email.includes('designer')
               ? 'designer'
               : 'student';
 
           setRole(role);
-          const email = (u.email || '').trim().toLowerCase();
           const profile = {
             id: u.id,
-            name: meta.full_name || email.split('@')[0] || 'Estudiante EDDIP',
+            name: meta.full_name || email.split('@')[0] || (role === 'admin' ? 'Administrador EDDIP' : (role === 'designer' ? 'Diseñador Instruccional' : 'Estudiante EDDIP')),
             email: email,
             documentId: meta.document_id || '',
             phone: meta.phone || '',
@@ -549,10 +561,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     documentId?: string;
     phone?: string;
     city?: string;
+    role?: 'student' | 'admin' | 'designer';
   }) => {
-    const res = await studentService.signUp(params);
+    const selectedRole: Role = params.role || 'student';
+    const res = await studentService.signUp({ ...params, role: selectedRole as 'student' | 'admin' | 'designer' });
     if (res.error) {
-      return { success: false, error: res.error };
+      return { success: false, error: res.error, role: selectedRole };
     }
     if (res.user) {
       const cleanEmail = params.email.trim().toLowerCase();
@@ -565,10 +579,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         city: params.city || '',
       };
       setUserProfile(newProfile);
-      setRole('student');
+      setRole(selectedRole);
 
-      // Un nuevo estudiante registrado inicia totalmente desde cero:
-      // Sin ningún curso ni progreso cargado
+      // Un nuevo usuario registrado inicia totalmente limpio:
       setPurchased([]);
       setCompleted({});
       setResults({});
@@ -576,7 +589,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const cleanState = {
-          role: 'student' as Role,
+          role: selectedRole as Role,
           userProfile: newProfile,
           purchased: [] as string[],
           completed: {} as Record<string, string[]>,
@@ -588,9 +601,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(`eddip_user_${cleanEmail}`, JSON.stringify(cleanState));
       } catch {}
 
-      return { success: true, error: null };
+      return { success: true, error: null, role: selectedRole };
     }
-    return { success: true, error: null };
+    return { success: true, error: null, role: selectedRole };
   }, [extraCourses]);
 
   const signInStudent = useCallback(async (email: string, pass: string) => {
@@ -601,8 +614,20 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     if (res.user) {
       const cleanEmail = email.trim().toLowerCase();
       const meta = res.user.user_metadata || {};
-      const isAdmin = meta.role === 'admin' || cleanEmail.includes('admin');
-      const isDesigner = meta.role === 'designer' || cleanEmail.includes('disenador') || cleanEmail.includes('designer');
+
+      let registeredRole: Role | undefined;
+      try {
+        const rawAccounts = localStorage.getItem('eddip_registered_accounts') || localStorage.getItem('registered_accounts');
+        if (rawAccounts) {
+          const accounts = JSON.parse(rawAccounts);
+          const acc = accounts.find((a: any) => a.email?.toLowerCase().trim() === cleanEmail);
+          if (acc?.role) registeredRole = acc.role;
+        }
+      } catch {}
+
+      const effectiveRole = meta.role || registeredRole;
+      const isAdmin = effectiveRole === 'admin' || cleanEmail.includes('admin');
+      const isDesigner = effectiveRole === 'designer' || cleanEmail.includes('disenador') || cleanEmail.includes('designer');
       const assignedRole: Role = isAdmin ? 'admin' : (isDesigner ? 'designer' : 'student');
 
       const profile = {
@@ -648,12 +673,27 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
             setNotes({});
           }
         }
+      } else {
+        // Para administradores o diseñadores, persistir la sesión institucional
+        try {
+          const staffState = {
+            role: assignedRole,
+            userProfile: profile,
+            purchased: [] as string[],
+            completed: {} as Record<string, string[]>,
+            results: {} as Record<string, Result>,
+            extraCourses,
+            notes: {} as Record<string, string>,
+          };
+          localStorage.setItem(KEY, JSON.stringify(staffState));
+          localStorage.setItem(`eddip_user_${cleanEmail}`, JSON.stringify(staffState));
+        } catch {}
       }
 
       return { success: true, error: null, role: assignedRole };
     }
     return { success: true, error: null, role: 'student' as const };
-  }, []);
+  }, [extraCourses]);
 
   const resetDemo = useCallback(() => {
     localStorage.removeItem(KEY);

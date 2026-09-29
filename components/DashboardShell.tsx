@@ -62,7 +62,9 @@ export function DashboardShell({
     path === '/admin/cursos' ||
     path.startsWith('/admin/cursos/');
 
-  const isAccessBlocked = isDesigner && kind === 'admin' && !isDesignerAllowedPath;
+  const isDesignerBlocked = isDesigner && kind === 'admin' && !isDesignerAllowedPath;
+  const isStudentBlocked = role === 'student' && kind === 'admin';
+  const isAccessBlocked = isDesignerBlocked || isStudentBlocked;
 
   const handleLogout = async () => {
     await logout();
@@ -198,7 +200,47 @@ export function DashboardShell({
 
         {/* Contenido dinámico del panel o bloqueo por permisos */}
         <div style={{ padding: '28px 24px', flex: 1 }}>
-          {isAccessBlocked ? (
+          {isStudentBlocked ? (
+            <div
+              className="panel"
+              style={{
+                background: '#fff',
+                borderRadius: 20,
+                border: '1px solid var(--line)',
+                padding: '48px 32px',
+                textAlign: 'center',
+                maxWidth: 620,
+                margin: '40px auto',
+                boxShadow: '0 10px 30px rgba(7, 31, 73, 0.05)',
+              }}
+            >
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  display: 'grid',
+                  placeItems: 'center',
+                  margin: '0 auto 18px',
+                }}
+              >
+                <Icon name="shield" size={32} />
+              </div>
+              <h2 style={{ fontSize: 22, color: '#071F49', marginBottom: 10 }}>Portal de Administración Restringido</h2>
+              <p style={{ color: '#64748b', fontSize: 14.5, lineHeight: 1.6, marginBottom: 24 }}>
+                Tu cuenta tiene asignado el rol oficial de <strong>Estudiante</strong>. Este módulo está reservado exclusivamente para la administración directiva y cuerpo docente de EDDIP.
+              </p>
+              <Link
+                href="/dashboard"
+                className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px' }}
+              >
+                <Icon name="home" size={16} /> Ir a Mi Aula Virtual
+              </Link>
+            </div>
+          ) : isDesignerBlocked ? (
             <div
               className="panel"
               style={{

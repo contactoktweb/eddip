@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@/lib/icons';
 import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
+import { saveRegisteredAccount } from '@/lib/supabase/studentService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { Course } from '@/lib/types';
 
@@ -13,6 +14,7 @@ type Props = {
 
 export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [assignedRole, setAssignedRole] = useState<'student' | 'designer' | 'admin'>('student');
   const [fullName, setFullName] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [email, setEmail] = useState('');
@@ -96,17 +98,42 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         certificatesCount: 0,
         registeredAt: new Date().toISOString().slice(0, 10),
         status: 'Activo',
+        role: assignedRole,
         enrolledCourses,
         examScores: [],
       });
 
       if (!res.success) {
-        setErrorMsg(res.error || 'No se pudo guardar el estudiante en la base de datos.');
+        setErrorMsg(res.error || 'No se pudo guardar el usuario en la base de datos.');
         setLoading(false);
         return;
       }
 
-      setSuccessMsg('¡Estudiante registrado correctamente en la base de datos de EDDIP!');
+      // Guardar también como cuenta registrada para permitir inicio de sesión
+      try {
+        await saveRegisteredAccount({
+          id: res.student?.id || `usr-${Date.now()}`,
+          email: cleanEmail,
+          password: 'ChangeMe123*',
+          fullName: cleanName,
+          documentId: cleanDoc,
+          phone: phone.trim(),
+          city: city.trim() || 'Colombia',
+          role: assignedRole,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (accErr) {
+        console.warn('Advertencia al registrar cuenta institucional:', accErr);
+      }
+
+      const roleText =
+        assignedRole === 'admin'
+          ? 'Administrador'
+          : assignedRole === 'designer'
+          ? 'Diseñador Instruccional'
+          : 'Estudiante';
+
+      setSuccessMsg(`¡Usuario registrado correctamente con rol de ${roleText} en EDDIP!`);
 
       if (res.student && onStudentAdded) {
         onStudentAdded(res.student);
@@ -120,6 +147,7 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         setPhone('');
         setCity('');
         setSelectedCourseSlug('');
+        setAssignedRole('student');
         onClose();
       }, 1200);
     } catch (err: unknown) {
@@ -334,6 +362,90 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
                 }}
               />
             </div>
+          </div>
+
+          {/* Rol en la plataforma */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+              Designar Rol en la Plataforma *
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setAssignedRole('student')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 12px',
+                  borderRadius: 10,
+                  border: assignedRole === 'student' ? '1.5px solid #0F59DF' : '1px solid var(--line)',
+                  background: assignedRole === 'student' ? '#eff6ff' : '#fff',
+                  color: assignedRole === 'student' ? '#0F59DF' : '#334155',
+                  fontWeight: assignedRole === 'student' ? 700 : 500,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="cap" size={15} />
+                <span>Estudiante</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAssignedRole('designer')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 12px',
+                  borderRadius: 10,
+                  border: assignedRole === 'designer' ? '1.5px solid #d97706' : '1px solid var(--line)',
+                  background: assignedRole === 'designer' ? '#fef3c7' : '#fff',
+                  color: assignedRole === 'designer' ? '#b45309' : '#334155',
+                  fontWeight: assignedRole === 'designer' ? 700 : 500,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="edit" size={15} />
+                <span>Diseñador</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAssignedRole('admin')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 12px',
+                  borderRadius: 10,
+                  border: assignedRole === 'admin' ? '1.5px solid #6366f1' : '1px solid var(--line)',
+                  background: assignedRole === 'admin' ? '#eef2ff' : '#fff',
+                  color: assignedRole === 'admin' ? '#4338ca' : '#334155',
+                  fontWeight: assignedRole === 'admin' ? 700 : 500,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="shield" size={15} />
+                <span>Admin</span>
+              </button>
+            </div>
+            <small style={{ color: '#64748b', fontSize: 11, marginTop: 4, display: 'block' }}>
+              {assignedRole === 'admin'
+                ? 'El usuario tendrá acceso total a administración, finanzas y configuración.'
+                : assignedRole === 'designer'
+                ? 'El usuario tendrá permisos exclusivos para crear y estructurar cursos y lecciones.'
+                : 'El usuario tendrá acceso al campus virtual de alumnos, cursos y certificados.'}
+            </small>
           </div>
 
           {/* Curso a matricular */}

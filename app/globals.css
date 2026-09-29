@@ -3325,6 +3325,187 @@ body {
   transform: translateX(2px);
 }
 
+/* Selector de Rol al Registrarse */
+.auth-role-select-label-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.auth-role-select-main-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.auth-role-select-sub-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0F59DF;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #dbeafe;
+}
+
+.auth-role-select-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.auth-role-select-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 146px;
+  box-sizing: border-box;
+}
+
+.auth-role-select-card:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 89, 223, 0.08);
+}
+
+.auth-role-select-card.selected {
+  border-color: #0F59DF;
+  background: #f0f7ff;
+  box-shadow: 0 0 0 1px #0F59DF, 0 8px 20px -3px rgba(15, 89, 223, 0.16);
+  transform: translateY(-2px);
+}
+
+.auth-role-select-card:focus-visible {
+  outline: 2px solid #0F59DF;
+  outline-offset: 2px;
+}
+
+.auth-role-select-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.auth-role-select-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+
+.auth-role-select-icon.student {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.auth-role-select-icon.designer {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.auth-role-select-icon.admin {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.auth-role-select-pill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.auth-role-select-pill.student {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.auth-role-select-pill.designer {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.auth-role-select-pill.admin {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.auth-role-select-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.auth-role-select-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #64748b;
+  margin: 0 0 10px;
+  flex: 1;
+}
+
+.auth-role-select-footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.auth-role-select-card.selected .auth-role-select-footer {
+  color: #0F59DF;
+  border-top-color: #dbeafe;
+  font-weight: 700;
+}
+
+.auth-role-radio-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  display: inline-block;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.auth-role-radio-dot.active {
+  border-color: #0F59DF;
+  background: #0F59DF;
+  box-shadow: inset 0 0 0 2.5px #ffffff;
+}
+
+@media (max-width: 640px) {
+  .auth-role-select-grid {
+    grid-template-columns: 1fr;
+  }
+  .auth-role-select-card {
+    min-height: auto;
+  }
+}
+
 /* Reset Password Success Card */
 .auth-reset-success-card {
   text-align: center;
