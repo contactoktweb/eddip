@@ -198,7 +198,7 @@ export function AdminRoleManager() {
         return;
       }
 
-      showToast(`¡Usuario ${cleanName} registrado correctamente con rol de ${getRoleBadgeText(newRole)}!`, 'success');
+      showToast(`¡Usuario ${cleanName} registrado como ${getRoleBadgeText(newRole)}!`, 'success');
       setShowCreateModal(false);
       setNewFullName('');
       setNewEmail('');
@@ -289,10 +289,11 @@ export function AdminRoleManager() {
             alignItems: 'center',
             gap: 12,
             padding: '14px 20px',
-            background: toast.type === 'success' ? '#064e3b' : '#7f1d1d',
+            background: 'var(--navy)',
             color: '#fff',
             borderRadius: 14,
-            boxShadow: '0 14px 34px rgba(0, 0, 0, 0.28)',
+            boxShadow: '0 14px 34px rgba(10, 31, 68, 0.28)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             fontSize: 13.5,
             fontWeight: 600,
             animation: 'fadeIn 0.25s ease-out',
@@ -304,7 +305,8 @@ export function AdminRoleManager() {
               width: 22,
               height: 22,
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
+              background: 'var(--blue)',
+              color: '#fff',
               display: 'grid',
               placeItems: 'center',
               flexShrink: 0,
@@ -330,168 +332,54 @@ export function AdminRoleManager() {
         </div>
       )}
 
-      {/* Tarjetas de Métricas de Roles */}
+      {/* Tarjetas de Métricas de Roles (Estilo unificado de la plataforma) */}
       <section aria-label="Métricas de roles institucionales">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-            gap: 16,
-          }}
-        >
+        <div className="stats-grid" style={{ marginBottom: 0 }}>
           {/* Total Cuentas */}
-          <div
-            className="stat-card"
-            style={{
-              background: '#ffffff',
-              border: '1px solid var(--line)',
-              borderRadius: 16,
-              padding: '18px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
-                Total Usuarios
-              </span>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#071F49', margin: '4px 0 2px' }}>
-                {stats.total}
-              </div>
-              <span style={{ fontSize: 11.5, color: '#64748b' }}>Cuentas en plataforma</span>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <Icon name="users" />
             </div>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 12,
-                background: '#eff6ff',
-                color: '#0F59DF',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <Icon name="users" size={22} />
+            <div>
+              <span>Total Usuarios</span>
+              <strong>{stats.total}</strong>
+              <small style={{ color: 'var(--muted)' }}>Cuentas en plataforma</small>
             </div>
           </div>
 
           {/* Administradores */}
-          <div
-            className="stat-card"
-            style={{
-              background: '#ffffff',
-              border: '1px solid #ddd6fe',
-              borderRadius: 16,
-              padding: '18px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(109, 40, 217, 0.05)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#6d28d9', letterSpacing: '0.04em' }}>
-                Administradores
-              </span>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#4c1d95', margin: '4px 0 2px' }}>
-                {stats.admins}
-              </div>
-              <span style={{ fontSize: 11.5, color: '#7c3aed' }}>Control y permisos totales</span>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <Icon name="shield" />
             </div>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 12,
-                background: '#ede9fe',
-                color: '#6d28d9',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <Icon name="shield" size={22} />
+            <div>
+              <span>Administradores</span>
+              <strong>{stats.admins}</strong>
+              <small style={{ color: 'var(--muted)' }}>Control y permisos totales</small>
             </div>
           </div>
 
           {/* Diseñadores Instruccionales */}
-          <div
-            className="stat-card"
-            style={{
-              background: '#ffffff',
-              border: '1px solid #fde68a',
-              borderRadius: 16,
-              padding: '18px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(217, 119, 6, 0.05)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#b45309', letterSpacing: '0.04em' }}>
-                Diseñadores
-              </span>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#92400e', margin: '4px 0 2px' }}>
-                {stats.designers}
-              </div>
-              <span style={{ fontSize: 11.5, color: '#d97706' }}>Cursos y lecciones</span>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <Icon name="edit" />
             </div>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 12,
-                background: '#fef3c7',
-                color: '#b45309',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <Icon name="edit" size={22} />
+            <div>
+              <span>Diseñadores</span>
+              <strong>{stats.designers}</strong>
+              <small style={{ color: 'var(--muted)' }}>Cursos y lecciones</small>
             </div>
           </div>
 
           {/* Estudiantes */}
-          <div
-            className="stat-card"
-            style={{
-              background: '#ffffff',
-              border: '1px solid #bbf7d0',
-              borderRadius: 16,
-              padding: '18px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(5, 150, 105, 0.05)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#047857', letterSpacing: '0.04em' }}>
-                Estudiantes
-              </span>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#065f46', margin: '4px 0 2px' }}>
-                {stats.students}
-              </div>
-              <span style={{ fontSize: 11.5, color: '#059669' }}>Campus virtual activo</span>
+          <div className="stat-card">
+            <div className="stat-icon">
+              <Icon name="cap" />
             </div>
-            <div
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: 12,
-                background: '#ecfdf5',
-                color: '#059669',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <Icon name="cap" size={22} />
+            <div>
+              <span>Estudiantes</span>
+              <strong>{stats.students}</strong>
+              <small style={{ color: 'var(--muted)' }}>Campus virtual activo</small>
             </div>
           </div>
         </div>
@@ -503,9 +391,8 @@ export function AdminRoleManager() {
           style={{
             background: '#ffffff',
             border: '1px solid var(--line)',
-            borderRadius: 18,
+            borderRadius: 16,
             overflow: 'hidden',
-            boxShadow: '0 4px 14px rgba(11, 34, 64, 0.03)',
           }}
         >
           <div
@@ -520,25 +407,25 @@ export function AdminRoleManager() {
             }}
             onClick={() => setShowGuide(v => !v)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: '#eff6ff',
-                  color: '#0F59DF',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: 'var(--blue-3)',
+                  color: 'var(--blue)',
                   display: 'grid',
                   placeItems: 'center',
                 }}
               >
-                <Icon name="shield" size={17} />
+                <Icon name="shield" size={18} />
               </div>
               <div>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: '#071F49', margin: 0 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
                   Matriz de Permisos y Niveles de Acceso Institucional
                 </h2>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--muted)' }}>
                   Conoce qué secciones y facultades operativas tiene cada rol asignado en EDDIP
                 </p>
               </div>
@@ -569,8 +456,8 @@ export function AdminRoleManager() {
                 style={{
                   padding: 16,
                   borderRadius: 14,
-                  background: '#fcfaff',
-                  border: '1.5px solid #ddd6fe',
+                  background: '#ffffff',
+                  border: '1px solid var(--line)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -583,42 +470,42 @@ export function AdminRoleManager() {
                         width: 28,
                         height: 28,
                         borderRadius: 8,
-                        background: '#ede9fe',
-                        color: '#6d28d9',
+                        background: 'var(--blue-3)',
+                        color: 'var(--blue)',
                         display: 'grid',
                         placeItems: 'center',
                       }}
                     >
                       <Icon name="shield" size={15} />
                     </span>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#4c1d95', margin: 0 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
                       Administrador
                     </h3>
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 10.5,
                       fontWeight: 700,
-                      padding: '2px 8px',
+                      padding: '3px 8px',
                       borderRadius: 999,
-                      background: '#ede9fe',
-                      color: '#6d28d9',
+                      background: 'var(--navy)',
+                      color: '#ffffff',
                     }}
                   >
                     Control Total
                   </span>
                 </div>
-                <p style={{ fontSize: 12, color: '#5b21b6', margin: 0, lineHeight: 1.4 }}>
-                  Máximo nivel de autoridad en la plataforma EDDIP.
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+                  Máximo nivel de autoridad operativa en la plataforma EDDIP.
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
                   <li>Gestión completa de cursos, módulos y lecciones</li>
                   <li>Creación y revisión de evaluaciones</li>
                   <li>Directorio de estudiantes y registro manual</li>
-                  <li><strong>Asignación y revocación de roles (RBAC)</strong></li>
+                  <li><strong>Asignación y revocación de roles</strong></li>
                   <li>Gestión y emisión de certificados oficiales</li>
                   <li>Reportes de ventas, ingresos e IVA</li>
-                  <li>Editor de contenido web y propuesta institucional</li>
+                  <li>Editor de contenido web y configuración</li>
                 </ul>
               </div>
 
@@ -627,8 +514,8 @@ export function AdminRoleManager() {
                 style={{
                   padding: 16,
                   borderRadius: 14,
-                  background: '#fffdf5',
-                  border: '1.5px solid #fde68a',
+                  background: '#ffffff',
+                  border: '1px solid var(--line)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -641,41 +528,42 @@ export function AdminRoleManager() {
                         width: 28,
                         height: 28,
                         borderRadius: 8,
-                        background: '#fef3c7',
-                        color: '#b45309',
+                        background: 'var(--blue-3)',
+                        color: 'var(--blue)',
                         display: 'grid',
                         placeItems: 'center',
                       }}
                     >
                       <Icon name="edit" size={15} />
                     </span>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#92400e', margin: 0 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
                       Diseñador Instruccional
                     </h3>
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 10.5,
                       fontWeight: 700,
-                      padding: '2px 8px',
+                      padding: '3px 8px',
                       borderRadius: 999,
-                      background: '#fef3c7',
-                      color: '#b45309',
+                      background: 'var(--blue-3)',
+                      color: 'var(--blue)',
+                      border: '1px solid var(--blue-4)',
                     }}
                   >
                     Curricular
                   </span>
                 </div>
-                <p style={{ fontSize: 12, color: '#92400e', margin: 0, lineHeight: 1.4 }}>
-                  Especialista pedagógico enfocado en estructurar contenidos de alto valor.
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+                  Especialista pedagógico enfocado en estructurar contenidos formativos.
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
                   <li>Creación y edición de programas de capacitación</li>
                   <li>Organización de módulos, temas y duraciones</li>
                   <li>Carga de videos (YouTube / HTML5) y material de apoyo</li>
                   <li>Subida de infografías e imágenes formativas</li>
-                  <li style={{ color: '#94a3b8' }}>Restringido de ventas y métricas financieras</li>
-                  <li style={{ color: '#94a3b8' }}>Restringido de gestión de roles y estudiantes</li>
+                  <li style={{ color: 'var(--muted)' }}>Restringido de ventas y métricas financieras</li>
+                  <li style={{ color: 'var(--muted)' }}>Restringido de gestión de roles y estudiantes</li>
                 </ul>
               </div>
 
@@ -684,8 +572,8 @@ export function AdminRoleManager() {
                 style={{
                   padding: 16,
                   borderRadius: 14,
-                  background: '#f6fbf8',
-                  border: '1.5px solid #bbf7d0',
+                  background: '#ffffff',
+                  border: '1px solid var(--line)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -698,41 +586,42 @@ export function AdminRoleManager() {
                         width: 28,
                         height: 28,
                         borderRadius: 8,
-                        background: '#ecfdf5',
-                        color: '#059669',
+                        background: 'var(--blue-3)',
+                        color: 'var(--blue)',
                         display: 'grid',
                         placeItems: 'center',
                       }}
                     >
                       <Icon name="cap" size={15} />
                     </span>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#065f46', margin: 0 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', margin: 0 }}>
                       Estudiante
                     </h3>
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 10.5,
                       fontWeight: 700,
-                      padding: '2px 8px',
+                      padding: '3px 8px',
                       borderRadius: 999,
-                      background: '#ecfdf5',
-                      color: '#059669',
+                      background: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid var(--line)',
                     }}
                   >
                     Participante
                   </span>
                 </div>
-                <p style={{ fontSize: 12, color: '#065f46', margin: 0, lineHeight: 1.4 }}>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
                   Usuario matriculado en programas educativos del campus virtual.
                 </p>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#4b5563', lineHeight: 1.6 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
                   <li>Acceso al campus virtual personal (`/dashboard`)</li>
                   <li>Avance autónomo en el aula interactiva de clases</li>
                   <li>Cuaderno de notas privado sincronizado</li>
                   <li>Presentación de evaluaciones y cuestionarios</li>
                   <li>Descarga y verificación de diplomas con código QR</li>
-                  <li style={{ color: '#94a3b8' }}>Sin acceso a rutas administrativas</li>
+                  <li style={{ color: 'var(--muted)' }}>Sin acceso a rutas administrativas</li>
                 </ul>
               </div>
             </div>
@@ -753,7 +642,6 @@ export function AdminRoleManager() {
             padding: '16px 20px',
             borderRadius: 16,
             border: '1px solid var(--line)',
-            boxShadow: '0 2px 6px rgba(11, 34, 64, 0.02)',
           }}
         >
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: 1 }}>
@@ -779,7 +667,7 @@ export function AdminRoleManager() {
                   left: 12,
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#8b9bb4',
+                  color: 'var(--muted)',
                   display: 'grid',
                   placeItems: 'center',
                 }}
@@ -869,11 +757,11 @@ export function AdminRoleManager() {
               background: '#ffffff',
               borderRadius: 16,
               border: '1px solid var(--line)',
-              color: '#64748b',
+              color: 'var(--muted)',
             }}
           >
-            <div style={{ display: 'inline-block', width: 32, height: 32, border: '3px solid #0F59DF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 12 }} />
-            <p style={{ margin: 0, fontSize: 14 }}>Sincronizando cuentas con Supabase...</p>
+            <div style={{ display: 'inline-block', width: 32, height: 32, border: '3px solid var(--blue)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 12 }} />
+            <p style={{ margin: 0, fontSize: 14 }}>Sincronizando cuentas con la plataforma...</p>
           </div>
         ) : filteredUsers.length === 0 ? (
           <div
@@ -890,19 +778,19 @@ export function AdminRoleManager() {
                 width: 52,
                 height: 52,
                 borderRadius: '50%',
-                background: '#f1f5f9',
+                background: 'var(--blue-3)',
+                color: 'var(--blue)',
                 display: 'grid',
                 placeItems: 'center',
-                color: '#94a3b8',
                 margin: '0 auto 16px',
               }}
             >
               <Icon name="users" size={24} />
             </div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1e293b', margin: '0 0 6px' }}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--navy)', margin: '0 0 6px' }}>
               {searchTerm ? 'No se encontraron usuarios coincidentes' : 'No hay usuarios en este filtro'}
             </h3>
-            <p style={{ fontSize: 13, color: '#64748b', maxWidth: 440, margin: '0 auto 18px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 18px', lineHeight: 1.5 }}>
               {searchTerm
                 ? `No existen cuentas que coincidan con "${searchTerm}". Intenta con otro término o limpia los filtros.`
                 : 'Puedes crear un nuevo usuario o cambiar de filtro de rol para ver las cuentas registradas.'}
@@ -951,14 +839,6 @@ export function AdminRoleManager() {
                                   height: 38,
                                   fontSize: 13,
                                   borderRadius: 12,
-                                  background:
-                                    currentRole === 'admin'
-                                      ? 'linear-gradient(135deg, #7c3aed, #4c1d95)'
-                                      : currentRole === 'designer'
-                                      ? 'linear-gradient(135deg, #f59e0b, #b45309)'
-                                      : 'linear-gradient(135deg, #0F59DF, #0B2240)',
-                                  color: '#fff',
-                                  fontWeight: 700,
                                   flexShrink: 0,
                                 }}
                               >
@@ -976,9 +856,9 @@ export function AdminRoleManager() {
                                         fontWeight: 700,
                                         padding: '1px 6px',
                                         borderRadius: 6,
-                                        background: '#ecfdf5',
-                                        color: '#059669',
-                                        border: '1px solid #a7f3d0',
+                                        background: 'var(--blue-3)',
+                                        color: 'var(--blue)',
+                                        border: '1px solid var(--blue-4)',
                                       }}
                                       title="Tu sesión actual"
                                     >
@@ -986,7 +866,7 @@ export function AdminRoleManager() {
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 11.5, color: '#7a8b9e', marginTop: 2 }}>
+                                <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>
                                   Registrado: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Activo'}
                                 </div>
                               </div>
@@ -996,13 +876,13 @@ export function AdminRoleManager() {
                           {/* Columna Contacto */}
                           <td>
                             <div style={{ fontSize: 12 }}>
-                              <div style={{ fontWeight: 600, color: '#334155' }}>{user.email}</div>
-                              <div style={{ color: '#8b9bb4', marginTop: 2 }}>
+                              <div style={{ fontWeight: 600, color: 'var(--text)' }}>{user.email}</div>
+                              <div style={{ color: 'var(--muted)', marginTop: 2 }}>
                                 {user.documentId ? `C.C. ${user.documentId}` : 'Sin documento'}
                                 {user.phone ? ` • ${user.phone}` : ''}
                               </div>
                               {user.city && (
-                                <small style={{ color: '#94a3b8', display: 'block', marginTop: 1 }}>{user.city}</small>
+                                <small style={{ color: 'var(--muted)', display: 'block', marginTop: 1 }}>{user.city}</small>
                               )}
                             </div>
                           </td>
@@ -1019,9 +899,8 @@ export function AdminRoleManager() {
                                   fontWeight: 700,
                                   padding: '4px 10px',
                                   borderRadius: 999,
-                                  background: '#ede9fe',
-                                  color: '#6d28d9',
-                                  border: '1px solid #ddd6fe',
+                                  background: 'var(--navy)',
+                                  color: '#ffffff',
                                 }}
                               >
                                 <Icon name="shield" size={13} />
@@ -1038,9 +917,9 @@ export function AdminRoleManager() {
                                   fontWeight: 700,
                                   padding: '4px 10px',
                                   borderRadius: 999,
-                                  background: '#fef3c7',
-                                  color: '#b45309',
-                                  border: '1px solid #fde68a',
+                                  background: 'var(--blue-3)',
+                                  color: 'var(--blue)',
+                                  border: '1px solid var(--blue-4)',
                                 }}
                               >
                                 <Icon name="edit" size={13} />
@@ -1057,9 +936,9 @@ export function AdminRoleManager() {
                                   fontWeight: 700,
                                   padding: '4px 10px',
                                   borderRadius: 999,
-                                  background: '#eff6ff',
-                                  color: '#0F59DF',
-                                  border: '1px solid #bfdbfe',
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                  border: '1px solid var(--line)',
                                 }}
                               >
                                 <Icon name="cap" size={13} />
@@ -1074,7 +953,7 @@ export function AdminRoleManager() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 4,
+                                gap: 3,
                                 background: '#f8fafc',
                                 padding: 3,
                                 borderRadius: 10,
@@ -1088,7 +967,7 @@ export function AdminRoleManager() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectRole(user, 'admin')}
-                                title="Asignar rol de Administrador (Control total)"
+                                title="Asignar rol de Administrador"
                                 aria-label={`Asignar rol Administrador a ${user.fullName}`}
                                 style={{
                                   display: 'inline-flex',
@@ -1100,9 +979,9 @@ export function AdminRoleManager() {
                                   fontSize: 11.5,
                                   fontWeight: currentRole === 'admin' ? 700 : 500,
                                   cursor: 'pointer',
-                                  background: currentRole === 'admin' ? '#ede9fe' : 'transparent',
-                                  color: currentRole === 'admin' ? '#6d28d9' : '#64748b',
-                                  boxShadow: currentRole === 'admin' ? '0 1px 3px rgba(109, 40, 217, 0.15)' : 'none',
+                                  background: currentRole === 'admin' ? 'var(--blue)' : 'transparent',
+                                  color: currentRole === 'admin' ? '#ffffff' : 'var(--muted)',
+                                  boxShadow: currentRole === 'admin' ? '0 1px 4px rgba(32, 80, 201, 0.25)' : 'none',
                                   transition: 'all 0.15s ease',
                                 }}
                               >
@@ -1114,7 +993,7 @@ export function AdminRoleManager() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectRole(user, 'designer')}
-                                title="Asignar rol de Diseñador Instruccional (Cursos y lecciones)"
+                                title="Asignar rol de Diseñador Instruccional"
                                 aria-label={`Asignar rol Diseñador a ${user.fullName}`}
                                 style={{
                                   display: 'inline-flex',
@@ -1126,9 +1005,9 @@ export function AdminRoleManager() {
                                   fontSize: 11.5,
                                   fontWeight: currentRole === 'designer' ? 700 : 500,
                                   cursor: 'pointer',
-                                  background: currentRole === 'designer' ? '#fef3c7' : 'transparent',
-                                  color: currentRole === 'designer' ? '#b45309' : '#64748b',
-                                  boxShadow: currentRole === 'designer' ? '0 1px 3px rgba(180, 83, 9, 0.15)' : 'none',
+                                  background: currentRole === 'designer' ? 'var(--blue)' : 'transparent',
+                                  color: currentRole === 'designer' ? '#ffffff' : 'var(--muted)',
+                                  boxShadow: currentRole === 'designer' ? '0 1px 4px rgba(32, 80, 201, 0.25)' : 'none',
                                   transition: 'all 0.15s ease',
                                 }}
                               >
@@ -1140,7 +1019,7 @@ export function AdminRoleManager() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectRole(user, 'student')}
-                                title="Asignar rol de Estudiante (Campus virtual)"
+                                title="Asignar rol de Estudiante"
                                 aria-label={`Asignar rol Estudiante a ${user.fullName}`}
                                 style={{
                                   display: 'inline-flex',
@@ -1152,9 +1031,9 @@ export function AdminRoleManager() {
                                   fontSize: 11.5,
                                   fontWeight: currentRole === 'student' ? 700 : 500,
                                   cursor: 'pointer',
-                                  background: currentRole === 'student' ? '#eff6ff' : 'transparent',
-                                  color: currentRole === 'student' ? '#0F59DF' : '#64748b',
-                                  boxShadow: currentRole === 'student' ? '0 1px 3px rgba(15, 89, 223, 0.15)' : 'none',
+                                  background: currentRole === 'student' ? 'var(--blue)' : 'transparent',
+                                  color: currentRole === 'student' ? '#ffffff' : 'var(--muted)',
+                                  boxShadow: currentRole === 'student' ? '0 1px 4px rgba(32, 80, 201, 0.25)' : 'none',
                                   transition: 'all 0.15s ease',
                                 }}
                               >
@@ -1177,8 +1056,8 @@ export function AdminRoleManager() {
                                   width: 32,
                                   height: 32,
                                   borderRadius: 8,
-                                  color: '#ef4444',
-                                  border: '1px solid #fee2e2',
+                                  color: 'var(--muted)',
+                                  border: '1px solid var(--line)',
                                   background: '#fff',
                                 }}
                               >
@@ -1215,14 +1094,6 @@ export function AdminRoleManager() {
                             height: 40,
                             fontSize: 13,
                             borderRadius: 12,
-                            background:
-                              currentRole === 'admin'
-                                ? 'linear-gradient(135deg, #7c3aed, #4c1d95)'
-                                : currentRole === 'designer'
-                                ? 'linear-gradient(135deg, #f59e0b, #b45309)'
-                                : 'linear-gradient(135deg, #0F59DF, #0B2240)',
-                            color: '#fff',
-                            fontWeight: 700,
                             flexShrink: 0,
                           }}
                         >
@@ -1230,7 +1101,7 @@ export function AdminRoleManager() {
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <strong style={{ fontSize: 14, color: '#071F49' }}>{user.fullName}</strong>
+                            <strong style={{ fontSize: 14, color: 'var(--navy)' }}>{user.fullName}</strong>
                             {isCurrentActiveUser && (
                               <span
                                 style={{
@@ -1238,16 +1109,16 @@ export function AdminRoleManager() {
                                   fontWeight: 700,
                                   padding: '1px 6px',
                                   borderRadius: 6,
-                                  background: '#ecfdf5',
-                                  color: '#059669',
-                                  border: '1px solid #a7f3d0',
+                                  background: 'var(--blue-3)',
+                                  color: 'var(--blue)',
+                                  border: '1px solid var(--blue-4)',
                                 }}
                               >
                                 Tú
                               </span>
                             )}
                           </div>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>{user.email}</span>
+                          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user.email}</span>
                         </div>
                       </div>
 
@@ -1256,7 +1127,7 @@ export function AdminRoleManager() {
                         className="icon-btn"
                         onClick={() => setUserToDelete(user)}
                         aria-label={`Eliminar cuenta de ${user.fullName}`}
-                        style={{ width: 34, height: 34, borderRadius: 8, color: '#ef4444', border: '1px solid #fee2e2' }}
+                        style={{ width: 34, height: 34, borderRadius: 8, color: 'var(--muted)', border: '1px solid var(--line)' }}
                       >
                         <Icon name="trash" size={15} />
                       </button>
@@ -1269,7 +1140,7 @@ export function AdminRoleManager() {
                         flexWrap: 'wrap',
                         gap: '6px 14px',
                         fontSize: 12,
-                        color: '#64748b',
+                        color: 'var(--muted)',
                         background: '#f8fafc',
                         padding: '9px 12px',
                         borderRadius: 10,
@@ -1284,21 +1155,53 @@ export function AdminRoleManager() {
                     {/* Asignación táctil de rol */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          Asignar Rol Institucional:
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Asignar Rol:
                         </span>
-                        <span
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            background: currentRole === 'admin' ? '#ede9fe' : currentRole === 'designer' ? '#fef3c7' : '#eff6ff',
-                            color: currentRole === 'admin' ? '#6d28d9' : currentRole === 'designer' ? '#b45309' : '#0F59DF',
-                          }}
-                        >
-                          Actual: {getRoleBadgeText(currentRole)}
-                        </span>
+                        {currentRole === 'admin' && (
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: 'var(--navy)',
+                              color: '#ffffff',
+                            }}
+                          >
+                            Administrador
+                          </span>
+                        )}
+                        {currentRole === 'designer' && (
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: 'var(--blue-3)',
+                              color: 'var(--blue)',
+                              border: '1px solid var(--blue-4)',
+                            }}
+                          >
+                            Diseñador
+                          </span>
+                        )}
+                        {currentRole === 'student' && (
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: '#f1f5f9',
+                              color: '#475569',
+                              border: '1px solid var(--line)',
+                            }}
+                          >
+                            Estudiante
+                          </span>
+                        )}
                       </div>
 
                       <div
@@ -1320,9 +1223,9 @@ export function AdminRoleManager() {
                             justifyContent: 'center',
                             gap: 5,
                             borderRadius: 10,
-                            border: currentRole === 'admin' ? '2px solid #7c3aed' : '1px solid var(--line)',
-                            background: currentRole === 'admin' ? '#ede9fe' : '#ffffff',
-                            color: currentRole === 'admin' ? '#6d28d9' : '#475569',
+                            border: currentRole === 'admin' ? '1.5px solid var(--blue)' : '1px solid var(--line)',
+                            background: currentRole === 'admin' ? 'var(--blue)' : '#ffffff',
+                            color: currentRole === 'admin' ? '#ffffff' : 'var(--muted)',
                             fontWeight: currentRole === 'admin' ? 700 : 500,
                             fontSize: 12,
                             cursor: 'pointer',
@@ -1342,9 +1245,9 @@ export function AdminRoleManager() {
                             justifyContent: 'center',
                             gap: 5,
                             borderRadius: 10,
-                            border: currentRole === 'designer' ? '2px solid #d97706' : '1px solid var(--line)',
-                            background: currentRole === 'designer' ? '#fef3c7' : '#ffffff',
-                            color: currentRole === 'designer' ? '#b45309' : '#475569',
+                            border: currentRole === 'designer' ? '1.5px solid var(--blue)' : '1px solid var(--line)',
+                            background: currentRole === 'designer' ? 'var(--blue)' : '#ffffff',
+                            color: currentRole === 'designer' ? '#ffffff' : 'var(--muted)',
                             fontWeight: currentRole === 'designer' ? 700 : 500,
                             fontSize: 12,
                             cursor: 'pointer',
@@ -1364,9 +1267,9 @@ export function AdminRoleManager() {
                             justifyContent: 'center',
                             gap: 5,
                             borderRadius: 10,
-                            border: currentRole === 'student' ? '2px solid #0F59DF' : '1px solid var(--line)',
-                            background: currentRole === 'student' ? '#eff6ff' : '#ffffff',
-                            color: currentRole === 'student' ? '#0F59DF' : '#475569',
+                            border: currentRole === 'student' ? '1.5px solid var(--blue)' : '1px solid var(--line)',
+                            background: currentRole === 'student' ? 'var(--blue)' : '#ffffff',
+                            color: currentRole === 'student' ? '#ffffff' : 'var(--muted)',
                             fontWeight: currentRole === 'student' ? 700 : 500,
                             fontSize: 12,
                             cursor: 'pointer',
@@ -1394,7 +1297,7 @@ export function AdminRoleManager() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(7, 21, 43, 0.65)',
+            background: 'rgba(10, 31, 68, 0.65)',
             backdropFilter: 'blur(5px)',
             zIndex: 999,
             display: 'grid',
@@ -1414,7 +1317,7 @@ export function AdminRoleManager() {
               borderRadius: 20,
               border: '1px solid var(--line)',
               padding: 28,
-              boxShadow: '0 20px 45px -12px rgba(11, 44, 87, 0.3)',
+              boxShadow: '0 20px 45px -12px rgba(10, 31, 68, 0.3)',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1422,11 +1325,11 @@ export function AdminRoleManager() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <span className="eyebrow" style={{ margin: 0 }}>Control de Acceso</span>
-                <h2 id="modal-role-title" style={{ fontSize: 21, margin: '4px 0 0', color: '#071F49' }}>
+                <h2 id="modal-role-title" style={{ fontSize: 21, margin: '4px 0 0', color: 'var(--navy)' }}>
                   Asignar Rol a Usuario
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
-                  Crea o registra una cuenta institucional con permisos inmediatos de diseñador, administrador o estudiante.
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+                  Crea o registra una cuenta con permisos inmediatos de Diseñador, Administrador o Estudiante.
                 </p>
               </div>
               <button
@@ -1446,9 +1349,9 @@ export function AdminRoleManager() {
                 style={{
                   padding: '12px 16px',
                   borderRadius: 12,
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#dc2626',
+                  background: '#fff0f1',
+                  border: '1px solid #ffd0d4',
+                  color: 'var(--red)',
                   fontSize: 13,
                   marginBottom: 16,
                   display: 'flex',
@@ -1465,7 +1368,7 @@ export function AdminRoleManager() {
             <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Tarjetas de Selección de Rol */}
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--navy)', marginBottom: 8 }}>
                   Selecciona el Rol a Asignar *
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
@@ -1475,8 +1378,8 @@ export function AdminRoleManager() {
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: newRole === 'designer' ? '2px solid #d97706' : '1px solid var(--line)',
-                      background: newRole === 'designer' ? '#fffdf5' : '#ffffff',
+                      border: newRole === 'designer' ? '2px solid var(--blue)' : '1px solid var(--line)',
+                      background: newRole === 'designer' ? 'var(--blue-3)' : '#ffffff',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       display: 'flex',
@@ -1484,12 +1387,12 @@ export function AdminRoleManager() {
                       gap: 4,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b45309' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: newRole === 'designer' ? 'var(--blue)' : 'var(--navy)' }}>
                       <Icon name="edit" size={16} />
                       <strong style={{ fontSize: 13 }}>Diseñador</strong>
                     </div>
-                    <span style={{ fontSize: 11, color: '#78350f', lineHeight: 1.3 }}>
-                      Gestión exclusiva de cursos y lecciones
+                    <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.3 }}>
+                      Gestión de cursos y lecciones
                     </span>
                   </div>
 
@@ -1499,8 +1402,8 @@ export function AdminRoleManager() {
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: newRole === 'admin' ? '2px solid #7c3aed' : '1px solid var(--line)',
-                      background: newRole === 'admin' ? '#faf5ff' : '#ffffff',
+                      border: newRole === 'admin' ? '2px solid var(--blue)' : '1px solid var(--line)',
+                      background: newRole === 'admin' ? 'var(--blue-3)' : '#ffffff',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       display: 'flex',
@@ -1508,12 +1411,12 @@ export function AdminRoleManager() {
                       gap: 4,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6d28d9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: newRole === 'admin' ? 'var(--blue)' : 'var(--navy)' }}>
                       <Icon name="shield" size={16} />
                       <strong style={{ fontSize: 13 }}>Administrador</strong>
                     </div>
-                    <span style={{ fontSize: 11, color: '#5b21b6', lineHeight: 1.3 }}>
-                      Control total de plataforma y ventas
+                    <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.3 }}>
+                      Control total de plataforma
                     </span>
                   </div>
 
@@ -1523,8 +1426,8 @@ export function AdminRoleManager() {
                     style={{
                       padding: 12,
                       borderRadius: 12,
-                      border: newRole === 'student' ? '2px solid #0F59DF' : '1px solid var(--line)',
-                      background: newRole === 'student' ? '#eff6ff' : '#ffffff',
+                      border: newRole === 'student' ? '2px solid var(--blue)' : '1px solid var(--line)',
+                      background: newRole === 'student' ? 'var(--blue-3)' : '#ffffff',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       display: 'flex',
@@ -1532,12 +1435,12 @@ export function AdminRoleManager() {
                       gap: 4,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0F59DF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: newRole === 'student' ? 'var(--blue)' : 'var(--navy)' }}>
                       <Icon name="cap" size={16} />
                       <strong style={{ fontSize: 13 }}>Estudiante</strong>
                     </div>
-                    <span style={{ fontSize: 11, color: '#1e40af', lineHeight: 1.3 }}>
-                      Acceso al campus y evaluaciones
+                    <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.3 }}>
+                      Campus virtual y exámenes
                     </span>
                   </div>
                 </div>
@@ -1545,13 +1448,13 @@ export function AdminRoleManager() {
 
               {/* Nombre Completo */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                   Nombre y Apellidos Completos *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej. Dra. Carmen Elena Vásquez"
+                  placeholder="Ej. Carmen Elena Vásquez"
                   value={newFullName}
                   onChange={e => setNewFullName(e.target.value)}
                   style={{
@@ -1568,7 +1471,7 @@ export function AdminRoleManager() {
               {/* Cédula y Correo */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                     Documento de Identidad (C.C.) *
                   </label>
                   <input
@@ -1589,8 +1492,8 @@ export function AdminRoleManager() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Correo Electrónico Institucional / Personal *
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+                    Correo Electrónico *
                   </label>
                   <input
                     type="email"
@@ -1613,7 +1516,7 @@ export function AdminRoleManager() {
               {/* Teléfono y Ciudad */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                     Teléfono / WhatsApp (Opcional)
                   </label>
                   <input
@@ -1633,8 +1536,8 @@ export function AdminRoleManager() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    Ciudad / Departamento (Opcional)
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+                    Ciudad (Opcional)
                   </label>
                   <input
                     type="text"
@@ -1655,7 +1558,7 @@ export function AdminRoleManager() {
 
               {/* Contraseña temporal */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                   Contraseña Temporal de Acceso
                 </label>
                 <input
@@ -1672,8 +1575,8 @@ export function AdminRoleManager() {
                     outline: 'none',
                   }}
                 />
-                <span style={{ fontSize: 11, color: '#8b9bb4', display: 'block', marginTop: 4 }}>
-                  El usuario podrá ingresar con esta contraseña y modificarla luego desde su perfil.
+                <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 4 }}>
+                  El usuario podrá ingresar con esta contraseña y modificarla desde su perfil.
                 </span>
               </div>
 
@@ -1712,7 +1615,7 @@ export function AdminRoleManager() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(7, 21, 43, 0.7)',
+            background: 'rgba(10, 31, 68, 0.7)',
             backdropFilter: 'blur(5px)',
             zIndex: 1000,
             display: 'grid',
@@ -1728,8 +1631,8 @@ export function AdminRoleManager() {
               background: '#ffffff',
               borderRadius: 20,
               padding: 26,
-              boxShadow: '0 20px 45px -12px rgba(11, 44, 87, 0.35)',
-              border: '1px solid #fed7aa',
+              boxShadow: '0 20px 45px -12px rgba(10, 31, 68, 0.35)',
+              border: '1px solid var(--line)',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1738,8 +1641,8 @@ export function AdminRoleManager() {
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                background: '#fff7ed',
-                color: '#c2410c',
+                background: 'var(--blue-3)',
+                color: 'var(--blue)',
                 display: 'grid',
                 placeItems: 'center',
                 margin: '0 0 16px',
@@ -1748,23 +1651,22 @@ export function AdminRoleManager() {
               <Icon name="shield" size={24} />
             </div>
 
-            <h3 id="confirm-dialog-title" style={{ fontSize: 18, color: '#9a3412', margin: '0 0 8px', fontWeight: 800 }}>
+            <h3 id="confirm-dialog-title" style={{ fontSize: 18, color: 'var(--navy)', margin: '0 0 8px', fontWeight: 800 }}>
               ¿Confirmar cambio de rol sensible?
             </h3>
 
             <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.5, margin: '0 0 18px' }}>
               Estás modificando el rol de{' '}
-              <strong>{pendingRoleChange.user.fullName}</strong> ({pendingRoleChange.user.email}) de{' '}
-              <span style={{ fontWeight: 700 }}>{getRoleBadgeText(pendingRoleChange.user.role)}</span> a{' '}
-              <span style={{ fontWeight: 700, color: '#c2410c' }}>{getRoleBadgeText(pendingRoleChange.newRole)}</span>.
+              <strong>{pendingRoleChange.user.fullName}</strong> ({pendingRoleChange.user.email}) a{' '}
+              <span style={{ fontWeight: 700, color: 'var(--navy)' }}>{getRoleBadgeText(pendingRoleChange.newRole)}</span>.
               <br />
               <br />
               {currentUser?.email && currentUser.email.toLowerCase().trim() === pendingRoleChange.user.email.toLowerCase().trim() ? (
-                <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                  ⚠️ Atención: Esta es tu cuenta activa actual. Si cambias tu rol de Administrador a Diseñador o Estudiante, serás redirigido y perderás el acceso a este panel de roles.
+                <span style={{ color: 'var(--red)', fontWeight: 600 }}>
+                  Atención: Esta es tu sesión activa. Si cambias tu rol de Administrador a Diseñador o Estudiante, perderás el acceso a este panel de roles.
                 </span>
               ) : (
-                <span>El usuario perderá inmediatamente los privilegios de administrador en su próxima acción.</span>
+                <span>El usuario tendrá los nuevos privilegios en su próxima acción.</span>
               )}
             </p>
 
@@ -1781,12 +1683,7 @@ export function AdminRoleManager() {
                 type="button"
                 className="btn btn-primary"
                 onClick={() => applyRoleChange(pendingRoleChange.user, pendingRoleChange.newRole)}
-                style={{
-                  padding: '8px 18px',
-                  fontSize: 13,
-                  background: '#c2410c',
-                  borderColor: '#c2410c',
-                }}
+                style={{ padding: '8px 18px', fontSize: 13 }}
               >
                 Sí, cambiar rol
               </button>
@@ -1803,7 +1700,7 @@ export function AdminRoleManager() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(7, 21, 43, 0.7)',
+            background: 'rgba(10, 31, 68, 0.7)',
             backdropFilter: 'blur(5px)',
             zIndex: 1000,
             display: 'grid',
@@ -1819,8 +1716,8 @@ export function AdminRoleManager() {
               background: '#ffffff',
               borderRadius: 20,
               padding: 26,
-              boxShadow: '0 20px 45px -12px rgba(11, 44, 87, 0.35)',
-              border: '1px solid #fecaca',
+              boxShadow: '0 20px 45px -12px rgba(10, 31, 68, 0.35)',
+              border: '1px solid var(--line)',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -1829,8 +1726,8 @@ export function AdminRoleManager() {
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                background: '#fef2f2',
-                color: '#dc2626',
+                background: '#fff0f1',
+                color: 'var(--red)',
                 display: 'grid',
                 placeItems: 'center',
                 margin: '0 0 16px',
@@ -1839,14 +1736,14 @@ export function AdminRoleManager() {
               <Icon name="trash" size={24} />
             </div>
 
-            <h3 style={{ fontSize: 18, color: '#991b1b', margin: '0 0 8px', fontWeight: 800 }}>
+            <h3 style={{ fontSize: 18, color: 'var(--navy)', margin: '0 0 8px', fontWeight: 800 }}>
               ¿Eliminar cuenta de usuario?
             </h3>
 
             <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.5, margin: '0 0 20px' }}>
-              ¿Estás seguro de que deseas eliminar permanentemente a{' '}
+              ¿Estás seguro de que deseas eliminar a{' '}
               <strong>{userToDelete.fullName}</strong> ({userToDelete.email})?
-              Esta acción no se puede deshacer y revocará cualquier acceso asignado.
+              Esta acción revocará el acceso al sistema.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -1861,17 +1758,12 @@ export function AdminRoleManager() {
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-danger"
                 onClick={handleDeleteUser}
                 disabled={isDeleting}
-                style={{
-                  padding: '8px 18px',
-                  fontSize: 13,
-                  background: '#dc2626',
-                  borderColor: '#dc2626',
-                }}
+                style={{ padding: '8px 18px', fontSize: 13 }}
               >
-                {isDeleting ? 'Eliminando...' : 'Sí, eliminar cuenta'}
+                {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
             </div>
           </div>
