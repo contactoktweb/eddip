@@ -22,6 +22,8 @@ export function Icon({name,size=20,className=''}:{name:string;size?:number;class
     card:<><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/><path d="M7 15h4"/></>,
     check:<path d="m5 12 4 4L19 6"/>,
     chevron:<path d="m9 18 6-6-6-6"/>,
+    'chevron-right':<path d="m9 18 6-6-6-6"/>,
+    'chevron-left':<path d="m15 18-6-6 6-6"/>,
     arrow:<><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     shield:<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></>,

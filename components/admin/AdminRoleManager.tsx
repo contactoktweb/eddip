@@ -8,6 +8,8 @@ import { useDemo } from '@/app/providers';
 
 type RoleFilter = 'all' | 'admin' | 'designer' | 'student';
 
+const USERS_PER_PAGE = 10;
+
 export function AdminRoleManager() {
   const { user: currentUser } = useDemo();
   const [users, setUsers] = useState<RegisteredAccount[]>([]);
@@ -17,6 +19,9 @@ export function AdminRoleManager() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modales de confirmación
   const [pendingRoleChange, setPendingRoleChange] = useState<{
@@ -88,6 +93,9 @@ export function AdminRoleManager() {
     return { total, admins, designers, students };
   }, [users]);
 
+  // Resetear paginación al cambiar búsqueda o filtro
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole]);
+
   // Filtrado de usuarios
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
@@ -110,6 +118,13 @@ export function AdminRoleManager() {
       return true;
     });
   }, [users, searchTerm, filterRole]);
+
+  // Paginación derivada de los usuarios filtrados
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * USERS_PER_PAGE,
+    currentPage * USERS_PER_PAGE
+  );
 
   // Ejecución directa de cambio de rol
   const applyRoleChange = async (targetUser: RegisteredAccount, targetRole: 'student' | 'designer' | 'admin') => {
@@ -216,15 +231,22 @@ export function AdminRoleManager() {
     }
   };
 
-  // Eliminar usuario
+  // Eliminar usuario — refresca desde Supabase/localStorage para garantizar
+  // que el usuario eliminado no reaparezca por datos de seed o profiles.
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     try {
       setIsDeleting(true);
       await adminService.deleteUserAccount(userToDelete.id || userToDelete.email);
-      setUsers(prev => prev.filter(u => u.email !== userToDelete.email));
       showToast(`Usuario ${userToDelete.fullName} eliminado del sistema.`, 'success');
       setUserToDelete(null);
+      // Ajustar página si la actual queda vacía tras la eliminación
+      setCurrentPage(prev => {
+        const remainingOnPage = (filteredUsers.length - 1) - (prev - 1) * USERS_PER_PAGE;
+        return remainingOnPage <= 0 && prev > 1 ? prev - 1 : prev;
+      });
+      // Refrescar lista completa desde Supabase
+      await loadAccounts();
     } catch (err) {
       console.error(err);
       showToast('Error al eliminar la cuenta.', 'error');
@@ -820,7 +842,7 @@ export function AdminRoleManager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map(user => {
+                    {paginatedUsers.map(user => {
                       const currentRole = user.role || 'student';
                       const isUpdating = updatingEmail === user.email;
                       const isCurrentActiveUser =
@@ -1075,7 +1097,7 @@ export function AdminRoleManager() {
 
             {/* Vista Móvil: Tarjetas Táctiles Accesibles (Regla 10-15) */}
             <div className="role-mobile-view">
-              {filteredUsers.map(user => {
+              {paginatedUsers.map(user => {
                 const currentRole = user.role || 'student';
                 const isUpdating = updatingEmail === user.email;
                 const isCurrentActiveUser =
@@ -1284,6 +1306,125 @@ export function AdminRoleManager() {
                 );
               })}
             </div>
+
+            {/* ── Paginador ── */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="Paginación de usuarios"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '14px 20px',
+                  background: '#ffffff',
+                  borderRadius: 14,
+                  border: '1px solid var(--line)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {/* Info */}
+                <span style={{ fontSize: 12.5, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                  Mostrando{' '}
+                  <strong style={{ color: 'var(--navy)' }}>
+                    {(currentPage - 1) * USERS_PER_PAGE + 1}–
+                    {Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length)}
+                  </strong>{' '}
+                  de <strong style={{ color: 'var(--navy)' }}>{filteredUsers.length}</strong> usuarios
+                </span>
+
+                {/* Controles */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {/* Anterior */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    aria-label="Página anterior"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      border: '1px solid var(--line)',
+                      background: currentPage === 1 ? '#f8fafc' : '#fff',
+                      color: currentPage === 1 ? 'var(--muted)' : 'var(--navy)',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      display: 'grid',
+                      placeItems: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Icon name="chevron-left" size={15} />
+                  </button>
+
+                  {/* Números de página */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === '...' ? (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          style={{ fontSize: 13, color: 'var(--muted)', padding: '0 4px', userSelect: 'none' }}
+                        >
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setCurrentPage(p as number)}
+                          aria-label={`Ir a página ${p}`}
+                          aria-current={currentPage === p ? 'page' : undefined}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 8,
+                            border: currentPage === p ? 'none' : '1px solid var(--line)',
+                            background: currentPage === p ? 'var(--blue)' : '#fff',
+                            color: currentPage === p ? '#fff' : 'var(--navy)',
+                            fontWeight: currentPage === p ? 700 : 500,
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            display: 'grid',
+                            placeItems: 'center',
+                            transition: 'all 0.15s ease',
+                            boxShadow: currentPage === p ? '0 2px 8px rgba(32,80,201,0.3)' : 'none',
+                          }}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                  {/* Siguiente */}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    aria-label="Página siguiente"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      border: '1px solid var(--line)',
+                      background: currentPage === totalPages ? '#f8fafc' : '#fff',
+                      color: currentPage === totalPages ? 'var(--muted)' : 'var(--navy)',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      display: 'grid',
+                      placeItems: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Icon name="chevron-right" size={15} />
+                  </button>
+                </div>
+              </nav>
+            )}
           </>
         )}
       </section>

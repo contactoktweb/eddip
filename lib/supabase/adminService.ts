@@ -4,6 +4,7 @@ import { baseCourses, certificates, exams as baseExams } from '@/lib/data';
 import { getRegisteredAccounts, saveRegisteredAccount, type RegisteredAccount, generateUUID } from './studentService';
 
 const STORAGE_PREFIX = 'eddip_admin_';
+const DELETED_USERS_KEY = 'eddip_deleted_user_emails';
 
 function getLocalData<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
@@ -21,6 +22,34 @@ function setLocalData<T>(key: string, data: T): void {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
   } catch (err) {
     console.warn('Error saving admin local data:', err);
+  }
+}
+
+/**
+ * Retrieves the set of emails that have been explicitly deleted by an admin.
+ * This blacklist prevents soft-deleted users from reappearing via seed data
+ * or Supabase profiles on the next getUserAccounts() call.
+ */
+function getDeletedEmails(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_USERS_KEY);
+    const arr: string[] = raw ? JSON.parse(raw) : [];
+    return new Set(arr.map(e => e.toLowerCase().trim()));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Adds an email to the persistent deleted-users blacklist. */
+function addDeletedEmail(email: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getDeletedEmails();
+    existing.add(email.toLowerCase().trim());
+    localStorage.setItem(DELETED_USERS_KEY, JSON.stringify([...existing]));
+  } catch (err) {
+    console.warn('Error persisting deleted email:', err);
   }
 }
 
@@ -1182,14 +1211,21 @@ export const adminService = {
       },
     ];
 
+    // Retrieve deleted-user blacklist before merging sources
+    const deletedEmails = getDeletedEmails();
+
     for (const d of defaultAccounts) {
-      userMap.set(d.email.toLowerCase().trim(), d);
+      const key = d.email.toLowerCase().trim();
+      // Skip seed accounts that were explicitly deleted by an admin
+      if (deletedEmails.has(key)) continue;
+      userMap.set(key, d);
     }
 
     // Agregar cuentas de estudiantes
     for (const s of students) {
       if (!s.email) continue;
       const clean = s.email.toLowerCase().trim();
+      if (deletedEmails.has(clean)) continue;
       const existing = userMap.get(clean);
       userMap.set(clean, {
         id: s.id,
@@ -1207,6 +1243,7 @@ export const adminService = {
     for (const r of registered) {
       if (!r.email) continue;
       const clean = r.email.toLowerCase().trim();
+      if (deletedEmails.has(clean)) continue;
       const existing = userMap.get(clean);
       userMap.set(clean, {
         id: r.id || existing?.id || generateUUID(),
@@ -1224,6 +1261,7 @@ export const adminService = {
     for (const p of profilesList) {
       if (!p.email) continue;
       const clean = p.email.toLowerCase().trim();
+      if (deletedEmails.has(clean)) continue;
       const existing = userMap.get(clean);
       userMap.set(clean, {
         id: p.id || existing?.id || generateUUID(),
@@ -1419,19 +1457,59 @@ export const adminService = {
   async deleteUserAccount(userIdOrEmail: string): Promise<boolean> {
     const accounts = await this.getUserAccounts();
     const clean = userIdOrEmail.toLowerCase().trim();
-    const updated = accounts.filter(a => a.id !== userIdOrEmail && a.email.toLowerCase().trim() !== clean);
+
+    // Resolve the canonical email of the account being deleted
+    const target = accounts.find(
+      a => a.id === userIdOrEmail || a.email.toLowerCase().trim() === clean
+    );
+    const targetEmail = target?.email.toLowerCase().trim() ?? clean;
+
+    const updated = accounts.filter(
+      a => a.id !== userIdOrEmail && a.email.toLowerCase().trim() !== targetEmail
+    );
+
+    // 1. Persist the email in the blacklist so getUserAccounts() never re-injects it
+    addDeletedEmail(targetEmail);
 
     try {
+      // 2. Update registered_users list in Supabase site_content
       await supabase.from('site_content').upsert({
         key: 'eddip_registered_users',
         value: updated,
         updated_at: new Date().toISOString(),
       });
-      await supabase.from('profiles').delete().or(`id.eq.${userIdOrEmail},email.eq.${clean}`);
+
+      // 3. Persist the blacklist to Supabase as well for cross-device consistency
+      const { data: existingBlacklist } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', 'eddip_deleted_user_emails')
+        .maybeSingle();
+
+      const currentList: string[] = Array.isArray(existingBlacklist?.value)
+        ? (existingBlacklist.value as string[])
+        : [];
+
+      if (!currentList.includes(targetEmail)) {
+        currentList.push(targetEmail);
+      }
+
+      await supabase.from('site_content').upsert({
+        key: 'eddip_deleted_user_emails',
+        value: currentList,
+        updated_at: new Date().toISOString(),
+      });
+
+      // 4. Remove from profiles table
+      await supabase
+        .from('profiles')
+        .delete()
+        .or(`id.eq.${userIdOrEmail},email.eq.${targetEmail}`);
     } catch (err) {
       console.warn('Error al eliminar cuenta en Supabase:', err);
     }
 
+    // 5. Update localStorage cache
     setLocalData('registered_accounts', updated);
 
     if (typeof window !== 'undefined') {
