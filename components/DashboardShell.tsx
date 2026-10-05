@@ -26,6 +26,7 @@ const adminNav = [
 
 const designerNav = [
   ['/admin/cursos', 'Cursos y Lecciones', 'book'],
+  ['/admin/evaluaciones', 'Evaluaciones', 'file'],
 ] as const;
 
 export function DashboardShell({
@@ -61,7 +62,9 @@ export function DashboardShell({
   // Control estricto de acceso para Diseñador (únicamente crear y actualizar cursos)
   const isDesignerAllowedPath =
     path === '/admin/cursos' ||
-    path.startsWith('/admin/cursos/');
+    path.startsWith('/admin/cursos/') ||
+    path === '/admin/evaluaciones' ||
+    path.startsWith('/admin/evaluaciones/');
 
   const isDesignerBlocked = isDesigner && kind === 'admin' && !isDesignerAllowedPath;
   const isStudentBlocked = role === 'student' && kind === 'admin';
@@ -271,7 +274,7 @@ export function DashboardShell({
               </div>
               <h2 style={{ fontSize: 22, color: '#071F49', marginBottom: 10 }}>Acceso Restringido</h2>
               <p style={{ color: '#64748b', fontSize: 14.5, lineHeight: 1.6, marginBottom: 24 }}>
-                Tu cuenta tiene asignado el rol de <strong>Diseñador Instruccional</strong>. Tus permisos en la plataforma están configurados exclusivamente para la <strong>creación, estructuración y actualización de cursos y programas académicos</strong>.
+                Tu cuenta tiene asignado el rol de <strong>Diseñador Instruccional</strong>. Tus permisos en la plataforma están configurados para la <strong>creación y estructuración de cursos, programas académicos y evaluaciones</strong>.
               </p>
               <Link
                 href="/admin/cursos"

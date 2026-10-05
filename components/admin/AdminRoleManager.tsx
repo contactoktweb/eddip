@@ -389,7 +389,7 @@ export function AdminRoleManager() {
             <div>
               <span>Diseñadores</span>
               <strong>{stats.designers}</strong>
-              <small style={{ color: 'var(--muted)' }}>Cursos y lecciones</small>
+              <small style={{ color: 'var(--muted)' }}>Cursos y evaluaciones</small>
             </div>
           </div>
 
@@ -584,6 +584,7 @@ export function AdminRoleManager() {
                   <li>Organización de módulos, temas y duraciones</li>
                   <li>Carga de videos (YouTube / HTML5) y material de apoyo</li>
                   <li>Subida de infografías e imágenes formativas</li>
+                  <li><strong>Creación y configuración de evaluaciones</strong></li>
                   <li style={{ color: 'var(--muted)' }}>Restringido de ventas y métricas financieras</li>
                   <li style={{ color: 'var(--muted)' }}>Restringido de gestión de roles y estudiantes</li>
                 </ul>
