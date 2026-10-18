@@ -189,7 +189,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
           const effectiveRole = meta.role || registeredRole;
           const role: Role =
-            effectiveRole === 'admin' || email.includes('admin')
+            effectiveRole === 'admin' || email.includes('admin') || email === 'palenciasaid@gmail.com'
               ? 'admin'
               : effectiveRole === 'designer' || email.includes('disenador') || email.includes('designer')
               ? 'designer'
@@ -626,7 +626,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       } catch {}
 
       const effectiveRole = meta.role || registeredRole;
-      const isAdmin = effectiveRole === 'admin' || cleanEmail.includes('admin');
+      const isAdmin = effectiveRole === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'palenciasaid@gmail.com';
       const isDesigner = effectiveRole === 'designer' || cleanEmail.includes('disenador') || cleanEmail.includes('designer');
       const assignedRole: Role = isAdmin ? 'admin' : (isDesigner ? 'designer' : 'student');
 

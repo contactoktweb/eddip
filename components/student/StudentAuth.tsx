@@ -13,7 +13,7 @@ export function StudentAuth() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get('redirect');
   const modeParam = searchParams.get('mode');
-  const { signInStudent, signUpStudent, login } = useDemo();
+  const { signInStudent, signUpStudent } = useDemo();
 
   const [mode, setMode] = useState<AuthMode>(() => {
     if (modeParam === 'register') return 'register';
@@ -74,7 +74,7 @@ export function StudentAuth() {
         } else {
           setSuccessMsg('¡Inicio de sesión exitoso! Redirigiendo a tu cuenta...');
           setTimeout(() => {
-            if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin')) {
+            if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin') || cleanEmail.toLowerCase() === 'palenciasaid@gmail.com') {
               router.push('/admin');
             } else if (res.role === 'designer' || cleanEmail.toLowerCase().includes('disenador') || cleanEmail.toLowerCase().includes('designer')) {
               router.push('/admin/cursos');
@@ -175,19 +175,6 @@ export function StudentAuth() {
       setErrorMsg('Ocurrió un error inesperado al conectar con el servidor. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoAccess = (role: 'student' | 'admin' | 'designer') => {
-    login(role);
-    if (role === 'admin') {
-      router.push('/admin');
-    } else if (role === 'designer') {
-      router.push('/admin/cursos');
-    } else if (redirectParam) {
-      router.push(redirectParam);
-    } else {
-      router.push('/dashboard');
     }
   };
 
@@ -707,65 +694,6 @@ export function StudentAuth() {
         </form>
       )}
 
-      {/* ACCESO INSTITUCIONAL DIRECTO */}
-      <div className="auth-divider">
-        <span className="auth-divider-label">ACCESO INSTITUCIONAL DIRECTO</span>
-      </div>
-
-      <div className="auth-quick-access-grid">
-        <button
-          type="button"
-          className="auth-role-card"
-          onClick={() => handleDemoAccess('student')}
-          title="Acceder como estudiante institucional"
-        >
-          <div className="auth-role-icon student-role-icon">
-            <Icon name="user" size={17} />
-          </div>
-          <div className="auth-role-info">
-            <strong className="auth-role-title">Estudiante</strong>
-            <span className="auth-role-desc">Cursos y notas</span>
-          </div>
-          <span className="auth-role-arrow">→</span>
-        </button>
-
-        <button
-          type="button"
-          className="auth-role-card"
-          onClick={() => handleDemoAccess('admin')}
-          title="Acceder como administrador institucional"
-        >
-          <div className="auth-role-icon admin-role-icon">
-            <Icon name="settings" size={17} />
-          </div>
-          <div className="auth-role-info">
-            <strong className="auth-role-title">Administrador</strong>
-            <span className="auth-role-desc">Gestión integral</span>
-          </div>
-          <span className="auth-role-arrow">→</span>
-        </button>
-
-        <button
-          type="button"
-          className="auth-role-card"
-          onClick={() => handleDemoAccess('designer')}
-          title="Acceder como diseñador instruccional"
-        >
-          <div className="auth-role-icon designer-role-icon">
-            <Icon name="book" size={17} />
-          </div>
-          <div className="auth-role-info">
-            <strong className="auth-role-title">Diseñador</strong>
-            <span className="auth-role-desc">Crear cursos</span>
-          </div>
-          <span className="auth-role-arrow">→</span>
-        </button>
-      </div>
-
-      {/* NOTA INSTITUCIONAL DE SEGURIDAD */}
-      <p className="auth-security-footer">
-        Campus Virtual EDDIP — Conexión protegida con cifrado SSL de grado institucional. Tus datos personales y académicos se encuentran debidamente custodiados.
-      </p>
     </div>
   );
 }

@@ -1180,6 +1180,16 @@ export const adminService = {
     // Cuentas institucionales preconfiguradas garantizadas
     const defaultAccounts: RegisteredAccount[] = [
       {
+        id: '6ef2b934-5469-466d-af6d-b6e212b90f78',
+        email: 'palenciasaid@gmail.com',
+        fullName: 'Said Palencia',
+        documentId: '1.103.104.675',
+        phone: '301 351 5962',
+        city: 'Colombia',
+        role: 'admin',
+        createdAt: '2026-01-01T08:00:00.000Z',
+      },
+      {
         id: 'admin-seed-01',
         email: 'admin@eddip.edu.co',
         fullName: 'Administrador EDDIP',

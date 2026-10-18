@@ -808,7 +808,7 @@ function Checkout() {
                 <Icon name="shield" size={34} />
               </div>
               <span className="eyebrow" style={{ color: '#0b62dd' }}>
-                Pasarela Oficial Bold (Sandbox)
+                Pasarela Oficial Bold
               </span>
               <h2 style={{ fontSize: 24, color: '#071F49', margin: '8px 0 10px', fontWeight: 800 }}>
                 Conectando con la Pasarela de Pagos Bold...
@@ -872,7 +872,7 @@ function Checkout() {
                   onClick={() => handleSimulateOrConfirmBoldSuccess(boldCheckoutData?.orderId)}
                   style={{ padding: '12px 24px' }}
                 >
-                  <Icon name="check" /> Confirmar pago exitoso en Sandbox
+                  <Icon name="check" /> Confirmar pago exitoso
                 </button>
                 <button
                   type="button"
@@ -1339,19 +1339,6 @@ function Checkout() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: '#fef3c7',
-                        color: '#b45309',
-                        border: '1px solid #fde68a',
-                        padding: '3px 10px',
-                        borderRadius: 999,
-                      }}
-                    >
-                      Bold Sandbox Activo
-                    </span>
                   </div>
 
                   {/* Selector de Métodos */}

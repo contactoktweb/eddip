@@ -355,17 +355,25 @@ export const studentService = {
       return { user: studentUser, session: null, error: null };
     }
 
-    // 4. Cuentas demo institucionales preconfiguradas
-    if (cleanEmail === 'admin@demo.eddip.com' || cleanEmail === 'admin@eddip.edu.co' || cleanEmail.includes('admin')) {
+    // 4. Cuentas institucionales preconfiguradas garantizadas
+    if (
+      cleanEmail === 'palenciasaid@gmail.com' ||
+      cleanEmail === 'admin@demo.eddip.com' ||
+      cleanEmail === 'admin@eddip.edu.co' ||
+      cleanEmail.includes('admin')
+    ) {
+      if (cleanEmail === 'palenciasaid@gmail.com' && cleanPass !== 'Said3013515962//') {
+        return { user: null, session: null, error: 'Contraseña incorrecta. Por favor verifica tus datos e intenta nuevamente.' };
+      }
       const mockAdminUser = {
-        id: 'admin-demo-user-id',
+        id: cleanEmail === 'palenciasaid@gmail.com' ? '6ef2b934-5469-466d-af6d-b6e212b90f78' : 'admin-demo-user-id',
         email: cleanEmail,
         user_metadata: {
-          full_name: 'Administrador EDDIP',
+          full_name: cleanEmail === 'palenciasaid@gmail.com' ? 'Said Palencia' : 'Administrador EDDIP',
           role: 'admin',
-          document_id: '99.888.777',
-          phone: '310 999 0000',
-          city: 'Bogotá D.C.',
+          document_id: cleanEmail === 'palenciasaid@gmail.com' ? '1.103.104.675' : '99.888.777',
+          phone: cleanEmail === 'palenciasaid@gmail.com' ? '301 351 5962' : '310 999 0000',
+          city: cleanEmail === 'palenciasaid@gmail.com' ? 'Colombia' : 'Bogotá D.C.',
         },
         app_metadata: {},
         aud: 'authenticated',
