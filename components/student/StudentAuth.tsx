@@ -35,7 +35,6 @@ export function StudentAuth() {
   const [resetSubmitted, setResetSubmitted] = useState(false);
 
   // Campos de formulario
-  const [selectedRole, setSelectedRole] = useState<'student' | 'admin' | 'designer'>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -127,30 +126,18 @@ export function StudentAuth() {
           documentId: cleanDoc,
           phone: phone.trim(),
           city: city.trim(),
-          role: selectedRole,
+          role: 'student',
         });
 
         if (!res.success) {
           setErrorMsg(res.error || 'Error al registrar la cuenta. Inténtalo nuevamente.');
         } else {
-          const roleLabel =
-            selectedRole === 'admin'
-              ? 'Administrador'
-              : selectedRole === 'designer'
-              ? 'Diseñador Instruccional'
-              : 'Estudiante';
-
-          const destination =
-            selectedRole === 'admin'
-              ? '/admin'
-              : selectedRole === 'designer'
-              ? '/admin/cursos'
-              : redirectParam || '/dashboard';
+          const destination = redirectParam || '/dashboard';
 
           setSuccessMsg(
-            redirectParam && selectedRole === 'student'
+            redirectParam
               ? '¡Cuenta creada con éxito! Redirigiendo a tu matrícula de curso...'
-              : `¡Cuenta de ${roleLabel} creada con éxito! Redirigiendo a tu panel de acceso...`
+              : '¡Cuenta de estudiante creada con éxito! Redirigiendo a tu panel de acceso...'
           );
           setTimeout(() => {
             router.push(destination);
@@ -289,7 +276,7 @@ export function StudentAuth() {
           {mode === 'login'
             ? 'Accede a tus asignaturas activas, evaluaciones y certificados oficiales.'
             : mode === 'register'
-            ? 'Designa tu rol en la plataforma y completa tu registro oficial en el sistema EDDIP.'
+            ? 'Completa tus datos para crear tu cuenta de estudiante y acceder a tus cursos.'
             : 'Ingresa tu correo institucional o personal para recibir las instrucciones de acceso seguro.'}
         </p>
       </div>
@@ -419,104 +406,7 @@ export function StudentAuth() {
             </div>
           )}
 
-          {/* MODO REGISTRO: Designación de rol en la plataforma */}
-          {mode === 'register' && (
-            <div className="field auth-field">
-              <div className="auth-role-select-label-wrap">
-                <label className="auth-role-select-main-label" id="role-select-heading">
-                  Designar rol en la plataforma *
-                </label>
-                <span className="auth-role-select-sub-hint">
-                  {selectedRole === 'admin'
-                    ? 'Perfil: Control total y métricas'
-                    : selectedRole === 'designer'
-                    ? 'Perfil: Creación de cursos'
-                    : 'Perfil: Estudiante regular'}
-                </span>
-              </div>
 
-              <div
-                className="auth-role-select-grid"
-                role="radiogroup"
-                aria-labelledby="role-select-heading"
-              >
-                {/* Opción 1: Estudiante */}
-                <button
-                  type="button"
-                  role="radio"
-                  id="role-option-student"
-                  aria-checked={selectedRole === 'student'}
-                  onClick={() => setSelectedRole('student')}
-                  className={`auth-role-select-card ${selectedRole === 'student' ? 'selected' : ''}`}
-                >
-                  <div className="auth-role-select-top">
-                    <div className="auth-role-select-icon student">
-                      <Icon name="cap" size={18} />
-                    </div>
-                    <span className="auth-role-select-pill student">Alumnos</span>
-                  </div>
-                  <strong className="auth-role-select-title">Estudiante</strong>
-                  <p className="auth-role-select-desc">
-                    Campus virtual, asignaturas activas, evaluaciones y diplomas oficiales con QR.
-                  </p>
-                  <div className="auth-role-select-footer">
-                    <span className={`auth-role-radio-dot ${selectedRole === 'student' ? 'active' : ''}`} />
-                    <span>{selectedRole === 'student' ? 'Rol designado' : 'Elegir Estudiante'}</span>
-                  </div>
-                </button>
-
-                {/* Opción 2: Diseñador Instruccional */}
-                <button
-                  type="button"
-                  role="radio"
-                  id="role-option-designer"
-                  aria-checked={selectedRole === 'designer'}
-                  onClick={() => setSelectedRole('designer')}
-                  className={`auth-role-select-card ${selectedRole === 'designer' ? 'selected' : ''}`}
-                >
-                  <div className="auth-role-select-top">
-                    <div className="auth-role-select-icon designer">
-                      <Icon name="edit" size={18} />
-                    </div>
-                    <span className="auth-role-select-pill designer">Docente</span>
-                  </div>
-                  <strong className="auth-role-select-title">Diseñador</strong>
-                  <p className="auth-role-select-desc">
-                    Gestión curricular, creación y edición de cursos, módulos, lecciones y multimedia.
-                  </p>
-                  <div className="auth-role-select-footer">
-                    <span className={`auth-role-radio-dot ${selectedRole === 'designer' ? 'active' : ''}`} />
-                    <span>{selectedRole === 'designer' ? 'Rol designado' : 'Elegir Diseñador'}</span>
-                  </div>
-                </button>
-
-                {/* Opción 3: Administrador */}
-                <button
-                  type="button"
-                  role="radio"
-                  id="role-option-admin"
-                  aria-checked={selectedRole === 'admin'}
-                  onClick={() => setSelectedRole('admin')}
-                  className={`auth-role-select-card ${selectedRole === 'admin' ? 'selected' : ''}`}
-                >
-                  <div className="auth-role-select-top">
-                    <div className="auth-role-select-icon admin">
-                      <Icon name="shield" size={18} />
-                    </div>
-                    <span className="auth-role-select-pill admin">Directivo</span>
-                  </div>
-                  <strong className="auth-role-select-title">Administrador</strong>
-                  <p className="auth-role-select-desc">
-                    Control global de la plataforma, métricas, directorio de usuarios, ventas y web.
-                  </p>
-                  <div className="auth-role-select-footer">
-                    <span className={`auth-role-radio-dot ${selectedRole === 'admin' ? 'active' : ''}`} />
-                    <span>{selectedRole === 'admin' ? 'Rol designado' : 'Elegir Admin'}</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* CAMPO CORREO (Todos los modos) */}
           <div className="field auth-field">
@@ -658,7 +548,7 @@ export function StudentAuth() {
                 {mode === 'login'
                   ? 'Verificando credenciales...'
                   : mode === 'register'
-                  ? `Registrando cuenta (${selectedRole === 'admin' ? 'Administrador' : selectedRole === 'designer' ? 'Diseñador' : 'Estudiante'})...`
+                  ? 'Registrando cuenta de estudiante...'
                   : 'Enviando enlace seguro...'}
               </span>
             ) : mode === 'login' ? (
@@ -668,9 +558,7 @@ export function StudentAuth() {
               </>
             ) : mode === 'register' ? (
               <>
-                <span>
-                  Registrar como {selectedRole === 'admin' ? 'Administrador' : selectedRole === 'designer' ? 'Diseñador' : 'Estudiante'}
-                </span>
+                <span>Crear cuenta de estudiante</span>
                 <Icon name="check" size={18} />
               </>
             ) : (
