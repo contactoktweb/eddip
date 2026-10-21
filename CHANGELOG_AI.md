@@ -1,3 +1,10 @@
+## [2026-10-21] Autenticación y autorización fuera del navegador (Supabase Auth + RLS por rol)
+- **Credenciales**: Supabase Auth es el único almacén. Se eliminaron `eddip_registered_users` como fuente de inicio de sesión y el respaldo de contraseñas en texto plano; la migración SQL purga las contraseñas guardadas y `scripts/migrate-legacy-accounts.mjs` crea las cuentas heredadas en Auth y envía el correo de recuperación (no copia contraseñas).
+- **Roles**: se leen de `public.profiles` y están protegidos por trigger; se eliminaron el rol en `localStorage` (`eddip-demo-v2`), la función `login(role)` del provider y las cuentas sembradas en código.
+- **RLS por rol** en `profiles`, `site_content`, `courses`, `certificates`, `enrollments`, `lesson_progress` y `exam_results` (`lib/supabase/migrations/20261021_auth_roles_rls.sql`); `certificates` incorpora `document_id`.
+- **Route handlers con sesión verificada y service role** para registro, gestión de usuarios, checkout, carga de materiales y recuperación de contraseña.
+- **Storage**: bucket `course-media` y script `scripts/migrate-course-media.mjs` para retirar el base64 de los cursos.
+
 ## [2026-10-21] Configuración del sitio, correos con Resend, recuperación de contraseña y correcciones de seguridad
 - **Eliminación real de cursos y estudiantes**: `deleteCourse` del provider ahora borra en Supabase (antes solo en memoria) e informa errores; el directorio de estudiantes incorpora eliminación con lista negra compartida (`eddip_deleted_user_emails`) para que no reaparezcan desde copias locales.
 - **Rendimiento de cursos**: `contentService.getCourses` selecciona solo los campos de texto de `instructor` (la consulta pasaba de ~15 MB y excedía el tiempo límite de Supabase, mostrando los cursos de respaldo del código). `getSiteContent` consulta solo sus claves.

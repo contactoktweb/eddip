@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Icon } from '@/lib/icons';
-import { adminService } from '@/lib/supabase/adminService';
-import type { RegisteredAccount } from '@/lib/supabase/studentService';
+import { adminService, type UserAccount } from '@/lib/supabase/adminService';
 import { useDemo } from '@/app/providers';
 
 type RoleFilter = 'all' | 'admin' | 'designer' | 'student';
@@ -12,7 +11,7 @@ const USERS_PER_PAGE = 10;
 
 export function AdminRoleManager() {
   const { user: currentUser } = useDemo();
-  const [users, setUsers] = useState<RegisteredAccount[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<RoleFilter>('all');
@@ -25,11 +24,11 @@ export function AdminRoleManager() {
 
   // Modales de confirmación
   const [pendingRoleChange, setPendingRoleChange] = useState<{
-    user: RegisteredAccount;
+    user: UserAccount;
     newRole: 'student' | 'designer' | 'admin';
   } | null>(null);
 
-  const [userToDelete, setUserToDelete] = useState<RegisteredAccount | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserAccount | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Estados para nuevo usuario en modal
@@ -127,10 +126,10 @@ export function AdminRoleManager() {
   );
 
   // Ejecución directa de cambio de rol
-  const applyRoleChange = async (targetUser: RegisteredAccount, targetRole: 'student' | 'designer' | 'admin') => {
+  const applyRoleChange = async (targetUser: UserAccount, targetRole: 'student' | 'designer' | 'admin') => {
     try {
       setUpdatingEmail(targetUser.email);
-      const res = await adminService.updateUserRole(targetUser.id || targetUser.email, targetRole);
+      const res = await adminService.updateUserRole(targetUser.id, targetRole);
 
       if (res.success) {
         setUsers(prev =>
@@ -156,7 +155,7 @@ export function AdminRoleManager() {
   };
 
   // Manejador que detecta si requiere confirmación (ej: auto-degradación de rol del admin activo)
-  const handleSelectRole = (targetUser: RegisteredAccount, targetRole: 'student' | 'designer' | 'admin') => {
+  const handleSelectRole = (targetUser: UserAccount, targetRole: 'student' | 'designer' | 'admin') => {
     if (targetUser.role === targetRole) return;
 
     const isCurrentActiveAdmin =
@@ -237,7 +236,11 @@ export function AdminRoleManager() {
     if (!userToDelete) return;
     try {
       setIsDeleting(true);
-      await adminService.deleteUserAccount(userToDelete.id || userToDelete.email);
+      const res = await adminService.deleteUserAccount(userToDelete.id, userToDelete.email);
+      if (!res.success) {
+        showToast(res.error || 'Error al eliminar la cuenta.', 'error');
+        return;
+      }
       showToast(`Usuario ${userToDelete.fullName} eliminado del sistema.`, 'success');
       setUserToDelete(null);
       // Ajustar página si la actual queda vacía tras la eliminación

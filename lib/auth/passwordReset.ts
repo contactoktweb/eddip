@@ -1,25 +1,15 @@
 import { createHash, randomBytes } from 'crypto';
 import { createServerSupabase, readSiteContent, writeSiteContent } from '@/lib/supabase/server';
+import { createAuthAccount, findProfileByEmail, readStudentDirectory } from '@/lib/auth/accounts';
+
+export { MIN_PASSWORD_LENGTH } from '@/lib/auth/accounts';
 
 const RESET_TOKENS_KEY = 'password_reset_tokens';
 export const RESET_TOKEN_TTL_MINUTES = 60;
-export const MIN_PASSWORD_LENGTH = 6;
 
 type StoredResetToken = { hash: string; email: string; expiresAt: string };
 
-export type RegisteredAccountRecord = {
-  id: string;
-  email: string;
-  password?: string;
-  fullName: string;
-  documentId?: string;
-  phone?: string;
-  city?: string;
-  role: 'student' | 'admin' | 'designer';
-  createdAt: string;
-};
-
-type DirectoryStudent = { id: string; name: string; email: string; documentId?: string; phone?: string; city?: string };
+type AccountHolder = { name: string; userId?: string; student?: { name?: string; documentId?: string; phone?: string; city?: string } };
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -30,15 +20,16 @@ async function readTokens(): Promise<StoredResetToken[]> {
   return (Array.isArray(stored) ? stored : []).filter(t => new Date(t.expiresAt).getTime() > now);
 }
 
-/** Busca a la persona entre las cuentas registradas y, si no tiene cuenta, en el directorio de estudiantes. */
-export async function findAccountHolder(email: string): Promise<{ name: string; account?: RegisteredAccountRecord; student?: DirectoryStudent } | null> {
+/** Busca a la persona en Supabase Auth (perfil) y, si aún no tiene cuenta, en el directorio de estudiantes. */
+export async function findAccountHolder(email: string): Promise<AccountHolder | null> {
+  const admin = createServerSupabase({ requireServiceRole: true });
+  if (!admin) return null;
   const clean = normalizeEmail(email);
-  const accounts = (await readSiteContent<RegisteredAccountRecord[]>('eddip_registered_users')) || [];
-  const account = accounts.find(a => normalizeEmail(a.email || '') === clean);
-  if (account) return { name: account.fullName || clean, account };
 
-  const students = (await readSiteContent<DirectoryStudent[]>('admin_students_list')) || [];
-  const student = students.find(s => normalizeEmail(s.email || '') === clean);
+  const profile = await findProfileByEmail(admin, clean);
+  if (profile) return { name: profile.full_name || clean, userId: profile.id };
+
+  const student = (await readStudentDirectory(admin)).find(s => normalizeEmail(s.email || '') === clean);
   if (student) return { name: student.name || clean, student };
 
   return null;
@@ -69,47 +60,31 @@ export async function isResetTokenValid(token: string): Promise<boolean> {
   return (await readTokens()).some(t => t.hash === hash);
 }
 
-/** Actualiza la contraseña de la cuenta institucional (y de Supabase Auth cuando hay service role). */
+/**
+ * Actualiza la contraseña en Supabase Auth. Si la persona solo existía en el directorio
+ * (inscrita por un administrador), se le crea su cuenta de estudiante con esa contraseña.
+ */
 export async function updateAccountPassword(email: string, password: string): Promise<boolean> {
-  const clean = normalizeEmail(email);
-  const accounts = (await readSiteContent<RegisteredAccountRecord[]>('eddip_registered_users')) || [];
-  const index = accounts.findIndex(a => normalizeEmail(a.email || '') === clean);
-
-  if (index >= 0) {
-    accounts[index] = { ...accounts[index], password };
-  } else {
-    const holder = await findAccountHolder(clean);
-    if (!holder?.student) return false;
-    accounts.unshift({
-      id: holder.student.id,
-      email: clean,
-      password,
-      fullName: holder.student.name,
-      documentId: holder.student.documentId || '',
-      phone: holder.student.phone || '',
-      city: holder.student.city || '',
-      role: 'student',
-      createdAt: new Date().toISOString(),
-    });
-  }
-
-  const saved = await writeSiteContent('eddip_registered_users', accounts);
-  if (!saved) return false;
-
   const admin = createServerSupabase({ requireServiceRole: true });
-  if (admin) {
-    const PAGE_SIZE = 1000;
-    for (let page = 1; ; page++) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: PAGE_SIZE });
-      if (error || !data) break;
-      const authUser = data.users.find(u => normalizeEmail(u.email || '') === clean);
-      if (authUser) {
-        await admin.auth.admin.updateUserById(authUser.id, { password });
-        break;
-      }
-      if (data.users.length < PAGE_SIZE) break;
-    }
+  if (!admin) return false;
+
+  const holder = await findAccountHolder(email);
+  if (!holder) return false;
+
+  if (holder.userId) {
+    const { error } = await admin.auth.admin.updateUserById(holder.userId, { password });
+    if (error) console.error('No fue posible actualizar la contraseña:', error.message);
+    return !error;
   }
 
-  return true;
+  const created = await createAuthAccount(admin, {
+    email,
+    password,
+    fullName: holder.student?.name || holder.name,
+    documentId: holder.student?.documentId,
+    phone: holder.student?.phone,
+    city: holder.student?.city,
+    role: 'student',
+  });
+  return Boolean(created.userId);
 }

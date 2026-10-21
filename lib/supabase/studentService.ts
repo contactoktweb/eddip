@@ -1,5 +1,5 @@
 import { supabase } from './client';
-import { adminService } from './adminService';
+import { callApi } from './authedFetch';
 import type { StudentProfile, CourseEnrollment, StudentNote, ExamResultRecord, IssuedCertificate } from './types';
 
 // Storage keys for resilient local fallback
@@ -24,18 +24,6 @@ function setLocalData<T>(key: string, data: T): void {
   }
 }
 
-export type RegisteredAccount = {
-  id: string;
-  email: string;
-  password?: string;
-  fullName: string;
-  documentId?: string;
-  phone?: string;
-  city?: string;
-  role: 'student' | 'admin' | 'designer';
-  createdAt: string;
-};
-
 // Generador de UUID v4 estándar compatible con PostgreSQL y navegadores
 export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -48,62 +36,15 @@ export function generateUUID(): string {
   });
 }
 
-// Obtener todas las cuentas registradas sincronizadas entre Supabase y almacenamiento local
-export async function getRegisteredAccounts(): Promise<RegisteredAccount[]> {
-  let remoteAccounts: RegisteredAccount[] = [];
-  try {
-    const { data } = await supabase
-      .from('site_content')
-      .select('*')
-      .eq('key', 'eddip_registered_users')
-      .single();
-    if (data && Array.isArray(data.value)) {
-      remoteAccounts = data.value;
-    }
-  } catch {
-    // Continuar con respaldo local
+/** Traduce los errores de Supabase Auth a mensajes claros para la persona. */
+function describeSignInError(message: string): string {
+  if (/email not confirmed/i.test(message)) {
+    return 'Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada o recupera tu contraseña.';
   }
-
-  const localAccounts = getLocalData<RegisteredAccount[]>('registered_accounts', []);
-  const map = new Map<string, RegisteredAccount>();
-
-  for (const acc of remoteAccounts) {
-    if (acc?.email) map.set(acc.email.toLowerCase().trim(), acc);
+  if (/rate limit|too many/i.test(message)) {
+    return 'Demasiados intentos. Espera unos minutos e inténtalo nuevamente.';
   }
-  for (const acc of localAccounts) {
-    if (acc?.email && !map.has(acc.email.toLowerCase().trim())) {
-      map.set(acc.email.toLowerCase().trim(), acc);
-    }
-  }
-
-  return Array.from(map.values());
-}
-
-// Guardar cuenta registrada tanto en Supabase como en almacenamiento local
-export async function saveRegisteredAccount(acc: RegisteredAccount): Promise<void> {
-  const current = await getRegisteredAccounts();
-  const cleanEmail = acc.email.toLowerCase().trim();
-  const index = current.findIndex(a => a.email.toLowerCase().trim() === cleanEmail);
-
-  if (index >= 0) {
-    current[index] = { ...current[index], ...acc };
-  } else {
-    current.unshift(acc);
-  }
-
-  // 1. Respaldo local inmediato
-  setLocalData('registered_accounts', current);
-
-  // 2. Persistencia en la nube de Supabase (site_content)
-  try {
-    await supabase.from('site_content').upsert({
-      key: 'eddip_registered_users',
-      value: current,
-      updated_at: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.warn('Advertencia al guardar cuenta en Supabase:', e);
-  }
+  return 'Correo o contraseña incorrectos. Si no recuerdas tu contraseña, usa "¿Olvidaste tu contraseña?" para crear una nueva.';
 }
 
 export const studentService = {
@@ -117,14 +58,9 @@ export const studentService = {
     documentId?: string;
     phone?: string;
     city?: string;
-    role?: 'student' | 'admin' | 'designer';
   }) {
     const cleanEmail = (params.email || '').trim().toLowerCase();
     const cleanName = (params.fullName || '').trim();
-    const cleanDoc = (params.documentId || '').trim();
-    const cleanPhone = (params.phone || '').trim();
-    const cleanCity = (params.city || '').trim();
-    const selectedRole: 'student' | 'admin' | 'designer' = params.role || 'student';
 
     if (!cleanEmail) {
       return { user: null, session: null, error: 'Por favor ingresa un correo electrónico válido.' };
@@ -136,220 +72,50 @@ export const studentService = {
       return { user: null, session: null, error: 'La contraseña debe tener al menos 6 caracteres.' };
     }
 
-    // 1. Verificación rigurosa de NO duplicidad en el directorio de estudiantes
-    const dupCheck = await adminService.isStudentDuplicate(cleanEmail, cleanDoc);
-    if (dupCheck.isDuplicate) {
-      return {
-        user: null,
-        session: null,
-        error: dupCheck.message || 'El correo o documento ya se encuentra registrado.',
-      };
-    }
-
-    // Comprobar también en el registro de cuentas activas
-    const allAccounts = await getRegisteredAccounts();
-    const emailExists = allAccounts.some(a => a.email.toLowerCase().trim() === cleanEmail);
-    if (emailExists) {
-      return {
-        user: null,
-        session: null,
-        error: 'Este correo electrónico ya se encuentra registrado en el sistema. Por favor inicia sesión.',
-      };
-    }
-
-    const userId = generateUUID();
-
-    // 2. Intentar registrar en Supabase Auth en segundo plano
-    let supabaseUser: import('@supabase/supabase-js').User | null = null;
-    let supabaseSession: import('@supabase/supabase-js').Session | null = null;
+    // La cuenta se crea en el servidor (Supabase Auth + perfil de estudiante) con validación de duplicados
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: params.password,
-        options: {
-          data: {
-            full_name: cleanName,
-            document_id: cleanDoc,
-            phone: cleanPhone,
-            city: cleanCity,
-            role: selectedRole,
-          },
-        },
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: params.password,
+          fullName: cleanName,
+          documentId: (params.documentId || '').trim(),
+          phone: (params.phone || '').trim(),
+          city: (params.city || '').trim(),
+        }),
       });
-
-      if (!error && data.user) {
-        supabaseUser = data.user;
-        supabaseSession = data.session;
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        return { user: null, session: null, error: data.error || 'No fue posible crear la cuenta. Inténtalo nuevamente.' };
       }
     } catch {
-      // Si Supabase Auth rate-limita o requiere confirmación por email, procedemos con persistencia institucional
+      return { user: null, session: null, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
     }
 
-    // 3. PERSISTENCIA EN CUENTAS REGISTRADAS (Nube de Supabase + Local)
-    const newAccount: RegisteredAccount = {
-      id: supabaseUser?.id || userId,
-      email: cleanEmail,
-      password: params.password,
-      fullName: cleanName,
-      documentId: cleanDoc,
-      phone: cleanPhone,
-      city: cleanCity || 'Colombia',
-      role: selectedRole,
-      createdAt: new Date().toISOString(),
-    };
-    await saveRegisteredAccount(newAccount);
-
-    // 4. PERSISTENCIA EN EL DIRECTORIO INSTITUCIONAL DE ESTUDIANTES (adminService)
-    // Si el usuario se registra con rol de estudiante, se incluye en el directorio académico
-    if (selectedRole === 'student') {
-      await adminService.saveStudent({
-        id: newAccount.id,
-        name: cleanName,
-        email: cleanEmail,
-        documentId: cleanDoc,
-        phone: cleanPhone,
-        city: cleanCity || 'Colombia',
-        coursesCount: 0,
-        progressAvg: 0,
-        certificatesCount: 0,
-        registeredAt: new Date().toISOString().slice(0, 10),
-        status: 'Activo',
-        enrolledCourses: [],
-        examScores: [],
-        role: 'student',
-      });
-    }
-
-    // Guardar en la tabla profiles de Supabase para consistencia directa
-    try {
-      await supabase.from('profiles').upsert({
-        id: newAccount.id,
-        email: cleanEmail,
-        full_name: cleanName,
-        document_id: cleanDoc,
-        phone: cleanPhone,
-        city: cleanCity || 'Colombia',
-        role: selectedRole,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn('Advertencia al guardar perfil en tabla profiles:', err);
-    }
-
-    // 5. Guardar perfil local del usuario con su rol designado
-    const profile: StudentProfile = {
-      id: newAccount.id,
-      email: cleanEmail,
-      fullName: cleanName,
-      documentId: cleanDoc,
-      phone: cleanPhone,
-      city: cleanCity,
-      role: selectedRole,
-      createdAt: new Date().toISOString(),
-    };
-    setLocalData('profile_' + newAccount.id, profile);
-    setLocalData('profile_' + cleanEmail, profile);
-
-    // 6. Construir objeto User oficial para la sesión activa inmediata
-    const resolvedUser = supabaseUser || ({
-      id: newAccount.id,
-      email: cleanEmail,
-      user_metadata: {
-        full_name: cleanName,
-        document_id: cleanDoc,
-        phone: cleanPhone,
-        city: cleanCity,
-        role: selectedRole,
-      },
-      app_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString(),
-    } as unknown as import('@supabase/supabase-js').User);
-
-    return { user: resolvedUser, session: supabaseSession, error: null };
+    return this.signIn(cleanEmail, params.password);
   },
 
   async signIn(email: string, pass: string) {
     const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanPass = (pass || '').trim();
 
     if (!cleanEmail) {
       return { user: null, session: null, error: 'Por favor ingresa tu correo electrónico.' };
     }
-    if (!cleanPass) {
+    if (!pass) {
       return { user: null, session: null, error: 'Por favor ingresa tu contraseña.' };
     }
 
-    // 1. Intentar inicio de sesión directo mediante Supabase Auth
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPass,
-      });
-
-      if (!error && data.user) {
-        // El rol asignado desde /admin/roles prevalece sobre el guardado al registrarse
-        const accounts = await getRegisteredAccounts();
-        const acc = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
-        data.user.user_metadata = {
-          ...(data.user.user_metadata || {}),
-          role: acc?.role || data.user.user_metadata?.role || 'student',
-        };
-        return { user: data.user, session: data.session, error: null };
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass });
+      if (error || !data.user) {
+        return { user: null, session: null, error: describeSignInError(error?.message || '') };
       }
+      return { user: data.user, session: data.session, error: null };
     } catch {
-      // Continuar a validación en registro sincronizado institucional
+      return { user: null, session: null, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
     }
-
-    // 2. Validar contra el registro de cuentas institucionales (Supabase site_content + local)
-    const accounts = await getRegisteredAccounts();
-    const account = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
-
-    if (account) {
-      // Validar coincidencia de contraseña
-      if (account.password && account.password === cleanPass) {
-        const authedUser = {
-          id: account.id,
-          email: account.email,
-          user_metadata: {
-            full_name: account.fullName,
-            role: account.role || 'student',
-            document_id: account.documentId || '',
-            phone: account.phone || '',
-            city: account.city || '',
-          },
-          app_metadata: {},
-          aud: 'authenticated',
-          created_at: account.createdAt || new Date().toISOString(),
-        } as unknown as import('@supabase/supabase-js').User;
-
-        return { user: authedUser, session: null, error: null };
-      } else if (!account.password) {
-        return {
-          user: null,
-          session: null,
-          error: 'Tu cuenta aún no tiene contraseña. Usa "¿Olvidaste tu contraseña?" para crear una.',
-        };
-      } else {
-        return { user: null, session: null, error: 'Contraseña incorrecta. Por favor verifica tus datos e intenta nuevamente.' };
-      }
-    }
-
-    // 3. Estudiantes registrados por un administrador que aún no han definido contraseña
-    const students = await adminService.getAllStudents();
-    if (students.some(st => st.email.toLowerCase().trim() === cleanEmail)) {
-      return {
-        user: null,
-        session: null,
-        error: 'Tu cuenta aún no tiene contraseña. Usa "¿Olvidaste tu contraseña?" para crear una.',
-      };
-    }
-
-    return {
-      user: null,
-      session: null,
-      error: 'No encontramos una cuenta con este correo. Por favor regístrate en la pestaña "Crear cuenta".',
-    };
   },
 
   async signOut() {
@@ -438,18 +204,22 @@ export const studentService = {
       console.warn('Supabase auth metadata update err:', err);
     }
 
-    // 2. Intentar actualizar en tabla profiles si existe
-    try {
-      await supabase.from('profiles').upsert({
-        id: userId,
+    // 2. Actualizar los datos personales del perfil (el rol y el correo solo los cambia un administrador)
+    const profileUpdates = Object.fromEntries(
+      Object.entries({
         full_name: updates.fullName,
         document_id: updates.documentId,
         phone: updates.phone,
         city: updates.city,
-        updated_at: new Date().toISOString(),
-      });
-    } catch {
-      // Graceful fallback si la tabla no existe
+      }).filter(([, value]) => value !== undefined)
+    );
+    try {
+      await supabase
+        .from('profiles')
+        .update({ ...profileUpdates, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+    } catch (err) {
+      console.warn('No fue posible actualizar el perfil:', err);
     }
 
     // 3. Actualizar respaldo local
@@ -515,19 +285,27 @@ export const studentService = {
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; email?: string };
       if (!res.ok) return { success: false, error: data.error || 'No fue posible actualizar la contraseña.' };
-
-      // Sincroniza la copia local para que el nuevo acceso funcione de inmediato en este dispositivo
-      if (data.email) {
-        const local = getLocalData<RegisteredAccount[]>('registered_accounts', []);
-        setLocalData(
-          'registered_accounts',
-          local.map(a => (a.email.toLowerCase().trim() === data.email ? { ...a, password } : a))
-        );
-      }
       return { success: true, error: null, email: data.email };
     } catch {
       return { success: false, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
     }
+  },
+
+  /** Registra en el servidor la venta y la matrícula de la cuenta en sesión. */
+  async completeCheckout(params: {
+    saleId: string;
+    courseSlug: string;
+    value: number;
+    method: string;
+    fullName: string;
+    documentId?: string;
+    phone?: string;
+    city?: string;
+  }): Promise<{ success: boolean; error: string | null }> {
+    const res = await callApi('/api/checkout/complete', { method: 'POST', body: JSON.stringify(params) });
+    return res.ok
+      ? { success: true, error: null }
+      : { success: false, error: res.data.error || 'No fue posible registrar la matrícula.' };
   },
 
   // ==========================================
@@ -548,24 +326,6 @@ export const studentService = {
     }
 
     return getLocalData<string[]>(`enrollments_${userId}`, []);
-  },
-
-  async enrollCourse(userId: string, courseSlug: string): Promise<boolean> {
-    try {
-      await supabase.from('enrollments').upsert({
-        student_id: userId,
-        course_slug: courseSlug,
-        enrolled_at: new Date().toISOString(),
-      });
-    } catch {
-      // Fallback
-    }
-
-    const current = getLocalData<string[]>(`enrollments_${userId}`, []);
-    if (!current.includes(courseSlug)) {
-      setLocalData(`enrollments_${userId}`, [...current, courseSlug]);
-    }
-    return true;
   },
 
   async getCompletedLessons(userId: string, courseSlug: string): Promise<string[]> {
@@ -700,46 +460,25 @@ export const studentService = {
       Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
     const validStudentId = isUuid(userId) ? userId : null;
 
-    // 1. Persistir en tabla certificates de Supabase (evitando errores de tipo UUID)
+    // 1. Persistir en la tabla certificates (RLS: el estudiante solo emite certificados a su nombre)
     try {
-      await supabase.from('certificates').upsert({
+      const { error } = await supabase.from('certificates').insert({
         code: cert.code,
         student_id: validStudentId,
         student_name: cert.studentName,
+        document_id: cert.documentId || null,
         course_slug: cert.courseSlug,
         course_title: cert.courseTitle,
         hours: cert.hours,
         status: cert.status || 'Válido',
         issue_date: cert.issueDate,
       });
+      if (error) console.warn('Aviso al insertar en tabla certificates:', error.message);
     } catch (e) {
       console.warn('Aviso al insertar en tabla certificates:', e);
     }
 
-    // 2. Persistir siempre en site_content para consulta pública sin restricciones RLS/UUID
-    try {
-      await supabase.from('site_content').upsert({
-        key: `certificate_${cert.code.toLowerCase()}`,
-        value: {
-          code: cert.code,
-          student: cert.studentName,
-          studentName: cert.studentName,
-          documentId: cert.documentId,
-          courseSlug: cert.courseSlug,
-          course: cert.courseTitle,
-          courseTitle: cert.courseTitle,
-          hours: cert.hours,
-          status: cert.status || 'Válido',
-          date: cert.issueDate,
-          issueDate: cert.issueDate,
-          updatedAt: new Date().toISOString(),
-        },
-      });
-    } catch (e) {
-      console.warn('Aviso al registrar certificado en site_content:', e);
-    }
-
-    // 3. Persistir en almacenamiento local (claves atómicas y listas)
+    // 2. Persistir en almacenamiento local (claves atómicas y listas)
     const certPayload = {
       ...cert,
       status: cert.status || 'Válido',

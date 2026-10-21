@@ -1,6 +1,7 @@
 -- =======================================================
 -- Esquema de Base de Datos para EDDIP (Estudiante & Admin)
--- Ejecutar en el SQL Editor del dashboard de Supabase
+-- Ejecutar en el SQL Editor del dashboard de Supabase y, a continuación,
+-- migrations/20261021_auth_roles_rls.sql (roles en profiles y políticas RLS por rol).
 -- =======================================================
 
 -- 1. Perfiles de usuario vinculados a auth.users
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.certificates (
   code TEXT PRIMARY KEY,
   student_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   student_name TEXT NOT NULL,
+  document_id TEXT,
   course_slug TEXT NOT NULL,
   course_title TEXT NOT NULL,
   hours INT NOT NULL,
@@ -87,13 +89,11 @@ ALTER TABLE public.student_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exam_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
--- Políticas de perfiles: el usuario puede ver y editar su propio perfil
-CREATE POLICY "Profiles can be viewed by owner" ON public.profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Profiles can be updated by owner" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Profiles can be inserted on signup" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+-- Las políticas de profiles, site_content, courses y certificates se definen por rol
+-- en migrations/20261021_auth_roles_rls.sql.
 
 -- Políticas de inscripciones
-CREATE POLICY "Enrollments can be managed by owner" ON public.enrollments FOR ALL USING (auth.uid() = student_id);
+CREATE POLICY "enrollments_select_owner" ON public.enrollments FOR SELECT USING (auth.uid() = student_id);
 
 -- Políticas de lecciones y notas
 CREATE POLICY "Lesson progress can be managed by owner" ON public.lesson_progress FOR ALL USING (auth.uid() = student_id);
@@ -101,10 +101,6 @@ CREATE POLICY "Student notes can be managed by owner" ON public.student_notes FO
 
 -- Políticas de exámenes
 CREATE POLICY "Exam results can be viewed and inserted by owner" ON public.exam_results FOR ALL USING (auth.uid() = student_id);
-
--- Certificados: lectura pública (para validación) e inserción por el estudiante
-CREATE POLICY "Certificates are publicly viewable" ON public.certificates FOR SELECT USING (true);
-CREATE POLICY "Certificates can be inserted by student" ON public.certificates FOR INSERT WITH CHECK (auth.uid() = student_id);
 
 -- =======================================================
 -- Trigger para crear perfil automáticamente al registrarse
@@ -120,7 +116,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'document_id', ''),
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
     COALESCE(NEW.raw_user_meta_data->>'city', ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'student')
+    'student'
   )
   ON CONFLICT (id) DO UPDATE
   SET full_name = EXCLUDED.full_name,
@@ -162,8 +158,6 @@ CREATE TABLE IF NOT EXISTS public.courses (
 );
 
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Courses are publicly viewable" ON public.courses FOR SELECT USING (true);
-CREATE POLICY "Courses can be inserted/updated by authenticated users" ON public.courses FOR ALL USING (true);
 
 -- Inserción de cursos oficiales
 INSERT INTO public.courses (id, slug, title, category, short_description, description, price, duration_hours, level, rating, students, featured, gradient, instructor, outcomes, modules)
@@ -261,8 +255,6 @@ CREATE TABLE IF NOT EXISTS public.site_content (
 );
 
 ALTER TABLE public.site_content ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Site content is publicly readable" ON public.site_content FOR SELECT USING (true);
-CREATE POLICY "Site content can be modified by authenticated users" ON public.site_content FOR ALL USING (true);
 
 -- Semillas de contenido institucional
 INSERT INTO public.site_content (key, value) VALUES ('aboutHero', '{"eyebrow":"Institución de Educación Superior y Continua","title":"Excelencia académica para profesionales de la seguridad y el derecho","description":"EDDIP lidera programas de educación continua, doctrina normativa y actualización profesional orientados a servidores públicos, personal de seguridad y juristas en todo el territorio nacional."}'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();

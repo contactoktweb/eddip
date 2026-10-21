@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '@/lib/icons';
 import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
-import { saveRegisteredAccount, generateUUID } from '@/lib/supabase/studentService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { Course } from '@/lib/types';
 
@@ -86,8 +85,24 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         }
       }
 
-      // 3. Guardar en la base de datos Supabase
+      // 3. Crear la cuenta de acceso en Supabase Auth; la persona define su contraseña con "¿Olvidaste tu contraseña?"
+      const account = await adminService.createUserWithRole({
+        fullName: cleanName,
+        email: cleanEmail,
+        role: assignedRole,
+        documentId: cleanDoc,
+        phone: phone.trim(),
+        city: city.trim() || 'Colombia',
+      });
+      if (!account.success) {
+        setErrorMsg(account.error || 'No se pudo crear la cuenta de acceso.');
+        setLoading(false);
+        return;
+      }
+
+      // 4. Guardar en el directorio institucional
       const res = await adminService.saveStudent({
+        id: account.id,
         name: cleanName,
         email: cleanEmail,
         documentId: cleanDoc,
@@ -107,23 +122,6 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         setErrorMsg(res.error || 'No se pudo guardar el usuario en la base de datos.');
         setLoading(false);
         return;
-      }
-
-      // Guardar también como cuenta registrada para permitir inicio de sesión
-      try {
-        await saveRegisteredAccount({
-          id: res.student?.id || `usr-${Date.now()}`,
-          email: cleanEmail,
-          password: generateUUID().slice(0, 12),
-          fullName: cleanName,
-          documentId: cleanDoc,
-          phone: phone.trim(),
-          city: city.trim() || 'Colombia',
-          role: assignedRole,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (accErr) {
-        console.warn('Advertencia al registrar cuenta institucional:', accErr);
       }
 
       const roleText =

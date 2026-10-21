@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { Sale } from '@/lib/types';
-import { readSiteContent } from '@/lib/supabase/server';
+import { createServerSupabase, readSiteContent } from '@/lib/supabase/server';
 import { isEmailConfigured, sendEmail } from '@/lib/email/resend';
 import { adminNotificationEmail, purchaseEmail, welcomeEmail } from '@/lib/email/templates';
 import { getEmailContext, markNotificationSent, wasNotificationSent } from '@/lib/email/context';
 
-type RegisteredUser = { email: string; fullName?: string; documentId?: string; phone?: string; city?: string; createdAt?: string };
+type RegisteredProfile = { full_name: string | null; document_id: string | null; phone: string | null; city: string | null; created_at: string | null };
+
+async function findRecentProfile(email: string): Promise<RegisteredProfile | null> {
+  const supabase = createServerSupabase({ requireServiceRole: true });
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name, document_id, phone, city, created_at')
+    .eq('email', email)
+    .maybeSingle();
+  return (data as RegisteredProfile | null) ?? null;
+}
 
 type NotificationRequest =
   | { type: 'welcome'; email: string }
@@ -47,14 +58,13 @@ export async function POST(request: Request) {
     const notificationId = `welcome:${payload.email}`;
     if (await wasNotificationSent(notificationId)) return NextResponse.json({ sent: false, reason: 'duplicate' });
 
-    const users = (await readSiteContent<RegisteredUser[]>('eddip_registered_users')) || [];
-    const user = users.find(u => clean(u.email) === payload.email);
-    const createdAt = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
+    const user = await findRecentProfile(payload.email);
+    const createdAt = user?.created_at ? new Date(user.created_at).getTime() : 0;
     if (!user || Date.now() - createdAt > WELCOME_WINDOW_MS) {
       return NextResponse.json({ error: 'No hay un registro reciente para este correo.' }, { status: 404 });
     }
 
-    const name = user.fullName || payload.email;
+    const name = user.full_name || payload.email;
     const result = await sendEmail({ to: payload.email, replyTo: ctx.settings.contactEmail, ...welcomeEmail(ctx, { name }) });
     if (!result.sent) return NextResponse.json({ sent: false, error: result.error }, { status: 502 });
 
@@ -67,7 +77,7 @@ export async function POST(request: Request) {
         rows: [
           ['Nombre', name],
           ['Correo', payload.email],
-          ['Documento', user.documentId || 'No registrado'],
+          ['Documento', user.document_id || 'No registrado'],
           ['Celular', user.phone || 'No registrado'],
           ['Ciudad', user.city || 'No registrada'],
         ],

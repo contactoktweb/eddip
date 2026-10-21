@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import type { StudyMaterial } from '@/lib/types';
 import { Icon } from '@/lib/icons';
 import { supabase } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/supabase/authedFetch';
 import {
   ALLOWED_MATERIAL_TYPES,
   MATERIAL_ACCEPT_ATTRIBUTE,
@@ -47,9 +48,8 @@ export function LessonMaterialsEditor({ courseSlug, materials, onChange }: Props
     setError(null);
     setUploading(file.name);
     try {
-      const res = await fetch('/api/materials/upload-url', {
+      const res = await authedFetch('/api/materials/upload-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size, courseSlug }),
       });
       const data = (await res.json()) as UploadUrlResponse;

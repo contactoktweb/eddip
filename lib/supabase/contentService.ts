@@ -245,7 +245,7 @@ export const contentService = {
       // 3. Filas de tabla certificates
       if (!certTableRes.error && certTableRes.data && certTableRes.data.length > 0) {
         for (const d of certTableRes.data) {
-          // La tabla certificates no tiene columna de documento: se conserva la cédula registrada en site_content
+          // Certificados antiguos guardaron la cédula solo en site_content
           map.set(d.code.toLowerCase(), {
             code: d.code,
             student: d.student_name,

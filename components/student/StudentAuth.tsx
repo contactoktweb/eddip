@@ -133,7 +133,6 @@ export function StudentAuth() {
           documentId: cleanDoc,
           phone: phone.trim(),
           city: city.trim(),
-          role: 'student',
         });
 
         if (!res.success) {

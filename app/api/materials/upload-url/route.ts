@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { requireSession } from '@/lib/auth/session';
 import {
   ALLOWED_MATERIAL_TYPES,
   MAX_MATERIAL_SIZE_BYTES,
@@ -19,6 +19,9 @@ type UploadRequest = {
  * evitando los límites de tamaño del cuerpo de las funciones del servidor.
  */
 export async function POST(request: Request) {
+  const auth = await requireSession(request, ['admin', 'designer']);
+  if (auth.response) return auth.response;
+
   let body: UploadRequest;
   try {
     body = (await request.json()) as UploadRequest;
@@ -44,13 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'El archivo supera el tamaño máximo de 50 MB.' }, { status: 413 });
   }
 
-  const supabase = createServerSupabase({ requireServiceRole: true });
-  if (!supabase) {
-    return NextResponse.json(
-      { error: 'La carga de archivos no está disponible en este momento. Agrega el material como enlace.' },
-      { status: 503 }
-    );
-  }
+  const supabase = auth.session.admin;
 
   const { data: bucket } = await supabase.storage.getBucket(STUDY_MATERIALS_BUCKET);
   if (!bucket) {

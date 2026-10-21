@@ -1,7 +1,28 @@
 import { supabase } from './client';
 import type { Course, Exam, ExamQuestion, Certificate, Sale } from '@/lib/types';
 import { baseCourses, certificates, exams as baseExams } from '@/lib/data';
-import { getRegisteredAccounts, saveRegisteredAccount, type RegisteredAccount, generateUUID } from './studentService';
+import { callApi } from './authedFetch';
+import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
+import type { AppRole } from '@/lib/auth/roles';
+
+export type { EnrichedStudent } from '@/lib/studentDirectory';
+
+/** Cuenta de usuario para la gestión de roles. Las credenciales viven solo en Supabase Auth. */
+export type UserAccount = {
+  id: string;
+  email: string;
+  fullName: string;
+  documentId?: string;
+  phone?: string;
+  city?: string;
+  role: AppRole;
+  createdAt: string;
+  /** false cuando la persona solo está en el directorio y aún no tiene cuenta de acceso. */
+  hasAccess: boolean;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (id?: string) => Boolean(id && UUID_PATTERN.test(id));
 
 const STORAGE_PREFIX = 'eddip_admin_';
 const DELETED_USERS_KEY = 'eddip_deleted_user_emails';
@@ -115,36 +136,6 @@ async function restoreDeletedEmail(email: string): Promise<void> {
     console.warn('Error restoring deleted email:', err);
   }
 }
-
-export type EnrichedStudent = {
-  id: string;
-  name: string;
-  email: string;
-  documentId?: string;
-  phone?: string;
-  city?: string;
-  coursesCount: number;
-  progressAvg: number;
-  certificatesCount: number;
-  registeredAt: string;
-  status: 'Activo' | 'Inactivo' | 'Completado';
-  role?: 'student' | 'admin' | 'designer';
-  enrolledCourses: {
-    slug: string;
-    title: string;
-    progress: number;
-    completedLessons: string[];
-    totalLessons: number;
-    certificateCode?: string;
-  }[];
-  examScores: {
-    courseSlug: string;
-    courseTitle: string;
-    score: number;
-    passed: boolean;
-    date: string;
-  }[];
-};
 
 export const adminService = {
   // ==========================================
@@ -587,8 +578,7 @@ export const adminService = {
       currentList.unshift(resolvedStudent);
     }
 
-    // 3. PERSISTENCIA EN SUPABASE:
-    // a) En la tabla site_content con clave 'admin_students_list'
+    // 3. Persistencia en Supabase (site_content con clave 'admin_students_list')
     try {
       await supabase.from('site_content').upsert({
         key: 'admin_students_list',
@@ -597,22 +587,6 @@ export const adminService = {
       });
     } catch (err) {
       console.warn('Error al guardar en Supabase site_content:', err);
-    }
-
-    // b) En la tabla profiles de Supabase
-    try {
-      await supabase.from('profiles').upsert({
-        id: resolvedStudent.id,
-        email: cleanEmail,
-        full_name: resolvedStudent.name,
-        document_id: cleanDoc,
-        phone: resolvedStudent.phone || '',
-        city: resolvedStudent.city || '',
-        role: resolvedStudent.role || 'student',
-        updated_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn('Error al guardar en tabla profiles de Supabase:', err);
     }
 
     // 4. Respaldo local
@@ -912,6 +886,7 @@ export const adminService = {
       await supabase.from('certificates').upsert({
         code: cert.code,
         student_name: cert.student,
+        document_id: cert.documentId || null,
         course_slug: cert.courseSlug,
         course_title: cert.course,
         hours: cert.hours,
@@ -1213,84 +1188,25 @@ export const adminService = {
     courseTitle: string,
     extraData?: { documentId?: string; phone?: string; city?: string }
   ): Promise<void> {
-    const cleanEmail = (studentEmail || '').trim().toLowerCase();
-    const cleanName = (studentName || '').trim() || 'Estudiante Matriculado';
-    const studentsList = await this.getAllStudents();
+    const { list: studentsList, student } = applyEnrollmentToDirectory(await this.getAllStudents(), {
+      name: studentName,
+      email: studentEmail,
+      courseSlug,
+      courseTitle,
+      ...extraData,
+    });
 
-    let student = studentsList.find(s => s.email.toLowerCase() === cleanEmail);
-    if (!student && extraData?.documentId) {
-      const normDoc = extraData.documentId.replace(/[\s.-]/g, '');
-      if (normDoc) {
-        student = studentsList.find(s => (s.documentId || '').replace(/[\s.-]/g, '') === normDoc);
-      }
-    }
-
-    if (student) {
-      if (extraData?.documentId && !student.documentId) student.documentId = extraData.documentId.trim();
-      if (extraData?.phone && !student.phone) student.phone = extraData.phone.trim();
-      if (extraData?.city && (!student.city || student.city === 'Colombia')) student.city = extraData.city.trim();
-
-      const existsCourse = student.enrolledCourses.some(c => c.slug === courseSlug);
-      if (!existsCourse) {
-        student.enrolledCourses.push({
-          slug: courseSlug,
-          title: courseTitle,
-          progress: 0,
-          completedLessons: [],
-          totalLessons: 1,
-        });
-        student.coursesCount = student.enrolledCourses.length;
-      }
-      student.status = 'Activo';
-    } else {
-      student = {
-        id: `st-${Date.now()}`,
-        name: cleanName,
-        email: cleanEmail,
-        documentId: extraData?.documentId?.trim() || '',
-        phone: extraData?.phone?.trim() || '',
-        city: extraData?.city?.trim() || 'Colombia',
-        coursesCount: 1,
-        progressAvg: 0,
-        certificatesCount: 0,
-        registeredAt: new Date().toISOString().slice(0, 10),
-        status: 'Activo',
-        enrolledCourses: [
-          {
-            slug: courseSlug,
-            title: courseTitle,
-            progress: 0,
-            completedLessons: [],
-            totalLessons: 1,
-          },
-        ],
-        examScores: [],
-      };
-      studentsList.unshift(student);
-    }
-
-    // Persistir en Supabase
     try {
       await supabase.from('site_content').upsert({
         key: 'admin_students_list',
         value: studentsList,
         updated_at: new Date().toISOString(),
       });
-      await supabase.from('profiles').upsert({
-        id: student.id,
-        email: cleanEmail,
-        full_name: student.name,
-        document_id: student.documentId || '',
-        phone: student.phone || '',
-        city: student.city || '',
-        role: 'student',
-        updated_at: new Date().toISOString(),
-      });
-      await supabase.from('enrollments').upsert({
-        student_id: student.id,
-        course_slug: courseSlug,
-        enrolled_at: new Date().toISOString(),
-      });
+      if (isUuid(student.id)) {
+        await supabase
+          .from('enrollments')
+          .upsert({ student_id: student.id, course_slug: courseSlug }, { onConflict: 'student_id,course_slug' });
+      }
     } catch (err) {
       console.warn('Error saving enrollment to Supabase:', err);
     }
@@ -1326,7 +1242,10 @@ export const adminService = {
     }
 
     // Elimina también la cuenta de acceso y la marca como eliminada en todos los dispositivos
-    await this.deleteUserAccount(target.email);
+    const accountResult = await this.deleteUserAccount(target.id, target.email);
+    if (!accountResult.success) {
+      return accountResult;
+    }
 
     setLocalData('custom_students', updated);
     setLocalData('eddip_admin_custom_students', updated);
@@ -1340,184 +1259,89 @@ export const adminService = {
   // ==========================================
   // GESTIÓN INTEGRAL DE ROLES Y USUARIOS (RBAC)
   // ==========================================
-  async getUserAccounts(): Promise<RegisteredAccount[]> {
-    // 1. Obtener cuentas registradas en site_content y local
-    const registered = await getRegisteredAccounts();
-
-    // 2. Obtener perfiles de la tabla profiles de Supabase
-    let profilesList: any[] = [];
+  async getUserAccounts(): Promise<UserAccount[]> {
+    // 1. Cuentas con acceso: perfiles de Supabase Auth (RLS: visibles solo para administradores)
+    let profilesList: {
+      id: string;
+      email: string | null;
+      full_name: string | null;
+      document_id: string | null;
+      phone: string | null;
+      city: string | null;
+      role: string | null;
+      created_at: string | null;
+    }[] = [];
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, document_id, phone, city, role, created_at')
         .order('created_at', { ascending: false });
-      if (!error && data && Array.isArray(data)) {
-        profilesList = data;
-      }
+      if (!error && data) profilesList = data;
     } catch {}
 
-    // 3. Obtener estudiantes del directorio institucional
+    // 2. Personas del directorio institucional que aún no han creado su cuenta
     const students = await this.getAllStudents();
-
-    // 4. Consolidar en un mapa unificado por correo electrónico
-    const userMap = new Map<string, RegisteredAccount>();
-
-    // Cuentas institucionales preconfiguradas garantizadas
-    const defaultAccounts: RegisteredAccount[] = [
-      {
-        id: '6ef2b934-5469-466d-af6d-b6e212b90f78',
-        email: 'palenciasaid@gmail.com',
-        fullName: 'Said Palencia',
-        documentId: '1.103.104.675',
-        phone: '301 351 5962',
-        city: 'Colombia',
-        role: 'admin',
-        createdAt: '2026-01-01T08:00:00.000Z',
-      },
-      {
-        id: 'admin-seed-01',
-        email: 'admin@eddip.edu.co',
-        fullName: 'Administrador EDDIP',
-        documentId: '99.888.777',
-        phone: '310 999 0000',
-        city: 'Bogotá D.C.',
-        role: 'admin',
-        createdAt: '2026-01-10T08:00:00.000Z',
-      },
-      {
-        id: 'designer-seed-01',
-        email: 'disenador@eddip.edu.co',
-        fullName: 'Diseñador Instruccional',
-        documentId: '88.777.666',
-        phone: '312 444 5566',
-        city: 'Bogotá D.C.',
-        role: 'designer',
-        createdAt: '2026-01-12T08:00:00.000Z',
-      },
-      {
-        id: 'student-seed-01',
-        email: 'estudiante@eddip.edu.co',
-        fullName: 'Sebastián Martínez',
-        documentId: '1.032.456.789',
-        phone: '300 555 0182',
-        city: 'Bogotá D.C.',
-        role: 'student',
-        createdAt: '2026-01-15T08:00:00.000Z',
-      },
-    ];
-
-    // Retrieve deleted-user blacklist before merging sources
     const deletedEmails = await fetchDeletedEmails();
+    const userMap = new Map<string, UserAccount>();
 
-    for (const d of defaultAccounts) {
-      const key = d.email.toLowerCase().trim();
-      // Skip seed accounts that were explicitly deleted by an admin
-      if (deletedEmails.has(key)) continue;
-      userMap.set(key, d);
-    }
-
-    // Agregar cuentas de estudiantes
     for (const s of students) {
-      if (!s.email) continue;
-      const clean = s.email.toLowerCase().trim();
-      if (deletedEmails.has(clean)) continue;
-      const existing = userMap.get(clean);
+      const clean = (s.email || '').toLowerCase().trim();
+      if (!clean || deletedEmails.has(clean)) continue;
       userMap.set(clean, {
         id: s.id,
         email: clean,
         fullName: s.name,
-        documentId: s.documentId || existing?.documentId || '',
-        phone: s.phone || existing?.phone || '',
-        city: s.city || existing?.city || 'Colombia',
-        role: s.role || existing?.role || 'student',
-        createdAt: s.registeredAt || existing?.createdAt || new Date().toISOString(),
+        documentId: s.documentId || '',
+        phone: s.phone || '',
+        city: s.city || 'Colombia',
+        role: 'student',
+        createdAt: s.registeredAt || new Date().toISOString(),
+        hasAccess: false,
       });
     }
 
-    // Agregar o actualizar con cuentas registradas (mayor fidelidad de credenciales/roles)
-    for (const r of registered) {
-      if (!r.email) continue;
-      const clean = r.email.toLowerCase().trim();
-      if (deletedEmails.has(clean)) continue;
-      const existing = userMap.get(clean);
-      userMap.set(clean, {
-        id: r.id || existing?.id || generateUUID(),
-        email: clean,
-        fullName: r.fullName || existing?.fullName || clean.split('@')[0],
-        documentId: r.documentId || existing?.documentId || '',
-        phone: r.phone || existing?.phone || '',
-        city: r.city || existing?.city || 'Colombia',
-        role: r.role || existing?.role || 'student',
-        createdAt: r.createdAt || existing?.createdAt || new Date().toISOString(),
-      });
-    }
-
-    // Combinar perfiles de Supabase
     for (const p of profilesList) {
-      if (!p.email) continue;
-      const clean = p.email.toLowerCase().trim();
-      if (deletedEmails.has(clean)) continue;
+      const clean = (p.email || '').toLowerCase().trim();
+      if (!clean || deletedEmails.has(clean)) continue;
       const existing = userMap.get(clean);
       userMap.set(clean, {
-        id: p.id || existing?.id || generateUUID(),
+        id: p.id,
         email: clean,
         fullName: p.full_name || existing?.fullName || clean.split('@')[0],
         documentId: p.document_id || existing?.documentId || '',
         phone: p.phone || existing?.phone || '',
         city: p.city || existing?.city || 'Colombia',
-        role: (p.role as 'student' | 'designer' | 'admin') || existing?.role || 'student',
+        role: p.role === 'admin' || p.role === 'designer' ? p.role : 'student',
         createdAt: p.created_at || existing?.createdAt || new Date().toISOString(),
+        hasAccess: true,
       });
     }
 
     return Array.from(userMap.values());
   },
 
-  async updateUserRole(
-    emailOrId: string,
-    newRole: 'student' | 'designer' | 'admin'
-  ): Promise<{ success: boolean; error?: string }> {
-    const list = await this.getUserAccounts();
-    const cleanKey = emailOrId.toLowerCase().trim();
-    const target = list.find(u => u.email.toLowerCase().trim() === cleanKey || u.id === emailOrId);
-
-    if (!target) {
-      return { success: false, error: 'Usuario no encontrado en el sistema.' };
+  async updateUserRole(userId: string, newRole: AppRole): Promise<{ success: boolean; error?: string }> {
+    if (!isUuid(userId)) {
+      return {
+        success: false,
+        error: 'Esta persona aún no tiene cuenta de acceso. Debe crearla desde "¿Olvidaste tu contraseña?" o registrarse.',
+      };
     }
 
-    const updatedUser: RegisteredAccount = {
-      ...target,
-      role: newRole,
-    };
-
-    // 1. Guardar en registered accounts
-    await saveRegisteredAccount(updatedUser);
-
-    // 2. Actualizar en Supabase tabla profiles
-    try {
-      await supabase.from('profiles').upsert({
-        id: target.id,
-        email: target.email.toLowerCase().trim(),
-        full_name: target.fullName,
-        document_id: target.documentId || '',
-        phone: target.phone || '',
-        city: target.city || 'Colombia',
-        role: newRole,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.warn('Advertencia al actualizar rol en tabla profiles de Supabase:', e);
+    const res = await callApi(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role: newRole }),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.data.error || 'No fue posible actualizar el rol.' };
     }
 
-    // 3. Sincronizar directorio de estudiantes
+    // Sincronizar el rol visible en el directorio de estudiantes
     try {
       const students = await this.getAllStudents();
-      const studentIdx = students.findIndex(s => s.email.toLowerCase().trim() === target.email.toLowerCase().trim());
+      const studentIdx = students.findIndex(s => s.id === userId);
       if (studentIdx >= 0) {
-        students[studentIdx] = {
-          ...students[studentIdx],
-          role: newRole,
-        };
+        students[studentIdx] = { ...students[studentIdx], role: newRole };
         await supabase.from('site_content').upsert({
           key: 'admin_students_list',
           value: students,
@@ -1525,42 +1349,13 @@ export const adminService = {
         });
         setLocalData('custom_students', students);
         setLocalData('eddip_admin_custom_students', students);
-      } else if (newRole === 'student') {
-        await this.saveStudent({
-          id: target.id,
-          name: target.fullName,
-          email: target.email,
-          documentId: target.documentId,
-          phone: target.phone,
-          city: target.city,
-          role: 'student',
-          status: 'Activo',
-        });
       }
     } catch (e) {
       console.warn('Advertencia al sincronizar lista de estudiantes:', e);
     }
 
-    // 4. Si es la cuenta en sesión activa, actualizar sesión local
     if (typeof window !== 'undefined') {
-      try {
-        const rawLocalUser = localStorage.getItem(`eddip_user_${target.email.toLowerCase().trim()}`);
-        if (rawLocalUser) {
-          const parsed = JSON.parse(rawLocalUser);
-          parsed.role = newRole;
-          localStorage.setItem(`eddip_user_${target.email.toLowerCase().trim()}`, JSON.stringify(parsed));
-        }
-        const currentActive = localStorage.getItem('eddip-demo-v2');
-        if (currentActive) {
-          const parsedActive = JSON.parse(currentActive);
-          if (parsedActive.userProfile?.email?.toLowerCase().trim() === target.email.toLowerCase().trim()) {
-            parsedActive.role = newRole;
-            localStorage.setItem('eddip-demo-v2', JSON.stringify(parsedActive));
-          }
-        }
-      } catch {}
-
-      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: { email: target.email, role: newRole } }));
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: { id: userId, role: newRole } }));
       window.dispatchEvent(new CustomEvent('eddip_students_updated'));
     }
 
@@ -1570,12 +1365,12 @@ export const adminService = {
   async createUserWithRole(data: {
     fullName: string;
     email: string;
-    role: 'student' | 'designer' | 'admin';
+    role: AppRole;
     documentId?: string;
     phone?: string;
     city?: string;
     password?: string;
-  }): Promise<{ success: boolean; error?: string; account?: RegisteredAccount }> {
+  }): Promise<{ success: boolean; error?: string; id?: string }> {
     const cleanEmail = (data.email || '').toLowerCase().trim();
     const cleanName = (data.fullName || '').trim();
 
@@ -1586,132 +1381,57 @@ export const adminService = {
       return { success: false, error: 'Por favor ingresa el nombre completo del usuario.' };
     }
 
-    const dupCheck = await this.isStudentDuplicate(cleanEmail, data.documentId?.trim() || '');
-    if (dupCheck.isDuplicate) {
-      return { success: false, error: dupCheck.message || 'Ya existe un usuario con este correo o documento.' };
+    const res = await callApi<{ id?: string }>('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({ ...data, email: cleanEmail, fullName: cleanName }),
+    });
+    if (!res.ok) {
+      return { success: false, error: res.data.error || 'No fue posible crear la cuenta.' };
     }
 
     await restoreDeletedEmail(cleanEmail);
 
-    const newAcc: RegisteredAccount = {
-      id: generateUUID(),
-      email: cleanEmail,
-      fullName: cleanName,
-      documentId: data.documentId?.trim() || '',
-      phone: data.phone?.trim() || '',
-      city: data.city?.trim() || 'Colombia',
-      password: data.password || generateUUID().slice(0, 12),
-      role: data.role,
-      createdAt: new Date().toISOString(),
-    };
-
-    // 1. Guardar en registered accounts
-    await saveRegisteredAccount(newAcc);
-
-    // 2. Guardar en tabla profiles de Supabase
-    try {
-      await supabase.from('profiles').upsert({
-        id: newAcc.id,
-        email: cleanEmail,
-        full_name: cleanName,
-        document_id: newAcc.documentId,
-        phone: newAcc.phone,
-        city: newAcc.city,
-        role: data.role,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn('Advertencia al guardar perfil en Supabase:', err);
-    }
-
-    // 3. Si el rol es estudiante, agregarlo al directorio
-    if (data.role === 'student') {
-      await this.saveStudent({
-        id: newAcc.id,
-        name: cleanName,
-        email: cleanEmail,
-        documentId: newAcc.documentId,
-        phone: newAcc.phone,
-        city: newAcc.city,
-        role: 'student',
-        status: 'Activo',
-        coursesCount: 0,
-        progressAvg: 0,
-        certificatesCount: 0,
-        registeredAt: new Date().toISOString().slice(0, 10),
-        enrolledCourses: [],
-        examScores: [],
-      });
-    }
-
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: newAcc }));
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated'));
+      window.dispatchEvent(new CustomEvent('eddip_students_updated'));
     }
-
-    return { success: true, account: newAcc };
+    return { success: true, id: res.data.id };
   },
 
-  async deleteUserAccount(userIdOrEmail: string): Promise<boolean> {
-    const accounts = await this.getUserAccounts();
-    const clean = userIdOrEmail.toLowerCase().trim();
+  async deleteUserAccount(userId: string, email: string): Promise<{ success: boolean; error?: string }> {
+    const targetEmail = email.toLowerCase().trim();
 
-    // Resolve the canonical email of the account being deleted
-    const target = accounts.find(
-      a => a.id === userIdOrEmail || a.email.toLowerCase().trim() === clean
-    );
-    const targetEmail = target?.email.toLowerCase().trim() ?? clean;
+    // 1. Eliminar la cuenta de acceso en Supabase Auth (solo cuentas reales)
+    if (isUuid(userId)) {
+      const res = await callApi(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        return { success: false, error: res.data.error || 'No fue posible eliminar la cuenta.' };
+      }
+    }
 
-    const updated = accounts.filter(
-      a => a.id !== userIdOrEmail && a.email.toLowerCase().trim() !== targetEmail
-    );
-
-    // 1. Persist the email in the blacklist so getUserAccounts() never re-injects it
+    // 2. Lista negra compartida para que la persona no reaparezca desde copias del directorio
     addDeletedEmail(targetEmail);
-
     try {
-      // 2. Update registered_users list in Supabase site_content
-      await supabase.from('site_content').upsert({
-        key: 'eddip_registered_users',
-        value: updated,
-        updated_at: new Date().toISOString(),
-      });
-
-      // 3. Persist the blacklist to Supabase as well for cross-device consistency
       const { data: existingBlacklist } = await supabase
         .from('site_content')
         .select('value')
-        .eq('key', 'eddip_deleted_user_emails')
+        .eq('key', DELETED_USERS_KEY)
         .maybeSingle();
-
-      const currentList: string[] = Array.isArray(existingBlacklist?.value)
-        ? (existingBlacklist.value as string[])
-        : [];
-
+      const currentList: string[] = Array.isArray(existingBlacklist?.value) ? (existingBlacklist.value as string[]) : [];
       if (!currentList.includes(targetEmail)) {
-        currentList.push(targetEmail);
+        await supabase.from('site_content').upsert({
+          key: DELETED_USERS_KEY,
+          value: [...currentList, targetEmail],
+          updated_at: new Date().toISOString(),
+        });
       }
-
-      await supabase.from('site_content').upsert({
-        key: 'eddip_deleted_user_emails',
-        value: currentList,
-        updated_at: new Date().toISOString(),
-      });
-
-      // 4. Remove from profiles table
-      await supabase
-        .from('profiles')
-        .delete()
-        .or(`id.eq.${userIdOrEmail},email.eq.${targetEmail}`);
     } catch (err) {
-      console.warn('Error al eliminar cuenta en Supabase:', err);
+      console.warn('Error al registrar la eliminación en Supabase:', err);
     }
-
-    // 5. Update localStorage cache
-    setLocalData('registered_accounts', updated);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('eddip_roles_updated', { detail: updated }));
+      window.dispatchEvent(new CustomEvent('eddip_roles_updated'));
     }
-    return true;
+    return { success: true };
   },
 };

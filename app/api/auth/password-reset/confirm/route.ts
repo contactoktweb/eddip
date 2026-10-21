@@ -5,6 +5,7 @@ import {
   isResetTokenValid,
   updateAccountPassword,
 } from '@/lib/auth/passwordReset';
+import { requireServiceClient } from '@/lib/auth/session';
 
 type ConfirmBody = { token?: unknown; password?: unknown; validateOnly?: unknown };
 
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   if (!token) {
     return NextResponse.json({ error: 'El enlace de recuperación no es válido.' }, { status: 400 });
   }
+
+  const service = requireServiceClient();
+  if (service.response) return service.response;
 
   if (body?.validateOnly === true) {
     return NextResponse.json({ valid: await isResetTokenValid(token) });

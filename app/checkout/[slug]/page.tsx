@@ -9,7 +9,7 @@ import { Footer } from '@/components/Footer';
 import { useDemo } from '@/app/providers';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
-import { adminService } from '@/lib/supabase/adminService';
+import { studentService } from '@/lib/supabase/studentService';
 import { notifyStudent } from '@/lib/notifications';
 import CustomSelect from '@/components/CustomSelect';
 import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
@@ -39,7 +39,7 @@ function Checkout() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { courses, purchase, login, user, updateProfile, role, authLoading, signInStudent } = useDemo();
+  const { courses, purchase, user, updateProfile, role, authLoading, signInStudent } = useDemo();
   const course = courses.find(c => c.slug === slug);
 
   // Verificación estricta: para pagar un curso se debe estar registrado en la plataforma
@@ -285,38 +285,20 @@ function Checkout() {
         city: realLocation,
       });
 
-      // Asegurar activación de sesión de estudiante
-      if (role !== 'student') {
-        login('student');
-      }
-
       const txId = boldOrder.startsWith('VEN-')
         ? boldOrder
         : `VEN-${boldOrder.replace(/^EDDIP-BOLD-|^EDDIP-/, '').slice(-5)}`;
 
-      await adminService.recordSale({
-        id: txId,
-        student: realName,
-        course: course.title,
+      await studentService.completeCheckout({
+        saleId: txId,
+        courseSlug: course.slug,
         value: course.price,
         method: 'Bold',
-        date: new Date().toISOString().slice(0, 10),
-        status: 'Aprobado',
-        email: realEmail.toLowerCase(),
-        courseSlug: course.slug,
+        fullName: realName,
+        documentId: realDoc,
+        phone: realPhone,
+        city: realLocation,
       });
-
-      await adminService.enrollStudentInCourse(
-        realName,
-        realEmail,
-        course.slug,
-        course.title,
-        {
-          documentId: realDoc,
-          phone: realPhone,
-          city: realLocation,
-        }
-      );
 
       purchase(course.slug);
       setStage('success');
@@ -438,29 +420,16 @@ function Checkout() {
 
     const currentMethod = paymentMethod === 'pse' ? 'PSE' : paymentMethod === 'card' ? 'Tarjeta de Crédito' : 'Bold';
 
-    await adminService.recordSale({
-      id: txId,
-      student: realName,
-      course: course.title,
+    await studentService.completeCheckout({
+      saleId: txId,
+      courseSlug: course.slug,
       value: finalPrice,
       method: currentMethod,
-      date: new Date().toISOString().slice(0, 10),
-      status: 'Aprobado',
-      email: realEmail.toLowerCase(),
-      courseSlug: course.slug,
+      fullName: realName,
+      documentId: realDoc,
+      phone: realPhone,
+      city: realLocation,
     });
-
-    await adminService.enrollStudentInCourse(
-      realName,
-      realEmail,
-      course.slug,
-      course.title,
-      {
-        documentId: realDoc,
-        phone: realPhone,
-        city: realLocation,
-      }
-    );
 
     purchase(course.slug);
     setStage('success');

@@ -2,13 +2,15 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { baseCourses, certificates } from '@/lib/data';
 import type { Course, Certificate } from '@/lib/types';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { studentService } from '@/lib/supabase/studentService';
 import { adminService } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { StudentProfile } from '@/lib/supabase/types';
+import { normalizeRole, type AppRole } from '@/lib/auth/roles';
 
-type Role = 'guest' | 'student' | 'admin' | 'designer';
+type Role = 'guest' | AppRole;
 type Result = { score: number; passed: boolean; correct?: number; total?: number; code?: string };
 
 export type StudentContextType = {
@@ -21,9 +23,8 @@ export type StudentContextType = {
   certs: Certificate[];
   notes: Record<string, string>; // key: courseSlug_lessonId -> noteText
   authLoading: boolean;
-  /** true cuando ya se restauró la sesión (local y Supabase) y el rol es definitivo. */
+  /** true cuando ya se restauró la sesión de Supabase y el rol (leído de public.profiles) es definitivo. */
   sessionReady: boolean;
-  login: (r: Exclude<Role, 'guest'>) => void;
   logout: () => Promise<void>;
   purchase: (slug: string) => void;
   toggleLesson: (slug: string, lessonId: string) => Promise<void>;
@@ -31,39 +32,37 @@ export type StudentContextType = {
   addCourse: (course: Course) => void;
   updateCourse: (course: Course) => void;
   deleteCourse: (slug: string) => Promise<{ success: boolean; error?: string }>;
-  resetDemo: () => void;
   updateProfile: (data: Partial<StudentProfile>) => Promise<boolean>;
   saveNote: (courseSlug: string, lessonId: string, text: string) => Promise<void>;
-  signUpStudent: (params: { email: string; password: string; fullName: string; documentId?: string; phone?: string; city?: string; role?: 'student' | 'admin' | 'designer' }) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' | 'designer' }>;
-  signInStudent: (email: string, pass: string) => Promise<{ success: boolean; error: string | null; role?: 'student' | 'admin' | 'designer' }>;
+  signUpStudent: (params: { email: string; password: string; fullName: string; documentId?: string; phone?: string; city?: string }) => Promise<{ success: boolean; error: string | null; role?: AppRole }>;
+  signInStudent: (email: string, pass: string) => Promise<{ success: boolean; error: string | null; role?: AppRole }>;
 };
 
 const C = createContext<StudentContextType | null>(null);
 const KEY = 'eddip-demo-v2';
 
-const isDemoStudent = (email?: string) => {
-  if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return (
-    clean === 'estudiante@eddip.edu.co' ||
-    clean === 'sebastian@demo.eddip.com' ||
-    clean === 'estudiante@demo.eddip.com'
-  );
-};
+const emptyProfile = { name: '', email: '', documentId: '', phone: '', city: '' };
 
-const defaults = {
-  role: 'guest' as Role,
-  purchased: [] as string[],
-  completed: {} as Record<string, string[]>,
-  results: {} as Record<string, Result>,
-  extraCourses: [] as Course[],
-  notes: {} as Record<string, string>,
-};
+type ProfileRow = { role: string | null; full_name: string | null; document_id: string | null; phone: string | null; city: string | null };
+
+/** El rol se lee de public.profiles (protegido por RLS y trigger); nunca de user_metadata ni de localStorage. */
+async function fetchProfileRow(userId: string): Promise<ProfileRow | null> {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role, full_name, document_id, phone, city')
+      .eq('id', userId)
+      .maybeSingle();
+    return (data as ProfileRow | null) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [role, setRole] = useState<Role>(defaults.role);
+  const [role, setRole] = useState<Role>('guest');
   const [userProfile, setUserProfile] = useState<{
     id?: string;
     name: string;
@@ -71,16 +70,10 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     documentId?: string;
     phone?: string;
     city?: string;
-  }>({
-    name: '',
-    email: '',
-    documentId: '',
-    phone: '',
-    city: '',
-  });
+  }>(emptyProfile);
 
-  const [purchased, setPurchased] = useState<string[]>(defaults.purchased);
-  const [completed, setCompleted] = useState<Record<string, string[]>>(defaults.completed);
+  const [purchased, setPurchased] = useState<string[]>([]);
+  const [completed, setCompleted] = useState<Record<string, string[]>>({});
   const [results, setResults] = useState<Record<string, Result>>({});
   const [extraCourses, setExtraCourses] = useState<Course[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -105,41 +98,16 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // 1. Cargar estado local inicial y sincronizar con adminService
+  // 1. Cursos creados desde el panel de administración guardados en este navegador
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
       let loadedExtra: Course[] = [];
       if (raw) {
         const s = JSON.parse(raw);
-        if (s.role) setRole(s.role);
-        if (s.userProfile) setUserProfile(s.userProfile);
-        if (Array.isArray(s.purchased)) setPurchased(s.purchased);
-        if (s.completed && typeof s.completed === 'object') setCompleted(s.completed);
-        if (s.results && typeof s.results === 'object') setResults(s.results);
-        if (s.extraCourses && Array.isArray(s.extraCourses)) loadedExtra = s.extraCourses;
-        if (s.notes && typeof s.notes === 'object') setNotes(s.notes);
+        if (Array.isArray(s.extraCourses)) loadedExtra = s.extraCourses;
       }
 
-      // Restaurar perfil real del estudiante si fue registrado o actualizado en checkout
-      const savedCustomProfile = localStorage.getItem('eddip_student_profile');
-      if (savedCustomProfile) {
-        try {
-          const cp = JSON.parse(savedCustomProfile);
-          if (cp.name && cp.name !== 'Sebastián Martínez') {
-            setUserProfile(prev => ({
-              ...prev,
-              name: cp.name,
-              email: cp.email || prev.email,
-              documentId: cp.documentId || prev.documentId,
-              phone: cp.phone || prev.phone,
-              city: cp.city || prev.city,
-            }));
-          }
-        } catch {}
-      }
-
-      // Sincronizar con los cursos guardados desde el panel de administración
       const adminRaw = localStorage.getItem('eddip_admin_extra_courses') || localStorage.getItem('extra_courses');
       if (adminRaw) {
         try {
@@ -165,118 +133,74 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const resetSessionState = useCallback(() => {
+    setRole('guest');
+    setUserProfile(emptyProfile);
+    setPurchased([]);
+    setCompleted({});
+    setResults({});
+    setNotes({});
+  }, []);
+
+  /** Aplica la sesión verificada de Supabase: rol desde profiles y progreso guardado de esa cuenta. */
+  const applySession = useCallback(async (u: User): Promise<AppRole> => {
+    const email = (u.email || '').trim().toLowerCase();
+    const meta = u.user_metadata || {};
+    const profileRow = await fetchProfileRow(u.id);
+    const resolvedRole = normalizeRole(profileRow?.role);
+
+    setRole(resolvedRole);
+    setUserProfile({
+      id: u.id,
+      name: profileRow?.full_name || meta.full_name || email.split('@')[0] || 'Estudiante EDDIP',
+      email,
+      documentId: profileRow?.document_id || meta.document_id || '',
+      phone: profileRow?.phone || meta.phone || '',
+      city: profileRow?.city || meta.city || '',
+    });
+
+    try {
+      const userStored = localStorage.getItem(`eddip_user_${email}`);
+      const parsed = userStored ? JSON.parse(userStored) : null;
+      setPurchased(Array.isArray(parsed?.purchased) ? parsed.purchased : []);
+      setCompleted(parsed?.completed || {});
+      setResults(parsed?.results || {});
+      setNotes(parsed?.notes || {});
+    } catch {
+      setPurchased([]);
+      setCompleted({});
+      setResults({});
+      setNotes({});
+    }
+
+    return resolvedRole;
+  }, []);
+
   // 2. Escuchar sesión de Supabase Auth
   useEffect(() => {
     let mounted = true;
 
-    async function initSupabaseAuth() {
-      try {
-        const { data } = await supabase.auth.getSession();
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
         if (!mounted) return;
-
-        if (data.session?.user) {
-          const u = data.session.user;
-          const email = (u.email || '').trim().toLowerCase();
-          const meta = u.user_metadata || {};
-
-          let registeredRole: Role | undefined;
-          try {
-            const rawAcc = localStorage.getItem('eddip_registered_accounts') || localStorage.getItem('registered_accounts');
-            if (rawAcc) {
-              const accounts = JSON.parse(rawAcc);
-              const acc = accounts.find((a: any) => a.email?.toLowerCase().trim() === email);
-              if (acc?.role) registeredRole = acc.role;
-            }
-          } catch {}
-
-          const effectiveRole = meta.role || registeredRole;
-          // El rol proviene exclusivamente de la cuenta registrada, nunca del texto del correo
-          const role: Role = effectiveRole === 'admin' ? 'admin' : effectiveRole === 'designer' ? 'designer' : 'student';
-
-          setRole(role);
-          const profile = {
-            id: u.id,
-            name: meta.full_name || email.split('@')[0] || (role === 'admin' ? 'Administrador EDDIP' : (role === 'designer' ? 'Diseñador Instruccional' : 'Estudiante EDDIP')),
-            email: email,
-            documentId: meta.document_id || '',
-            phone: meta.phone || '',
-            city: meta.city || '',
-          };
-          setUserProfile(profile);
-
-          if (role === 'student') {
-            const isDemo = isDemoStudent(email);
-            try {
-              const userStored = localStorage.getItem(`eddip_user_${email}`);
-              if (userStored) {
-                const parsed = JSON.parse(userStored);
-                setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
-                setCompleted(parsed.completed || {});
-                setResults(parsed.results || {});
-                setNotes(parsed.notes || {});
-              } else if (!isDemo) {
-                // Nuevo estudiante registrado: sin cursos ni progreso cargado
-                setPurchased([]);
-                setCompleted({});
-                setResults({});
-                setNotes({});
-              }
-            } catch {}
-          }
-        }
-      } catch (err) {
-        console.warn('Supabase session load error:', err);
-      } finally {
+        if (data.session?.user) await applySession(data.session.user);
+      })
+      .catch(err => console.warn('Supabase session load error:', err))
+      .finally(() => {
         if (mounted) setAuthLoading(false);
-      }
-    }
+      });
 
-    initSupabaseAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        const u = session.user;
-        const meta = u.user_metadata || {};
-        const newRole: Role =
-          meta.role === 'admin'
-            ? 'admin'
-            : meta.role === 'designer' || (u.email || '').includes('disenador') || (u.email || '').includes('designer')
-            ? 'designer'
-            : 'student';
-        setRole(newRole);
-        const email = (u.email || '').trim().toLowerCase();
-        const profile = {
-          id: u.id,
-          name: meta.full_name || email.split('@')[0] || 'Estudiante EDDIP',
-          email: email,
-          documentId: meta.document_id || '',
-          phone: meta.phone || '',
-          city: meta.city || '',
-        };
-        setUserProfile(profile);
-
-        if (newRole === 'student') {
-          const isDemo = isDemoStudent(email);
-          try {
-            const userStored = localStorage.getItem(`eddip_user_${email}`);
-            if (userStored) {
-              const parsed = JSON.parse(userStored);
-              setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
-              setCompleted(parsed.completed || {});
-              setResults(parsed.results || {});
-              setNotes(parsed.notes || {});
-            } else if (!isDemo) {
-              setPurchased([]);
-              setCompleted({});
-              setResults({});
-              setNotes({});
-            }
-          } catch {}
-        }
-      } else if (event === 'SIGNED_OUT') {
-        // Mantener sesión de estudiante para visualización de demo o reiniciar
+      if (event === 'SIGNED_OUT') {
+        resetSessionState();
+      } else if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+        // Diferido: supabase-js no permite esperar otras consultas dentro de este callback
+        const sessionUser = session.user;
+        setTimeout(() => {
+          if (mounted) applySession(sessionUser).catch(() => {});
+        }, 0);
       }
     });
 
@@ -284,31 +208,19 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession, resetSessionState]);
 
-  // 3. Persistir en localStorage
+  // 3. Persistir progreso local (el rol nunca se guarda en el navegador)
   useEffect(() => {
     if (!loaded) return;
     try {
-      localStorage.setItem(
-        KEY,
-        JSON.stringify({
-          role,
-          userProfile,
-          purchased,
-          completed,
-          results,
-          extraCourses,
-          notes,
-        })
-      );
+      localStorage.setItem(KEY, JSON.stringify({ extraCourses }));
 
       if (userProfile?.email) {
         const cleanEmail = userProfile.email.trim().toLowerCase();
         localStorage.setItem(
           `eddip_user_${cleanEmail}`,
           JSON.stringify({
-            role,
             userProfile,
             purchased,
             completed,
@@ -320,52 +232,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore quota exceeded
     }
-  }, [loaded, role, userProfile, purchased, completed, results, extraCourses, notes]);
-
-  const login = useCallback((r: 'student' | 'admin' | 'designer') => {
-    setRole(r);
-    if (r === 'admin') {
-      setUserProfile(prev => ({
-        ...prev,
-        name: prev.email?.includes('admin') ? prev.name : 'Administrador EDDIP',
-        email: prev.email?.includes('admin') ? prev.email : 'admin@eddip.edu.co',
-      }));
-    } else if (r === 'designer') {
-      setUserProfile(prev => ({
-        ...prev,
-        name: prev.email?.includes('disenador') || prev.email?.includes('designer') ? prev.name : 'Diseñador Instruccional',
-        email: prev.email?.includes('disenador') || prev.email?.includes('designer') ? prev.email : 'disenador@eddip.edu.co',
-      }));
-    } else {
-      setUserProfile(prev => {
-        // Preservar nombre y datos reales si ya fueron ingresados
-        if (prev.name && prev.name !== 'Sebastián Martínez') {
-          return prev;
-        }
-        if (typeof window !== 'undefined') {
-          try {
-            const saved = localStorage.getItem('eddip_student_profile') || sessionStorage.getItem('eddip_checkout_customer');
-            if (saved) {
-              const p = JSON.parse(saved);
-              if (p.name && p.name !== 'Sebastián Martínez') {
-                return {
-                  ...prev,
-                  name: p.name,
-                  email: p.email || prev.email,
-                  documentId: p.documentId || prev.documentId,
-                  phone: p.phone || prev.phone,
-                  city: p.city || prev.city,
-                };
-              }
-            }
-          } catch {}
-        }
-        return prev;
-      });
-      setPurchased(prev => (prev.length > 0 ? prev : defaults.purchased));
-      setCompleted(prev => (Object.keys(prev).length > 0 ? prev : defaults.completed));
-    }
-  }, []);
+  }, [loaded, userProfile, purchased, completed, results, extraCourses, notes]);
 
   const logout = useCallback(async () => {
     try {
@@ -373,23 +240,13 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore
     }
-    setRole('guest');
-    setUserProfile({
-      name: '',
-      email: '',
-    });
-    setPurchased([]);
-    setCompleted({});
-    setResults({});
-    setNotes({});
-  }, []);
+    resetSessionState();
+  }, [resetSessionState]);
 
   const purchase = useCallback((slug: string) => {
     setPurchased(v => {
+      // La matrícula en base de datos la registra el servidor (/api/checkout/complete)
       if (v.includes(slug)) return v;
-      if (userProfile.id) {
-        studentService.enrollCourse(userProfile.id, slug).catch(() => {});
-      }
       setExtraCourses(prev => {
         const existing = prev.find(c => c.slug === slug);
         if (existing) {
@@ -403,7 +260,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       });
       return [...v, slug];
     });
-  }, [remoteCourses, userProfile.id]);
+  }, [remoteCourses]);
 
   const toggleLesson = useCallback(async (slug: string, id: string) => {
     const isCurrentlyDone = (completed[slug] || []).includes(id);
@@ -449,7 +306,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       const certObj: Certificate = {
         code: certCode,
         student: userProfile.name || 'Estudiante EDDIP',
-        documentId: userProfile.documentId || '1.032.456.789',
+        documentId: userProfile.documentId || '',
         courseSlug: slug,
         course: courseTitle,
         hours: courseHours,
@@ -462,7 +319,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await studentService.saveExamResult({
-          studentId: userProfile.id || 'demo-student',
+          studentId: userProfile.id || '',
           studentName: userProfile.name,
           courseSlug: slug,
           courseTitle,
@@ -478,7 +335,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           {
             code: certCode,
             studentName: userProfile.name || 'Estudiante EDDIP',
-            documentId: userProfile.documentId || '1.032.456.789',
+            documentId: userProfile.documentId || '',
             courseSlug: slug,
             courseTitle,
             hours: courseHours,
@@ -488,7 +345,6 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           userProfile.id
         );
 
-        await adminService.issueManualCertificate(certObj);
       } catch (err) {
         console.warn('Error saving exam/certificate:', err);
       }
@@ -564,157 +420,23 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     documentId?: string;
     phone?: string;
     city?: string;
-    role?: 'student' | 'admin' | 'designer';
   }) => {
-    const selectedRole: Role = params.role || 'student';
-    const res = await studentService.signUp({ ...params, role: selectedRole as 'student' | 'admin' | 'designer' });
-    if (res.error) {
-      return { success: false, error: res.error, role: selectedRole };
+    const res = await studentService.signUp(params);
+    if (res.error || !res.user) {
+      return { success: false, error: res.error || 'No fue posible crear la cuenta.' };
     }
-    if (res.user) {
-      const cleanEmail = params.email.trim().toLowerCase();
-      const newProfile = {
-        id: res.user.id,
-        name: params.fullName,
-        email: cleanEmail,
-        documentId: params.documentId || '',
-        phone: params.phone || '',
-        city: params.city || '',
-      };
-      setUserProfile(newProfile);
-      setRole(selectedRole);
-
-      // Un nuevo usuario registrado inicia totalmente limpio:
-      setPurchased([]);
-      setCompleted({});
-      setResults({});
-      setNotes({});
-
-      try {
-        const cleanState = {
-          role: selectedRole as Role,
-          userProfile: newProfile,
-          purchased: [] as string[],
-          completed: {} as Record<string, string[]>,
-          results: {} as Record<string, Result>,
-          extraCourses,
-          notes: {} as Record<string, string>,
-        };
-        localStorage.setItem(KEY, JSON.stringify(cleanState));
-        localStorage.setItem(`eddip_user_${cleanEmail}`, JSON.stringify(cleanState));
-      } catch {}
-
-      return { success: true, error: null, role: selectedRole };
-    }
-    return { success: true, error: null, role: selectedRole };
-  }, [extraCourses]);
+    const resolvedRole = await applySession(res.user);
+    return { success: true, error: null, role: resolvedRole };
+  }, [applySession]);
 
   const signInStudent = useCallback(async (email: string, pass: string) => {
     const res = await studentService.signIn(email, pass);
-    if (res.error) {
-      return { success: false, error: res.error, role: 'student' as const };
+    if (res.error || !res.user) {
+      return { success: false, error: res.error || 'No fue posible iniciar sesión.' };
     }
-    if (res.user) {
-      const cleanEmail = email.trim().toLowerCase();
-      const meta = res.user.user_metadata || {};
-
-      let registeredRole: Role | undefined;
-      try {
-        const rawAccounts = localStorage.getItem('eddip_registered_accounts') || localStorage.getItem('registered_accounts');
-        if (rawAccounts) {
-          const accounts = JSON.parse(rawAccounts);
-          const acc = accounts.find((a: any) => a.email?.toLowerCase().trim() === cleanEmail);
-          if (acc?.role) registeredRole = acc.role;
-        }
-      } catch {}
-
-      const effectiveRole = meta.role || registeredRole;
-      // El rol proviene exclusivamente de la cuenta registrada, nunca del texto del correo
-      const isAdmin = effectiveRole === 'admin';
-      const isDesigner = effectiveRole === 'designer';
-      const assignedRole: Role = isAdmin ? 'admin' : (isDesigner ? 'designer' : 'student');
-
-      const profile = {
-        id: res.user.id,
-        name: meta.full_name || (isAdmin ? 'Administrador EDDIP' : (isDesigner ? 'Diseñador Instruccional' : cleanEmail.split('@')[0])),
-        email: cleanEmail,
-        documentId: meta.document_id || '',
-        phone: meta.phone || '',
-        city: meta.city || '',
-      };
-
-      setUserProfile(profile);
-      setRole(assignedRole);
-
-      if (assignedRole === 'student') {
-        const isDemo = isDemoStudent(cleanEmail);
-
-        try {
-          const userStored = localStorage.getItem(`eddip_user_${cleanEmail}`);
-          if (userStored) {
-            const parsed = JSON.parse(userStored);
-            setPurchased(Array.isArray(parsed.purchased) ? parsed.purchased : []);
-            setCompleted(parsed.completed || {});
-            setResults(parsed.results || {});
-            setNotes(parsed.notes || {});
-          } else if (isDemo) {
-            setPurchased(defaults.purchased);
-            setCompleted(defaults.completed);
-            setResults({});
-            setNotes({});
-          } else {
-            // Usuario registrado nuevo sin cursos previos ni progreso
-            setPurchased([]);
-            setCompleted({});
-            setResults({});
-            setNotes({});
-          }
-        } catch {
-          if (!isDemo) {
-            setPurchased([]);
-            setCompleted({});
-            setResults({});
-            setNotes({});
-          }
-        }
-      } else {
-        // Para administradores o diseñadores, persistir la sesión institucional
-        try {
-          const staffState = {
-            role: assignedRole,
-            userProfile: profile,
-            purchased: [] as string[],
-            completed: {} as Record<string, string[]>,
-            results: {} as Record<string, Result>,
-            extraCourses,
-            notes: {} as Record<string, string>,
-          };
-          localStorage.setItem(KEY, JSON.stringify(staffState));
-          localStorage.setItem(`eddip_user_${cleanEmail}`, JSON.stringify(staffState));
-        } catch {}
-      }
-
-      return { success: true, error: null, role: assignedRole };
-    }
-    return { success: true, error: null, role: 'student' as const };
-  }, [extraCourses]);
-
-  const resetDemo = useCallback(() => {
-    localStorage.removeItem(KEY);
-    setRole('student');
-    setPurchased(defaults.purchased);
-    setCompleted(defaults.completed);
-    setResults({});
-    setExtraCourses([]);
-    setNotes({});
-    setUserProfile({
-      name: 'Sebastián Martínez',
-      email: 'estudiante@eddip.edu.co',
-      documentId: '1.032.456.789',
-      phone: '300 555 0182',
-      city: 'Bogotá D.C.',
-    });
-  }, []);
+    const resolvedRole = await applySession(res.user);
+    return { success: true, error: null, role: resolvedRole };
+  }, [applySession]);
 
   // Lista unificada de cursos (Prioridad: editados por admin localmente > Supabase > base)
   const combinedCourses = useMemo(() => {
@@ -835,7 +557,6 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         notes,
         authLoading,
         sessionReady: loaded && !authLoading,
-        login,
         logout,
         purchase,
         toggleLesson,
@@ -843,7 +564,6 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         addCourse,
         updateCourse,
         deleteCourse,
-        resetDemo,
         updateProfile,
         saveNote,
         signUpStudent,

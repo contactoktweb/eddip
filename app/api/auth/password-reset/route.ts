@@ -4,6 +4,7 @@ import { passwordResetEmail } from '@/lib/email/templates';
 import { getEmailContext } from '@/lib/email/context';
 import { RESET_TOKEN_TTL_MINUTES, createResetToken, findAccountHolder } from '@/lib/auth/passwordReset';
 import { isValidEmail } from '@/lib/siteSettings';
+import { requireServiceClient } from '@/lib/auth/session';
 
 /**
  * Solicitud de recuperación de contraseña. La respuesta es la misma exista o no la cuenta,
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
       { status: 503 }
     );
   }
+
+  const service = requireServiceClient();
+  if (service.response) return service.response;
 
   const holder = await findAccountHolder(email);
   if (holder) {
