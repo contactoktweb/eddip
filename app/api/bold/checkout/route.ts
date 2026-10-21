@@ -1,99 +1,94 @@
-import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { NextResponse } from 'next/server';
+import { readJsonBody, readText } from '@/lib/api/body';
+import { requireSession } from '@/lib/auth/session';
+import { findCourseRecord } from '@/lib/courses/serverCourse';
+import { BOLD_CURRENCY, createBoldPaymentLink, integritySignature, readBoldCredentials } from '@/lib/payments/bold';
+import { normalizeCouponCode, quoteCoursePrice } from '@/lib/payments/pricing';
+import { fulfillApprovedOrder, generateOrderId, saleIdForOrder, type PaymentOrder } from '@/lib/payments/orders';
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { courseSlug, courseTitle, amount, customer } = body;
+/**
+ * Crea la orden de pago de la persona autenticada. El monto se calcula aquí con el precio del curso
+ * guardado en el servidor; el navegador solo indica el curso y el cupón de beca.
+ */
+export async function POST(request: Request) {
+  const auth = await requireSession(request);
+  if (auth.response) return auth.response;
 
-    const apiKey =
-      process.env.BOLD_IDENTITY_KEY ||
-      process.env.NEXT_PUBLIC_BOLD_IDENTITY_KEY ||
-      '';
+  const body = await readJsonBody(request);
+  if (!body) return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
 
-    const secretKey = process.env.BOLD_SECRET_KEY || '';
+  const { admin, user } = auth.session;
+  const course = await findCourseRecord(admin, readText(body, 'courseSlug', 120));
+  if (!course) return NextResponse.json({ error: 'El curso seleccionado no existe.' }, { status: 404 });
 
-    if (!apiKey || !secretKey) {
-      return NextResponse.json(
-        { error: 'Credenciales de pasarela Bold no configuradas en el entorno (.env.local).' },
-        { status: 500 }
-      );
+  const couponCode = normalizeCouponCode(readText(body, 'couponCode', 40));
+  const { total } = quoteCoursePrice(course.price, couponCode);
+  const orderId = generateOrderId();
+  const description = `Matrícula Académica — ${course.title}`;
+
+  const baseOrder = {
+    order_id: orderId,
+    student_id: user.id,
+    course_slug: course.slug,
+    course_title: course.title,
+    amount: total,
+    currency: BOLD_CURRENCY,
+    coupon_code: couponCode || null,
+  };
+
+  // Programas sin costo: no pasan por la pasarela y se matriculan de inmediato
+  if (total === 0) {
+    const now = new Date().toISOString();
+    const { data, error } = await admin
+      .from('payment_orders')
+      .insert({ ...baseOrder, provider: 'Sin costo', status: 'approved', approved_at: now })
+      .select('*')
+      .single();
+    if (error || !data) {
+      console.error('No fue posible registrar la orden sin costo:', error?.message);
+      return NextResponse.json({ error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
     }
-
-    const numericAmount = Math.max(0, Math.round(Number(amount) || 0));
-    const orderId = `EDDIP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const currency = 'COP';
-
-    // Generar hash de integridad SHA-256 según documentación de Bold:
-    // Cadena: orderId + amount + currency + secretKey
-    const rawSignature = `${orderId}${numericAmount}${currency}${secretKey}`;
-    const integritySignature = crypto
-      .createHash('sha256')
-      .update(rawSignature, 'utf8')
-      .digest('hex');
-
-    const origin = req.nextUrl.origin || 'http://localhost:3000';
-    const redirectionUrl = `${origin}/checkout/${courseSlug}?bold_order=${orderId}&bold_status=approved`;
-
-    let paymentUrl: string | null = null;
-
-    // Intentar generar link de pago oficial mediante la API de Bold
-    try {
-      const endpoints = [
-        'https://api.online.payments.bold.co/v1/payment_links',
-        'https://integrations.api.bold.co/online/link/v1',
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              Authorization: `x-api-key ${apiKey}`,
-            },
-            body: JSON.stringify({
-              amount: numericAmount,
-              currency: 'COP',
-              description: `Matrícula EDDIP — ${courseTitle || 'Curso Especializado'}`,
-              order_id: orderId,
-              redirection_url: redirectionUrl,
-              payer_email: customer?.email,
-              payer_name: customer?.name,
-              payer_phone: customer?.phone,
-            }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            paymentUrl = data.payload?.url || data.url || data.payment_link || null;
-            if (paymentUrl) break;
-          }
-        } catch {
-          // continuar con siguiente endpoint
-        }
-      }
-    } catch {
-      // Fallback a checkout modal embebido con boldPaymentButton.js
-    }
-
-    return NextResponse.json({
-      success: true,
-      orderId,
-      amount: numericAmount,
-      currency,
-      apiKey,
-      integritySignature,
-      description: `Matrícula Académica — ${courseTitle || 'Curso EDDIP'}`,
-      redirectionUrl,
-      paymentUrl,
-    });
-  } catch (error) {
-    console.error('Error generando orden de pago Bold:', error);
-    return NextResponse.json(
-      { success: false, error: 'No se pudo generar la sesión de pago con Bold.' },
-      { status: 500 }
-    );
+    const result = await fulfillApprovedOrder(admin, data as PaymentOrder);
+    if (!result.ok) return NextResponse.json({ error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
+    return NextResponse.json({ success: true, free: true, orderId, saleId: result.saleId });
   }
+
+  const credentials = readBoldCredentials();
+  if (!credentials) {
+    console.error('BOLD_IDENTITY_KEY y BOLD_SECRET_KEY deben estar configuradas en .env.local.');
+    return NextResponse.json({ error: 'La pasarela de pagos no está disponible en este momento.' }, { status: 503 });
+  }
+
+  const origin = new URL(request.url).origin;
+  const redirectionUrl = `${origin}/checkout/${course.slug}?bold_order=${orderId}`;
+  const paymentLink = await createBoldPaymentLink({
+    identityKey: credentials.identityKey,
+    orderId,
+    amount: total,
+    description,
+    redirectionUrl,
+    payerEmail: user.email || undefined,
+    payerName: String(user.user_metadata?.full_name || ''),
+  });
+
+  const { error } = await admin
+    .from('payment_orders')
+    .insert({ ...baseOrder, provider: 'Bold', payment_link_id: paymentLink?.linkId || null });
+  if (error) {
+    console.error('No fue posible registrar la orden de pago:', error.message);
+    return NextResponse.json({ error: 'No se pudo generar la sesión de pago con Bold.' }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    orderId,
+    saleId: saleIdForOrder(orderId),
+    amount: total,
+    currency: BOLD_CURRENCY,
+    apiKey: credentials.identityKey,
+    integritySignature: integritySignature(orderId, total, credentials.secretKey),
+    description,
+    redirectionUrl,
+    paymentUrl: paymentLink?.url || null,
+  });
 }

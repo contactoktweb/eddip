@@ -1,3 +1,8 @@
+## [2026-10-21] Integridad de pagos, evaluaciones y certificados
+- **Pagos verificados con Bold**: la orden se registra en `payment_orders` con el monto calculado en el servidor (precio del curso + beca). La matrícula y la venta solo se crean cuando Bold confirma el pago, por webhook firmado (`/api/bold/webhook`, HMAC con `BOLD_SECRET_KEY`) o por consulta a la API de Bold (`/api/checkout/complete`). Se retiró la confirmación simulada del checkout.
+- **Evaluaciones calificadas en el servidor**: `/api/exams/[slug]` entrega el cuestionario sin respuestas a estudiantes matriculados y `/api/exams/[slug]/submit` califica, registra `exam_results` y emite el certificado con el nombre y la cédula de `profiles`. Las claves `exam_*` y `admin_exams_list` dejan de ser públicas y los estudiantes ya no insertan certificados ni resultados.
+- **Validación pública sin cédula**: RPC `validate_certificate` con la cédula enmascarada; `certificates` y las claves `certificate_*` solo las leen el titular y la administración (`lib/supabase/migrations/20261021_integridad_pagos_certificados.sql`).
+
 ## [2026-10-21] Autenticación y autorización fuera del navegador (Supabase Auth + RLS por rol)
 - **Credenciales**: Supabase Auth es el único almacén. Se eliminaron `eddip_registered_users` como fuente de inicio de sesión y el respaldo de contraseñas en texto plano; la migración SQL purga las contraseñas guardadas y `scripts/migrate-legacy-accounts.mjs` crea las cuentas heredadas en Auth y envía el correo de recuperación (no copia contraseñas).
 - **Roles**: se leen de `public.profiles` y están protegidos por trigger; se eliminaron el rol en `localStorage` (`eddip-demo-v2`), la función `login(role)` del provider y las cuentas sembradas en código.

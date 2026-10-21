@@ -10,11 +10,27 @@ import { useDemo } from '@/app/providers';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
 import { studentService } from '@/lib/supabase/studentService';
+import { callApi } from '@/lib/supabase/authedFetch';
+import { normalizeCouponCode, quoteCoursePrice, scholarshipPercentFor } from '@/lib/payments/pricing';
 import { notifyStudent } from '@/lib/notifications';
 import CustomSelect from '@/components/CustomSelect';
 import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
 
 type PaymentMethod = 'pse' | 'card' | 'wallet';
+
+type BoldCheckoutResponse = {
+  success?: boolean;
+  free?: boolean;
+  saleId?: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  apiKey: string;
+  integritySignature: string;
+  description: string;
+  redirectionUrl: string;
+  paymentUrl: string | null;
+};
 
 // Correo de respaldo usado cuando no hay datos del comprador; nunca recibe notificaciones
 const DEMO_STUDENT_EMAIL = 'estudiante@eddip.edu.co';
@@ -183,14 +199,11 @@ function Checkout() {
   const [isBoldLoading, setIsBoldLoading] = useState(false);
   const [boldCheckoutData, setBoldCheckoutData] = useState<{
     orderId: string;
-    amount: number;
-    currency: string;
-    apiKey: string;
-    integritySignature: string;
-    description: string;
-    redirectionUrl: string;
-    paymentUrl?: string | null;
+    amount: number | null;
+    paymentUrl: string | null;
   } | null>(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<{ text: string; error: boolean } | null>(null);
 
   // Carga asíncrona del script oficial de Bold
   useEffect(() => {
@@ -204,116 +217,57 @@ function Checkout() {
     document.head.appendChild(script);
   }, []);
 
-  // Verificar si el usuario retorna desde la pasarela Bold con pago aprobado (Ejecución única y protegida)
+  // Matrícula solo con pago confirmado por el servidor (webhook firmado o consulta a la API de Bold)
+  const confirmBoldPayment = async (orderId: string) => {
+    if (!course) return;
+    setIsVerifyingPayment(true);
+    setPaymentNotice(null);
+    const res = await studentService.completeCheckout(orderId);
+    setIsVerifyingPayment(false);
+
+    if (!res.success) {
+      setPaymentNotice({ text: res.error || 'No fue posible verificar el pago.', error: !res.pending });
+      return;
+    }
+
+    purchase(course.slug);
+    setStage('success');
+    const email = (user.email || '').trim();
+    if (email && email !== DEMO_STUDENT_EMAIL && res.saleId) notifyStudent({ type: 'purchase', email, saleId: res.saleId });
+
+    // Limpiar query params de la URL de forma silenciosa para evitar reprocesamientos
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      try {
+        window.history.replaceState({}, '', `/checkout/${course.slug}`);
+      } catch {}
+    }
+  };
+
+  // Verificar en el servidor la orden con la que el usuario retorna desde la pasarela Bold
   useEffect(() => {
     const boldOrder = searchParams ? searchParams.get('bold_order') : null;
-    const boldStatus = searchParams ? searchParams.get('bold_status') || searchParams.get('status') : null;
-
-    if (!boldOrder || !course || (boldStatus !== 'approved' && boldStatus !== 'success')) {
-      return;
-    }
-
-    // Prevenir bucle infinito si ya fue procesada esta orden en este montaje
-    if (processedBoldOrderRef.current === boldOrder) {
-      return;
-    }
-
-    // Verificar si ya fue procesada en la sesión
-    if (typeof window !== 'undefined') {
-      const alreadyProcessed = sessionStorage.getItem(`eddip_bold_processed_${boldOrder}`);
-      if (alreadyProcessed) {
-        processedBoldOrderRef.current = boldOrder;
-        setStage('success');
-        return;
-      }
-    }
-
+    if (!boldOrder || !course || !isRegistered) return;
+    if (processedBoldOrderRef.current === boldOrder) return;
     processedBoldOrderRef.current = boldOrder;
+
+    // Remover cualquier overlay residual de la pasarela externa que bloquee la pantalla
+    if (typeof document !== 'undefined') {
+      const boldModal = document.getElementById('boldEmbeddedCheckout');
+      if (boldModal) boldModal.remove();
+      document.body.style.overflow = '';
+    }
+
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem(`eddip_bold_processed_${boldOrder}`, 'true');
+        const saved = sessionStorage.getItem('eddip_checkout_customer');
+        if (saved) setConfirmedCustomer(JSON.parse(saved));
       } catch {}
     }
 
-    const processReturn = async () => {
-      // 1. Remover cualquier overlay residual de pasarela externa que bloquee la pantalla
-      if (typeof document !== 'undefined') {
-        const boldModal = document.getElementById('boldEmbeddedCheckout');
-        if (boldModal) boldModal.remove();
-        document.body.style.overflow = '';
-      }
-
-      let cust: any = null;
-      if (typeof window !== 'undefined') {
-        try {
-          const s = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
-          if (s) cust = JSON.parse(s);
-        } catch {}
-      }
-
-      const realName = cust?.name?.trim() || formData.name?.trim() || (user.name !== 'Sebastián Martínez' ? user.name : '') || 'Estudiante Matriculado';
-      const realDoc = cust?.documentId?.trim() || formData.documentId?.trim() || (user.documentId !== '1.032.456.789' ? user.documentId : '') || '';
-      const realEmail = cust?.email?.trim() || formData.email?.trim() || (user.email !== 'estudiante@eddip.edu.co' ? user.email : '') || 'estudiante@eddip.edu.co';
-      const realPhone = cust?.phone?.trim() || formData.phone?.trim() || '';
-      const realLocation = cust?.city
-        ? (cust?.department ? `${cust.city}, ${cust.department}` : cust.city)
-        : (cust?.department || formData.department || '');
-
-      const resolvedCust = {
-        name: realName,
-        documentId: realDoc,
-        email: realEmail,
-        phone: realPhone,
-        department: cust?.department || formData.department || '',
-        city: cust?.city || formData.city || '',
-      };
-
-      setConfirmedCustomer(resolvedCust);
-
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
-          localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
-        } catch {}
-      }
-
-      await updateProfile({
-        fullName: realName,
-        documentId: realDoc,
-        email: realEmail,
-        phone: realPhone,
-        city: realLocation,
-      });
-
-      const txId = boldOrder.startsWith('VEN-')
-        ? boldOrder
-        : `VEN-${boldOrder.replace(/^EDDIP-BOLD-|^EDDIP-/, '').slice(-5)}`;
-
-      await studentService.completeCheckout({
-        saleId: txId,
-        courseSlug: course.slug,
-        value: course.price,
-        method: 'Bold',
-        fullName: realName,
-        documentId: realDoc,
-        phone: realPhone,
-        city: realLocation,
-      });
-
-      purchase(course.slug);
-      setStage('success');
-      if (realEmail !== DEMO_STUDENT_EMAIL) notifyStudent({ type: 'purchase', email: realEmail, saleId: txId });
-
-      // Limpiar query params de la URL de forma silenciosa para evitar reprocesamientos
-      if (typeof window !== 'undefined' && window.history?.replaceState) {
-        try {
-          window.history.replaceState({}, '', `/checkout/${course.slug}`);
-        } catch {}
-      }
-    };
-
-    processReturn();
-  }, [searchParams, course?.slug, course?.title, course?.price]);
+    setBoldCheckoutData(prev => prev ?? { orderId: boldOrder, amount: null, paymentUrl: null });
+    setStage('processing');
+    confirmBoldPayment(boldOrder);
+  }, [searchParams, course?.slug, isRegistered]);
 
   if (!course) {
     return (
@@ -349,18 +303,19 @@ function Checkout() {
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = couponCode.trim().toUpperCase();
-    if (clean === 'EDDIP10' || clean === 'OFICIAL' || clean === 'BECA2026') {
-      setDiscountPercent(15);
-      setCouponMsg({ text: '¡Beca institucional del 15% aplicada exitosamente!', error: false });
+    const clean = normalizeCouponCode(couponCode);
+    const percent = scholarshipPercentFor(clean);
+    setDiscountPercent(percent);
+    if (percent > 0) {
+      setCouponMsg({ text: `¡Beca institucional del ${percent}% aplicada exitosamente!`, error: false });
     } else if (clean.length > 0) {
-      setDiscountPercent(0);
       setCouponMsg({ text: 'Código no válido o expirado para esta convocatoria.', error: true });
     }
   };
 
-  const discountAmount = Math.round((course.price * discountPercent) / 100);
-  const finalPrice = Math.max(0, course.price - discountAmount);
+  // Vista previa; el servidor recalcula el monto con el precio guardado y el mismo cupón
+  const appliedCoupon = discountPercent > 0 ? couponCode : '';
+  const { discountAmount, total: finalPrice } = quoteCoursePrice(course.price, appliedCoupon);
 
   const validateForm = () => {
     const errs: Record<string, string> = {};
@@ -369,71 +324,6 @@ function Checkout() {
     if (!formData.email.trim() || !formData.email.includes('@')) errs.email = 'Ingresa un correo electrónico válido.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  };
-
-  const handleSimulateOrConfirmBoldSuccess = async (orderId?: string) => {
-    const finalOrderId = orderId || boldCheckoutData?.orderId || `EDDIP-BOLD-${Date.now()}`;
-
-    let cust = confirmedCustomer;
-    if (!cust && typeof window !== 'undefined') {
-      try {
-        const s = sessionStorage.getItem('eddip_checkout_customer') || localStorage.getItem('eddip_student_profile');
-        if (s) cust = JSON.parse(s);
-      } catch {}
-    }
-
-    const realName = cust?.name?.trim() || formData.name?.trim() || (user.name !== 'Sebastián Martínez' ? user.name : '') || 'Estudiante';
-    const realDoc = cust?.documentId?.trim() || formData.documentId?.trim() || (user.documentId !== '1.032.456.789' ? user.documentId : '') || '';
-    const realEmail = cust?.email?.trim() || formData.email?.trim() || (user.email !== 'estudiante@eddip.edu.co' ? user.email : '') || 'estudiante@eddip.edu.co';
-    const realPhone = cust?.phone?.trim() || formData.phone?.trim() || '';
-    const realLocation = cust?.city
-      ? (cust?.department ? `${cust.city}, ${cust.department}` : cust.city)
-      : (cust?.department || formData.department || '');
-
-    const resolvedCust = {
-      name: realName,
-      documentId: realDoc,
-      email: realEmail,
-      phone: realPhone,
-      department: cust?.department || formData.department || '',
-      city: cust?.city || formData.city || '',
-    };
-
-    setConfirmedCustomer(resolvedCust);
-
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(resolvedCust));
-      localStorage.setItem('eddip_student_profile', JSON.stringify(resolvedCust));
-    }
-
-    updateProfile({
-      fullName: realName,
-      documentId: realDoc,
-      email: realEmail,
-      phone: realPhone,
-      city: realLocation,
-    });
-
-    const txId = finalOrderId.startsWith('VEN-')
-      ? finalOrderId
-      : `VEN-${finalOrderId.replace(/^EDDIP-BOLD-|^EDDIP-/, '').slice(-5)}`;
-
-    const currentMethod = paymentMethod === 'pse' ? 'PSE' : paymentMethod === 'card' ? 'Tarjeta de Crédito' : 'Bold';
-
-    await studentService.completeCheckout({
-      saleId: txId,
-      courseSlug: course.slug,
-      value: finalPrice,
-      method: currentMethod,
-      fullName: realName,
-      documentId: realDoc,
-      phone: realPhone,
-      city: realLocation,
-    });
-
-    purchase(course.slug);
-    setStage('success');
-    if (realEmail !== DEMO_STUDENT_EMAIL) notifyStudent({ type: 'purchase', email: realEmail, saleId: txId });
   };
 
   const pay = async (e: React.FormEvent) => {
@@ -480,28 +370,28 @@ function Checkout() {
         city: fullLocation,
       });
 
-      // 2. Solicitar sesión e integridad a la API de Bold
-      const res = await fetch('/api/bold/checkout', {
+      // 2. Crear la orden en el servidor (monto calculado allí) y obtener la firma de integridad de Bold
+      const res = await callApi<BoldCheckoutResponse>('/api/bold/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseSlug: course.slug,
-          courseTitle: course.title,
-          amount: finalPrice,
-          customer: {
-            ...customerToSave,
-            city: fullLocation,
-          },
-        }),
+        body: JSON.stringify({ courseSlug: course.slug, couponCode: appliedCoupon }),
       });
+      const data = res.data;
 
-      const data = await res.json();
-
-      if (!data.success) {
+      if (!res.ok || !data.success) {
         throw new Error(data.error || 'Error al conectar con la pasarela Bold');
       }
 
-      setBoldCheckoutData(data);
+      if (data.free) {
+        purchase(course.slug);
+        setIsBoldLoading(false);
+        setStage('success');
+        if (data.saleId && customerToSave.email !== DEMO_STUDENT_EMAIL) {
+          notifyStudent({ type: 'purchase', email: customerToSave.email, saleId: data.saleId });
+        }
+        return;
+      }
+
+      setBoldCheckoutData({ orderId: data.orderId, amount: data.amount, paymentUrl: data.paymentUrl });
 
       // 3. Abrir la pasarela Bold oficial en cliente
       if (typeof window !== 'undefined' && window.BoldCheckout) {
@@ -526,7 +416,10 @@ function Checkout() {
       console.error('Error al procesar pago con Bold:', err);
       setIsBoldLoading(false);
       setStage('form');
-      alert('Hubo un inconveniente al conectar con Bold. Por favor verifica tus credenciales o conexión.');
+      setPaymentNotice({
+        text: err instanceof Error && err.message ? err.message : 'Hubo un inconveniente al conectar con Bold. Inténtalo nuevamente.',
+        error: true,
+      });
     }
   };
 
@@ -793,8 +686,8 @@ function Checkout() {
                 Conectando con la Pasarela de Pagos Bold...
               </h2>
               <p style={{ color: '#64748b', fontSize: 14, margin: '0 auto 24px', maxWidth: 460, lineHeight: 1.6 }}>
-                Estamos procesando la orden de matrícula para <strong>{course.title}</strong> por un monto de{' '}
-                <strong style={{ color: '#0b62dd' }}>{money(finalPrice)}</strong> mediante Bold.co.
+                Estamos procesando la orden de matrícula para <strong>{course.title}</strong> mediante Bold.co. Tu matrícula se
+                activa en cuanto Bold confirme el pago.
               </p>
 
               {boldCheckoutData && (
@@ -814,23 +707,29 @@ function Checkout() {
                     <span style={{ color: '#64748b' }}>Referencia de Orden:</span>
                     <strong style={{ color: '#0b62dd' }}>{boldCheckoutData.orderId}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ color: '#64748b' }}>Monto a pagar (COP):</span>
-                    <strong style={{ color: '#071F49' }}>{money(boldCheckoutData.amount)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ color: '#64748b' }}>Llave de Identidad (API Key):</span>
-                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>
-                      {boldCheckoutData.apiKey.slice(0, 16)}...
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>Firma de Integridad (SHA-256):</span>
-                    <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#059669', fontWeight: 600 }}>
-                      {boldCheckoutData.integritySignature.slice(0, 16)}...
-                    </span>
-                  </div>
+                  {boldCheckoutData.amount !== null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748b' }}>Monto a pagar (COP):</span>
+                      <strong style={{ color: '#071F49' }}>{money(boldCheckoutData.amount)}</strong>
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {paymentNotice && (
+                <p
+                  role={paymentNotice.error ? 'alert' : 'status'}
+                  style={{
+                    color: paymentNotice.error ? '#dc2626' : '#0b62dd',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    margin: '0 auto 20px',
+                    maxWidth: 460,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {paymentNotice.text}
+                </p>
               )}
 
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -845,18 +744,25 @@ function Checkout() {
                     Abrir pasarela de pago Bold <Icon name="arrow" />
                   </a>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => handleSimulateOrConfirmBoldSuccess(boldCheckoutData?.orderId)}
-                  style={{ padding: '12px 24px' }}
-                >
-                  <Icon name="check" /> Confirmar pago exitoso
-                </button>
+                {boldCheckoutData && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={isVerifyingPayment}
+                    aria-busy={isVerifyingPayment}
+                    onClick={() => confirmBoldPayment(boldCheckoutData.orderId)}
+                    style={{ padding: '12px 24px' }}
+                  >
+                    <Icon name="check" /> {isVerifyingPayment ? 'Verificando pago...' : 'Ya pagué, verificar pago'}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-outline"
-                  onClick={() => setStage('form')}
+                  onClick={() => {
+                    setPaymentNotice(null);
+                    setStage('form');
+                  }}
                   style={{ padding: '12px 18px' }}
                 >
                   Volver al formulario
@@ -1683,6 +1589,12 @@ function Checkout() {
                     </span>
                   </div>
                 </div>
+
+                {paymentNotice?.error && stage === 'form' && (
+                  <p role="alert" style={{ color: '#dc2626', fontSize: 12.5, fontWeight: 600, margin: '0 0 12px', lineHeight: 1.5 }}>
+                    {paymentNotice.text}
+                  </p>
+                )}
 
                 {/* Botón de Acción Principal */}
                 {isRegistered ? (

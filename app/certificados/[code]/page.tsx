@@ -8,20 +8,19 @@ import { QrVisual } from '@/components/QrVisual';
 import { Icon } from '@/lib/icons';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
-import { certificates } from '@/lib/data';
 import type { Certificate } from '@/lib/types';
 import { studentService } from '@/lib/supabase/studentService';
 
 export default function CertificateView() {
   const { code } = useParams<{ code: string }>();
-  const { certs, courses, user, results } = useDemo();
+  const { courses, user } = useDemo();
   const [copied, setCopied] = useState(false);
   const [resolvedCert, setResolvedCert] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
 
   const decodedCode = decodeURIComponent(code || '').trim();
 
-  // Búsqueda multi-capa asíncrona y reactiva
+  // Búsqueda en el registro oficial (se repite al cambiar la sesión para mostrar la cédula al titular)
   useEffect(() => {
     if (!decodedCode) {
       setLoading(false);
@@ -29,71 +28,8 @@ export default function CertificateView() {
     }
 
     let isMounted = true;
-    const lower = decodedCode.toLowerCase();
 
-    // 1. Revisar en certificados activos en memoria de React
-    const inMemory = certs.find(c => c.code.toLowerCase() === lower);
-    if (inMemory) {
-      setResolvedCert(inMemory);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Revisar en resultados de examen del usuario actual
-    const matchedResult = Object.entries(results).find(
-      ([, r]) => r.passed && r.code?.toLowerCase() === lower
-    );
-    if (matchedResult) {
-      const courseSlug = matchedResult[0];
-      const courseObj = courses.find(c => c.slug === courseSlug);
-      const cObj: Certificate = {
-        code: decodedCode,
-        student: user.name || 'Estudiante EDDIP',
-        documentId: user.documentId || undefined,
-        courseSlug,
-        course: courseObj?.title || 'Curso EDDIP',
-        hours: courseObj?.durationHours || 40,
-        date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
-        status: 'Válido',
-      };
-      setResolvedCert(cObj);
-      setLoading(false);
-      return;
-    }
-
-    // 3. Revisar en datos base certificados.json
-    const inBase = certificates.find(c => c.code.toLowerCase() === lower);
-    if (inBase) {
-      setResolvedCert(inBase);
-      setLoading(false);
-      return;
-    }
-
-    // 4. Revisar en almacenamiento local directo
-    if (typeof window !== 'undefined') {
-      try {
-        const directKey = localStorage.getItem(`eddip_cert_${lower}`);
-        if (directKey) {
-          const parsed = JSON.parse(directKey);
-          if (parsed && parsed.code) {
-            setResolvedCert({
-              code: parsed.code,
-              student: parsed.studentName || parsed.student || user.name,
-              documentId: parsed.documentId,
-              courseSlug: parsed.courseSlug,
-              course: parsed.courseTitle || parsed.course,
-              hours: Number(parsed.hours) || 40,
-              date: parsed.issueDate || parsed.date,
-              status: parsed.status || 'Válido',
-            });
-            setLoading(false);
-            return;
-          }
-        }
-      } catch {}
-    }
-
-    // 5. Consultar de forma asíncrona en Supabase (certificates y site_content)
+    // El titular y la administración reciben el certificado completo; el público, la versión de validación
     studentService.getCertificateByCode(decodedCode).then(found => {
       if (!isMounted) return;
       if (found) {
@@ -101,6 +37,7 @@ export default function CertificateView() {
           code: found.code,
           student: found.studentName,
           documentId: found.documentId,
+          documentHint: found.documentHint,
           courseSlug: found.courseSlug,
           course: found.courseTitle,
           hours: found.hours,
@@ -116,7 +53,7 @@ export default function CertificateView() {
     return () => {
       isMounted = false;
     };
-  }, [decodedCode, certs, courses, results, user.name, user.documentId]);
+  }, [decodedCode, user.id]);
 
   const cert = resolvedCert;
 
@@ -198,11 +135,8 @@ export default function CertificateView() {
 
   const courseMeta = courses.find(c => c.slug === cert?.courseSlug);
 
-  // Resolver número de cédula o documento de identidad del estudiante
-  // Solo se muestra la cédula registrada en el certificado o la del propio titular con sesión activa
-  const studentDocId =
-    cert.documentId ||
-    (user.name && cert.student && user.name.toLowerCase() === cert.student.toLowerCase() && user.documentId ? user.documentId : undefined);
+  // Cédula completa solo para el titular o la administración; el público ve los últimos dígitos
+  const studentDocId = cert.documentId || cert.documentHint;
 
   const formattedDoc = studentDocId ? `C.C. ${studentDocId.replace(/^C\.?C\.?\s*/i, '').trim()}` : '';
 

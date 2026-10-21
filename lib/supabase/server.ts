@@ -50,3 +50,17 @@ export async function deleteSiteContent(key: string): Promise<void> {
   if (!supabase) return;
   await supabase.from('site_content').delete().eq('key', key);
 }
+
+/** Lee una lista JSON de site_content con un cliente ya autorizado (service role). */
+export async function readContentList<T>(client: SupabaseClient, key: string): Promise<T[]> {
+  const { data } = await client.from('site_content').select('value').eq('key', key).maybeSingle();
+  return Array.isArray(data?.value) ? (data.value as T[]) : [];
+}
+
+export async function writeContentValue(client: SupabaseClient, key: string, value: unknown): Promise<boolean> {
+  const { error } = await client
+    .from('site_content')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) console.error(`No fue posible guardar ${key}:`, error.message);
+  return !error;
+}

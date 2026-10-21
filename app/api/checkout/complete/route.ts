@@ -1,100 +1,62 @@
 import { NextResponse } from 'next/server';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { readJsonBody, readText } from '@/lib/api/body';
-import { STUDENT_DIRECTORY_KEY } from '@/lib/auth/accounts';
 import { requireSession } from '@/lib/auth/session';
-import { courseBySlug } from '@/lib/data';
-import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
-import type { Sale } from '@/lib/types';
+import { fetchBoldVoucher, readBoldCredentials } from '@/lib/payments/bold';
+import {
+  approveOrder,
+  findStudentOrder,
+  fulfillApprovedOrder,
+  isValidOrderId,
+  updateOrderStatus,
+} from '@/lib/payments/orders';
 
-const SALES_KEY = 'admin_sales_list';
-const ALLOWED_METHODS = ['Bold', 'PSE', 'Tarjeta de Crédito'];
-const SALE_ID_PATTERN = /^VEN-[A-Za-z0-9-]{1,40}$/;
-
-async function readList<T>(admin: SupabaseClient, key: string): Promise<T[]> {
-  const { data } = await admin.from('site_content').select('value').eq('key', key).maybeSingle();
-  return Array.isArray(data?.value) ? (data.value as T[]) : [];
-}
-
-async function writeList(admin: SupabaseClient, key: string, value: unknown[]): Promise<boolean> {
-  const { error } = await admin
-    .from('site_content')
-    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  if (error) console.error(`No fue posible guardar ${key}:`, error.message);
-  return !error;
-}
-
-async function findCourse(admin: SupabaseClient, slug: string): Promise<{ title: string; price: number } | null> {
-  const { data } = await admin.from('courses').select('title, price').eq('slug', slug).maybeSingle();
-  if (data) return { title: String(data.title), price: Number(data.price) || 0 };
-  const base = courseBySlug(slug);
-  return base ? { title: base.title, price: base.price } : null;
-}
+const PENDING_MESSAGE = 'Bold aún no confirma tu pago. Si ya pagaste, espera unos minutos y vuelve a verificar.';
+const FAILED_MESSAGE = 'Bold no aprobó este pago. Puedes intentarlo nuevamente con otro medio de pago.';
 
 /**
- * Registra la venta y la matrícula de la persona autenticada. El correo y el identificador
- * provienen de la sesión verificada, nunca del cuerpo de la solicitud.
+ * Confirma la matrícula de una orden de la persona autenticada. Solo se matricula si el pago
+ * figura aprobado: por el webhook firmado de Bold o por la consulta directa a la API de Bold.
  */
 export async function POST(request: Request) {
   const auth = await requireSession(request);
   if (auth.response) return auth.response;
 
   const body = await readJsonBody(request);
-  if (!body) return NextResponse.json({ error: 'Solicitud inválida.' }, { status: 400 });
-
-  const saleId = readText(body, 'saleId', 48);
-  const courseSlug = readText(body, 'courseSlug', 120);
-  const method = readText(body, 'method', 40);
-  if (!SALE_ID_PATTERN.test(saleId) || !courseSlug || !ALLOWED_METHODS.includes(method)) {
-    return NextResponse.json({ error: 'Los datos de la compra no son válidos.' }, { status: 400 });
+  const orderId = body ? readText(body, 'orderId', 80) : '';
+  if (!isValidOrderId(orderId)) {
+    return NextResponse.json({ error: 'La referencia de pago no es válida.' }, { status: 400 });
   }
 
   const { admin, user } = auth.session;
-  const email = (user.email || '').toLowerCase();
-  const course = await findCourse(admin, courseSlug);
-  if (!course || !email) {
-    return NextResponse.json({ error: 'El curso seleccionado no existe.' }, { status: 404 });
+  let order = await findStudentOrder(admin, orderId, user.id);
+  if (!order) return NextResponse.json({ error: 'No encontramos esta orden de pago en tu cuenta.' }, { status: 404 });
+
+  if (order.status === 'rejected' || order.status === 'voided') {
+    return NextResponse.json({ status: order.status, error: FAILED_MESSAGE }, { status: 402 });
   }
 
-  const requestedValue = Number(body.value);
-  const value = Number.isFinite(requestedValue) ? Math.min(Math.max(Math.round(requestedValue), 0), course.price) : course.price;
-  const fullName = readText(body, 'fullName') || String(user.user_metadata?.full_name || email);
+  if (order.status === 'pending') {
+    const credentials = readBoldCredentials();
+    const voucher = credentials ? await fetchBoldVoucher(order.order_id, credentials.identityKey) : null;
+    if (!voucher) return NextResponse.json({ status: 'pending', error: PENDING_MESSAGE }, { status: 202 });
 
-  const sales = await readList<Sale>(admin, SALES_KEY);
-  if (!sales.some(s => s.id === saleId)) {
-    const sale: Sale = {
-      id: saleId,
-      student: fullName,
-      course: course.title,
-      value,
-      method,
-      date: new Date().toISOString().slice(0, 10),
-      status: 'Aprobado',
-      email,
-      courseSlug,
-    };
-    if (!(await writeList(admin, SALES_KEY, [sale, ...sales]))) {
-      return NextResponse.json({ error: 'No fue posible registrar la compra. Inténtalo nuevamente.' }, { status: 500 });
+    if (voucher.status === 'REJECTED' || voucher.status === 'FAILED' || voucher.status === 'VOIDED') {
+      await updateOrderStatus(admin, order.order_id, voucher.status === 'VOIDED' ? 'voided' : 'rejected');
+      return NextResponse.json({ status: 'rejected', error: FAILED_MESSAGE }, { status: 402 });
     }
+    if (voucher.status !== 'APPROVED') {
+      return NextResponse.json({ status: 'pending', error: PENDING_MESSAGE }, { status: 202 });
+    }
+    if (Math.round(voucher.total) < order.amount) {
+      console.error(`Bold reporta un monto menor al de la orden ${order.order_id}: ${voucher.total}.`);
+      return NextResponse.json({ error: 'El valor pagado no coincide con el de la matrícula. Contáctanos para revisarlo.' }, { status: 409 });
+    }
+    order = await approveOrder(admin, order, { providerPaymentId: voucher.transactionId, paymentMethod: voucher.paymentMethod });
   }
 
-  const directory = await readList<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
-  const { list } = applyEnrollmentToDirectory(directory, {
-    studentId: user.id,
-    name: fullName,
-    email,
-    courseSlug,
-    courseTitle: course.title,
-    documentId: readText(body, 'documentId', 40),
-    phone: readText(body, 'phone', 40),
-    city: readText(body, 'city', 120),
-  });
-  await writeList(admin, STUDENT_DIRECTORY_KEY, list);
-
-  const { error: enrollmentError } = await admin
-    .from('enrollments')
-    .upsert({ student_id: user.id, course_slug: courseSlug }, { onConflict: 'student_id,course_slug' });
-  if (enrollmentError) console.error('No fue posible registrar la matrícula:', enrollmentError.message);
-
-  return NextResponse.json({ success: true });
+  const result = await fulfillApprovedOrder(admin, order);
+  if (!result.ok) {
+    return NextResponse.json({ error: 'Tu pago fue aprobado, pero no pudimos activar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
+  }
+  return NextResponse.json({ success: true, status: 'approved', saleId: result.saleId, courseSlug: order.course_slug });
 }

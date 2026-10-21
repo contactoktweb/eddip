@@ -37,28 +37,26 @@ export type StudentNote = {
   updatedAt: string;
 };
 
-export type ExamResultRecord = {
-  id?: string;
-  studentId: string;
-  studentName: string;
-  courseSlug: string;
-  courseTitle: string;
-  score: number;
-  passed: boolean;
-  totalQuestions: number;
-  correctAnswers: number;
-  submittedAt: string;
-  certificateCode?: string;
-};
-
 export type IssuedCertificate = {
   code: string;
   studentName: string;
   documentId?: string;
+  /** Últimos dígitos de la cédula, devueltos por la validación pública. */
+  documentHint?: string;
   courseSlug: string;
   courseTitle: string;
   hours: number;
   issueDate: string;
   status: 'Válido' | 'Revocado';
   verificationUrl?: string;
+};
+
+/** Resultado de una evaluación calificada en el servidor. */
+export type ExamSubmission = {
+  score: number;
+  passed: boolean;
+  correct: number;
+  total: number;
+  passingScore: number;
+  certificate: IssuedCertificate | null;
 };

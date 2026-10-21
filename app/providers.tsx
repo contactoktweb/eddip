@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase/client';
 import { studentService } from '@/lib/supabase/studentService';
 import { adminService } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
-import type { StudentProfile } from '@/lib/supabase/types';
+import type { ExamSubmission, StudentProfile } from '@/lib/supabase/types';
+import type { ExamAnswers } from '@/lib/exams/examRules';
 import { normalizeRole, type AppRole } from '@/lib/auth/roles';
 
 type Role = 'guest' | AppRole;
@@ -28,7 +29,7 @@ export type StudentContextType = {
   logout: () => Promise<void>;
   purchase: (slug: string) => void;
   toggleLesson: (slug: string, lessonId: string) => Promise<void>;
-  saveResult: (slug: string, result: Result) => Promise<void>;
+  submitExam: (slug: string, answers: ExamAnswers) => Promise<{ result: ExamSubmission | null; error: string | null }>;
   addCourse: (course: Course) => void;
   updateCourse: (course: Course) => void;
   deleteCourse: (slug: string) => Promise<{ success: boolean; error?: string }>;
@@ -281,75 +282,31 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     }
   }, [completed, userProfile.id]);
 
-  const saveResult = useCallback(async (slug: string, result: Result) => {
-    // Buscar curso en todos los cursos conocidos (base, extra y remotos)
-    const allKnownCourses = [...baseCourses, ...extraCourses, ...remoteCourses];
-    const course = allKnownCourses.find(c => c.slug === slug);
+  const submitExam = useCallback(async (slug: string, answers: ExamAnswers) => {
+    const { result, error } = await studentService.submitExam(slug, answers);
+    if (!result) return { result: null, error };
 
-    const courseTitle = course?.title || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    const courseHours = course?.durationHours || 80;
+    const issued = result.certificate;
+    setResults(v => ({
+      ...v,
+      [slug]: { score: result.score, passed: result.passed, correct: result.correct, total: result.total, code: issued?.code },
+    }));
 
-    const certCode =
-      result.code ||
-      (result.passed ? `EDDIP-2026-${Math.floor(100000 + Math.random() * 900000)}` : undefined);
-
-    const enrichedResult = { ...result, code: certCode };
-    setResults(v => ({ ...v, [slug]: enrichedResult }));
-
-    if (result.passed && certCode) {
-      const issueDateStr = new Intl.DateTimeFormat('es-CO', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }).format(new Date());
-
-      const certObj: Certificate = {
-        code: certCode,
-        student: userProfile.name || 'Estudiante EDDIP',
-        documentId: userProfile.documentId || '',
-        courseSlug: slug,
-        course: courseTitle,
-        hours: courseHours,
-        date: issueDateStr,
-        status: 'Válido',
+    if (issued) {
+      const cert: Certificate = {
+        code: issued.code,
+        student: issued.studentName,
+        documentId: issued.documentId,
+        courseSlug: issued.courseSlug,
+        course: issued.courseTitle,
+        hours: issued.hours,
+        date: issued.issueDate,
+        status: issued.status,
       };
-
-      // Agregar inmediatamente a certificados en memoria
-      setRemoteCerts(prev => [certObj, ...prev.filter(c => c.code !== certCode)]);
-
-      try {
-        await studentService.saveExamResult({
-          studentId: userProfile.id || '',
-          studentName: userProfile.name,
-          courseSlug: slug,
-          courseTitle,
-          score: result.score,
-          passed: result.passed,
-          totalQuestions: result.total || 5,
-          correctAnswers: result.correct || 4,
-          submittedAt: new Date().toISOString(),
-          certificateCode: certCode,
-        });
-
-        await studentService.issueCertificate(
-          {
-            code: certCode,
-            studentName: userProfile.name || 'Estudiante EDDIP',
-            documentId: userProfile.documentId || '',
-            courseSlug: slug,
-            courseTitle,
-            hours: courseHours,
-            status: 'Válido',
-            issueDate: issueDateStr,
-          },
-          userProfile.id
-        );
-
-      } catch (err) {
-        console.warn('Error saving exam/certificate:', err);
-      }
+      setRemoteCerts(prev => [cert, ...prev.filter(c => c.code !== cert.code)]);
     }
-  }, [extraCourses, remoteCourses, userProfile]);
+    return { result, error: null };
+  }, []);
 
   const addCourse = useCallback((course: Course) => {
     setExtraCourses(v => [course, ...v]);
@@ -560,7 +517,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         logout,
         purchase,
         toggleLesson,
-        saveResult,
+        submitExam,
         addCourse,
         updateCourse,
         deleteCourse,

@@ -90,7 +90,7 @@ ALTER TABLE public.exam_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
 -- Las políticas de profiles, site_content, courses y certificates se definen por rol
--- en migrations/20261021_auth_roles_rls.sql.
+-- en migrations/20261021_auth_roles_rls.sql y migrations/20261021_integridad_pagos_certificados.sql.
 
 -- Políticas de inscripciones
 CREATE POLICY "enrollments_select_owner" ON public.enrollments FOR SELECT USING (auth.uid() = student_id);
@@ -99,8 +99,8 @@ CREATE POLICY "enrollments_select_owner" ON public.enrollments FOR SELECT USING 
 CREATE POLICY "Lesson progress can be managed by owner" ON public.lesson_progress FOR ALL USING (auth.uid() = student_id);
 CREATE POLICY "Student notes can be managed by owner" ON public.student_notes FOR ALL USING (auth.uid() = student_id);
 
--- Políticas de exámenes
-CREATE POLICY "Exam results can be viewed and inserted by owner" ON public.exam_results FOR ALL USING (auth.uid() = student_id);
+-- Políticas de exámenes (los resultados los registra solo el servidor al calificar)
+CREATE POLICY "exam_results_select_owner" ON public.exam_results FOR SELECT USING (auth.uid() = student_id);
 
 -- =======================================================
 -- Trigger para crear perfil automáticamente al registrarse

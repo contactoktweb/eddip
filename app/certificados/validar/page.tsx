@@ -3,15 +3,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
-import { useDemo } from '@/app/providers';
 import { Icon } from '@/lib/icons';
 import { QrVisual } from '@/components/QrVisual';
-import { certificates } from '@/lib/data';
 import type { Certificate } from '@/lib/types';
 import { studentService } from '@/lib/supabase/studentService';
 
 export default function ValidateCertificatePage() {
-  const { certs, user } = useDemo();
   const [code, setCode] = useState('');
   const [searched, setSearched] = useState(false);
   const [foundCert, setFoundCert] = useState<Certificate | null>(null);
@@ -40,41 +37,7 @@ export default function ValidateCertificatePage() {
       return;
     }
 
-    // 1. Buscar en certificados activos del contexto
-    let match = certs.find(c => c.code.toLowerCase() === trimmed);
-    if (!match) {
-      // 2. Buscar en datos base
-      match = certificates.find(c => c.code.toLowerCase() === trimmed);
-    }
-
-    // 2.b Buscar en almacenamiento local directo
-    if (!match && typeof window !== 'undefined') {
-      try {
-        const directKey = localStorage.getItem(`eddip_cert_${trimmed}`);
-        if (directKey) {
-          const parsed = JSON.parse(directKey);
-          if (parsed && parsed.code) {
-            match = {
-              code: parsed.code,
-              student: parsed.studentName || parsed.student,
-              documentId: parsed.documentId,
-              courseSlug: parsed.courseSlug,
-              course: parsed.courseTitle || parsed.course,
-              hours: Number(parsed.hours) || 40,
-              date: parsed.issueDate || parsed.date,
-              status: parsed.status || 'Válido',
-            };
-          }
-        }
-      } catch {}
-    }
-
-    if (match) {
-      setFoundCert(match);
-      return;
-    }
-
-    // 3. Buscar de forma asíncrona en base de datos / persistencia
+    // La autenticidad solo la confirma el registro del servidor
     let isCancelled = false;
     studentService.getCertificateByCode(trimmed).then(found => {
       if (isCancelled) return;
@@ -83,6 +46,7 @@ export default function ValidateCertificatePage() {
           code: found.code,
           student: found.studentName,
           documentId: found.documentId,
+          documentHint: found.documentHint,
           courseSlug: found.courseSlug,
           course: found.courseTitle,
           hours: found.hours,
@@ -97,7 +61,7 @@ export default function ValidateCertificatePage() {
     return () => {
       isCancelled = true;
     };
-  }, [code, searched, certs, user.name]);
+  }, [code, searched]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +172,11 @@ export default function ValidateCertificatePage() {
                       <div className="info-cell" style={{ background: '#f8fafc', padding: 10, borderRadius: 8 }}>
                         <span style={{ fontSize: 11, color: '#64748b' }}>Documento de Identidad</span>
                         <strong style={{ fontSize: 14, color: '#071F49' }}>
-                          C.C. {(foundCert.documentId || (user.name && foundCert.student && user.name.toLowerCase() === foundCert.student.toLowerCase() && user.documentId ? user.documentId : undefined) || (foundCert.student.toLowerCase().includes('laura') ? '1.031.456.781' : undefined) || (foundCert.student.toLowerCase().includes('carlos') ? '1.032.456.782' : undefined) || '1.032.456.789').replace(/^C\.?C\.?\s*/i, '').trim()}
+                          {foundCert.documentId
+                            ? `C.C. ${foundCert.documentId.replace(/^C\.?C\.?\s*/i, '').trim()}`
+                            : foundCert.documentHint
+                              ? `C.C. ${foundCert.documentHint}`
+                              : 'Registrado en expediente'}
                         </strong>
                       </div>
 

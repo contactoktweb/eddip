@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import { callApi } from './authedFetch';
-import type { StudentProfile, CourseEnrollment, StudentNote, ExamResultRecord, IssuedCertificate } from './types';
+import type { ExamAnswers, PublicExam } from '@/lib/exams/examRules';
+import type { StudentProfile, CourseEnrollment, StudentNote, IssuedCertificate, ExamSubmission } from './types';
 
 // Storage keys for resilient local fallback
 const STORAGE_PREFIX = 'eddip_student_';
@@ -291,21 +292,24 @@ export const studentService = {
     }
   },
 
-  /** Registra en el servidor la venta y la matrícula de la cuenta en sesión. */
-  async completeCheckout(params: {
-    saleId: string;
-    courseSlug: string;
-    value: number;
-    method: string;
-    fullName: string;
-    documentId?: string;
-    phone?: string;
-    city?: string;
-  }): Promise<{ success: boolean; error: string | null }> {
-    const res = await callApi('/api/checkout/complete', { method: 'POST', body: JSON.stringify(params) });
-    return res.ok
-      ? { success: true, error: null }
-      : { success: false, error: res.data.error || 'No fue posible registrar la matrícula.' };
+  /**
+   * Pide al servidor confirmar el pago de una orden con Bold y activar la matrícula.
+   * `pending` indica que Bold aún no reporta el pago como aprobado.
+   */
+  async completeCheckout(
+    orderId: string
+  ): Promise<{ success: boolean; pending: boolean; saleId: string | null; error: string | null }> {
+    const res = await callApi<{ success?: boolean; status?: string; saleId?: string }>('/api/checkout/complete', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    });
+    if (res.ok && res.data.success) return { success: true, pending: false, saleId: res.data.saleId || null, error: null };
+    return {
+      success: false,
+      pending: res.data.status === 'pending',
+      saleId: null,
+      error: res.data.error || 'No fue posible verificar el pago.',
+    };
   },
 
   // ==========================================
@@ -429,176 +433,46 @@ export const studentService = {
   },
 
   // ==========================================
-  // EXÁMENES Y RESULTADOS
+  // EVALUACIONES Y CERTIFICADOS (calificados y emitidos en el servidor)
   // ==========================================
-  async saveExamResult(result: ExamResultRecord): Promise<void> {
-    try {
-      await supabase.from('exam_results').insert({
-        student_id: result.studentId,
-        course_slug: result.courseSlug,
-        course_title: result.courseTitle,
-        score: result.score,
-        passed: result.passed,
-        total_questions: result.totalQuestions,
-        correct_answers: result.correctAnswers,
-        certificate_code: result.certificateCode || null,
-      });
-    } catch {
-      // Fallback
-    }
-
-    const list = getLocalData<ExamResultRecord[]>(`exams_${result.studentId}`, []);
-    list.unshift(result);
-    setLocalData(`exams_${result.studentId}`, list);
+  async getStudentExam(courseSlug: string): Promise<{ exam: PublicExam | null; error: string | null }> {
+    const res = await callApi<{ exam?: PublicExam }>(`/api/exams/${encodeURIComponent(courseSlug)}`);
+    return res.ok && res.data.exam
+      ? { exam: res.data.exam, error: null }
+      : { exam: null, error: res.data.error || 'No fue posible cargar la evaluación.' };
   },
 
-  // ==========================================
-  // CERTIFICADOS CON ALTA DISPONIBILIDAD Y PERSISTENCIA
-  // ==========================================
-  async issueCertificate(cert: IssuedCertificate, userId?: string): Promise<void> {
-    const isUuid = (id?: string) =>
-      Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
-    const validStudentId = isUuid(userId) ? userId : null;
-
-    // 1. Persistir en la tabla certificates (RLS: el estudiante solo emite certificados a su nombre)
-    try {
-      const { error } = await supabase.from('certificates').insert({
-        code: cert.code,
-        student_id: validStudentId,
-        student_name: cert.studentName,
-        document_id: cert.documentId || null,
-        course_slug: cert.courseSlug,
-        course_title: cert.courseTitle,
-        hours: cert.hours,
-        status: cert.status || 'Válido',
-        issue_date: cert.issueDate,
-      });
-      if (error) console.warn('Aviso al insertar en tabla certificates:', error.message);
-    } catch (e) {
-      console.warn('Aviso al insertar en tabla certificates:', e);
-    }
-
-    // 2. Persistir en almacenamiento local (claves atómicas y listas)
-    const certPayload = {
-      ...cert,
-      status: cert.status || 'Válido',
-    };
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`eddip_cert_${cert.code.toLowerCase()}`, JSON.stringify(certPayload));
-      } catch {}
-    }
-
-    const certs = getLocalData<IssuedCertificate[]>('certificates_list', []);
-    const exists = certs.findIndex(c => c.code.toLowerCase() === cert.code.toLowerCase());
-    if (exists >= 0) {
-      certs[exists] = certPayload;
-    } else {
-      certs.unshift(certPayload);
-    }
-    setLocalData('certificates_list', certs);
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('eddip_student_certificates_list', JSON.stringify(certs));
-        window.dispatchEvent(new CustomEvent('eddip_certificate_issued', { detail: certPayload }));
-      } catch {}
-    }
+  async submitExam(courseSlug: string, answers: ExamAnswers): Promise<{ result: ExamSubmission | null; error: string | null }> {
+    const res = await callApi<ExamSubmission>(`/api/exams/${encodeURIComponent(courseSlug)}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    });
+    return res.ok
+      ? { result: res.data, error: null }
+      : { result: null, error: res.data.error || 'No fue posible calificar la evaluación. Inténtalo de nuevo.' };
   },
 
+  /**
+   * Busca un certificado por código. El titular y la administración lo leen completo (RLS);
+   * el público recibe solo los datos de validación con la cédula enmascarada.
+   */
   async getCertificateByCode(code: string): Promise<IssuedCertificate | null> {
-    const trimmed = (code || '').trim();
+    const trimmed = (code || '').trim().slice(0, 64);
     if (!trimmed) return null;
-    const lower = trimmed.toLowerCase();
 
-    // 1. Revisar clave atómica en localStorage
-    if (typeof window !== 'undefined') {
-      try {
-        const direct = localStorage.getItem(`eddip_cert_${lower}`);
-        if (direct) {
-          const p = JSON.parse(direct);
-          if (p && p.code) {
-            return {
-              code: p.code,
-              studentName: p.studentName || p.student,
-              documentId: p.documentId,
-              courseSlug: p.courseSlug,
-              courseTitle: p.courseTitle || p.course,
-              hours: Number(p.hours) || 40,
-              status: p.status || 'Válido',
-              issueDate: p.issueDate || p.date,
-            };
-          }
-        }
-      } catch {}
-    }
-
-    // 2. Revisar listas locales
-    const localCerts = getLocalData<IssuedCertificate[]>('certificates_list', []);
-    const foundLocal = localCerts.find(c => c.code.toLowerCase() === lower);
-    if (foundLocal) return foundLocal;
-
-    if (typeof window !== 'undefined') {
-      try {
-        const rawAlt = localStorage.getItem('eddip_student_certificates_list');
-        if (rawAlt) {
-          const list: any[] = JSON.parse(rawAlt);
-          const f = list.find((c: any) => c.code && c.code.toLowerCase() === lower);
-          if (f) {
-            return {
-              code: f.code,
-              studentName: f.studentName || f.student,
-              documentId: f.documentId,
-              courseSlug: f.courseSlug,
-              courseTitle: f.courseTitle || f.course,
-              hours: Number(f.hours) || 40,
-              status: f.status || 'Válido',
-              issueDate: f.issueDate || f.date,
-            };
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Revisar en Supabase tabla site_content (clave directa)
     try {
-      const { data, error } = await supabase
-        .from('site_content')
-        .select('value')
-        .eq('key', `certificate_${lower}`)
-        .single();
-
-      if (!error && data?.value) {
-        const val = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-        if (val && val.code) {
-          return {
-            code: val.code,
-            studentName: val.studentName || val.student,
-            documentId: val.documentId,
-            courseSlug: val.courseSlug,
-            courseTitle: val.courseTitle || val.course,
-            hours: Number(val.hours) || 40,
-            status: val.status || 'Válido',
-            issueDate: val.issueDate || val.date,
-          };
-        }
-      }
-    } catch {}
-
-    // 4. Revisar en Supabase tabla certificates
-    try {
-      const { data, error } = await supabase
+      const pattern = trimmed.replace(/[\\%_]/g, char => `\\${char}`);
+      const { data } = await supabase
         .from('certificates')
-        .select('*')
-        .ilike('code', trimmed)
-        .single();
-
-      if (!error && data) {
+        .select('code, student_name, document_id, course_slug, course_title, hours, status, issue_date')
+        .ilike('code', pattern)
+        .limit(1)
+        .maybeSingle();
+      if (data) {
         return {
           code: data.code,
           studentName: data.student_name,
-          documentId: data.document_id || data.documentId,
+          documentId: data.document_id || undefined,
           courseSlug: data.course_slug,
           courseTitle: data.course_title,
           hours: Number(data.hours) || 40,
@@ -606,7 +480,28 @@ export const studentService = {
           issueDate: data.issue_date,
         };
       }
-    } catch {}
+    } catch {
+      // Sin sesión o sin permisos: se usa la validación pública
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('validate_certificate', { p_code: trimmed });
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!error && row) {
+        return {
+          code: row.code,
+          studentName: row.student_name,
+          documentHint: row.document_hint || undefined,
+          courseSlug: row.course_slug,
+          courseTitle: row.course_title,
+          hours: Number(row.hours) || 40,
+          status: row.status || 'Válido',
+          issueDate: row.issue_date,
+        };
+      }
+    } catch {
+      // Error de red: se informa como no encontrado
+    }
 
     return null;
   },

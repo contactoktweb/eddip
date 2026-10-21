@@ -3,16 +3,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Icon } from '@/lib/icons';
-import type { Exam, Course } from '@/lib/types';
+import type { Course } from '@/lib/types';
+import type { PublicExam } from '@/lib/exams/examRules';
 import { useDemo } from '@/app/providers';
 
 type Props = {
-  exam: Exam;
+  exam: PublicExam;
   course: Course;
 };
 
 export function StudentExamModule({ exam, course }: Props) {
-  const { saveResult } = useDemo();
+  const { submitExam } = useDemo();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [hasStarted, setHasStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,25 +36,24 @@ export function StudentExamModule({ exam, course }: Props) {
     setCurrentIndex(0);
     setAnswers({});
     setResult(null);
+    setSubmitError(null);
   };
 
   const handleFinish = async () => {
-    const total = Math.max(1, exam.questions.length);
-    const correct = exam.questions.filter(q => answers[q.id] === q.correct).length;
-    const score = Math.round((correct / total) * 100);
-    const passed = score >= exam.passingScore;
-
-    const certCode = passed ? `EDDIP-2026-${Math.floor(100000 + Math.random() * 900000)}` : undefined;
-
-    const r = { score, passed, correct, total, code: certCode };
-    setResult(r);
-
-    await saveResult(course.slug, {
-      score,
-      passed,
-      correct,
-      total,
-      code: certCode,
+    setSubmitting(true);
+    setSubmitError(null);
+    const { result: graded, error } = await submitExam(course.slug, answers);
+    setSubmitting(false);
+    if (!graded) {
+      setSubmitError(error);
+      return;
+    }
+    setResult({
+      score: graded.score,
+      passed: graded.passed,
+      correct: graded.correct,
+      total: graded.total,
+      code: graded.certificate?.code,
     });
   };
 
@@ -299,6 +301,12 @@ export function StudentExamModule({ exam, course }: Props) {
           })}
         </div>
 
+        {submitError && (
+          <p role="alert" style={{ marginTop: 20, color: '#dc2626', fontSize: 13, fontWeight: 600 }}>
+            {submitError}
+          </p>
+        )}
+
         {/* Barra de navegación de preguntas */}
         <div className="exam-nav" style={{ marginTop: 30, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button
@@ -323,14 +331,15 @@ export function StudentExamModule({ exam, course }: Props) {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={answeredCount < exam.questions.length}
+              disabled={answeredCount < exam.questions.length || submitting}
+              aria-busy={submitting}
               onClick={handleFinish}
               style={{
                 background: 'linear-gradient(135deg, #059669, #047857)',
                 borderColor: '#047857',
               }}
             >
-              Finalizar evaluación <Icon name="check" />
+              {submitting ? 'Calificando...' : 'Finalizar evaluación'} <Icon name="check" />
             </button>
           )}
         </div>

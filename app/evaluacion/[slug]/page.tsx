@@ -3,53 +3,36 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useDemo } from '@/app/providers';
-import { adminService } from '@/lib/supabase/adminService';
+import { studentService } from '@/lib/supabase/studentService';
 import { StudentExamModule } from '@/components/student/StudentExamModule';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
-import type { Exam } from '@/lib/types';
+import type { PublicExam } from '@/lib/exams/examRules';
 
 export default function StudentExamPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { courses } = useDemo();
+  const { courses, sessionReady } = useDemo();
 
   const course = courses.find(c => c.slug === slug);
-  const [exam, setExam] = useState<Exam | null>(null);
+  const [exam, setExam] = useState<PublicExam | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !sessionReady) return;
     let isMounted = true;
 
-    const loadExam = async () => {
-      const resolved = await adminService.getExamBySlug(slug, course);
-      if (isMounted) {
-        setExam(resolved);
-        setLoading(false);
-      }
-    };
-
-    loadExam();
-
-    // Sincronización en tiempo real: escuchar si administración actualiza la prueba
-    const handleExamUpdated = (event: Event) => {
-      const customEvent = event as CustomEvent<Exam>;
-      if (customEvent.detail && customEvent.detail.courseSlug === slug) {
-        setExam(customEvent.detail);
-      } else {
-        loadExam();
-      }
-    };
-
-    window.addEventListener('eddip_exam_updated', handleExamUpdated);
-    window.addEventListener('storage', loadExam);
+    studentService.getStudentExam(slug).then(({ exam: loaded, error }) => {
+      if (!isMounted) return;
+      setExam(loaded);
+      setLoadError(error);
+      setLoading(false);
+    });
 
     return () => {
       isMounted = false;
-      window.removeEventListener('eddip_exam_updated', handleExamUpdated);
-      window.removeEventListener('storage', loadExam);
     };
-  }, [slug, course]);
+  }, [slug, sessionReady]);
 
   if (loading) {
     return (
@@ -74,9 +57,9 @@ export default function StudentExamPage() {
         <SiteHeader />
         <main className="exam-page" style={{ minHeight: '70vh' }}>
           <div className="exam-shell" style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <h1 style={{ fontSize: 24, marginBottom: 12 }}>Evaluación no encontrada</h1>
+            <h1 style={{ fontSize: 24, marginBottom: 12 }}>Evaluación no disponible</h1>
             <p style={{ color: '#68788d', marginBottom: 20 }}>
-              El curso indicado no dispone de una evaluación activa en este momento.
+              {loadError || 'El curso indicado no dispone de una evaluación activa en este momento.'}
             </p>
             <Link className="btn btn-primary" href="/dashboard/cursos">
               Volver a mis cursos
