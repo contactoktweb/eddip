@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useDemo } from '@/app/providers';
-import { studentService } from '@/lib/supabase/studentService';
+import { EMAIL_NOT_CONFIRMED_ERROR, studentService } from '@/lib/supabase/studentService';
 import { Icon } from '@/lib/icons';
 import { notifyStudent } from '@/lib/notifications';
 import { LEGAL_DOCUMENT_ROUTES } from '@/lib/legalDocuments';
@@ -51,6 +51,19 @@ export function StudentAuth() {
   const [city, setCity] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  const handleResendVerification = async () => {
+    setResendingVerification(true);
+    const res = await studentService.resendVerificationEmail(email);
+    setResendingVerification(false);
+    if (res.success) {
+      setErrorMsg(null);
+      setSuccessMsg(`Te enviamos el correo de verificación a ${email.trim()}. Abre el enlace para activar tu cuenta; revisa también la carpeta de spam.`);
+    } else {
+      setErrorMsg(res.error);
+    }
+  };
 
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
@@ -298,7 +311,20 @@ export function StudentAuth() {
           <div className="auth-alert-icon">
             <Icon name="close" size={16} />
           </div>
-          <div className="auth-alert-text">{errorMsg}</div>
+          <div className="auth-alert-text">
+            {errorMsg}
+            {errorMsg === EMAIL_NOT_CONFIRMED_ERROR && (
+              <button
+                type="button"
+                className="btn btn-outline auth-resend-btn"
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+              >
+                <Icon name="mail" size={15} />
+                {resendingVerification ? 'Enviando correo…' : 'Reenviar correo de verificación'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -143,6 +143,22 @@ export function passwordResetEmail(ctx: TemplateContext, data: { name: string; r
   };
 }
 
+export function emailVerificationEmail(ctx: TemplateContext, data: { name: string; verifyUrl: string }): RenderedEmail {
+  const firstName = data.name.split(' ')[0] || data.name;
+  return {
+    subject: 'Confirma tu correo en EDDIP',
+    html: layout(
+      ctx,
+      'Confirma tu correo para activar tu cuenta.',
+      `<h1 style="margin:0 0 14px;font-size:24px;color:${BRAND_NAVY}">Confirma tu correo</h1>
+       <p style="margin:0 0 12px">Hola, ${escapeHtml(firstName)}. Haz clic en el botón para confirmar tu correo y activar tu cuenta en EDDIP. Ingresarás directamente a la plataforma.</p>
+       ${button(data.verifyUrl, 'Confirmar mi correo')}
+       <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">El enlace solo puede usarse una vez. Si no solicitaste este correo, puedes ignorarlo.</p>`
+    ),
+    text: `Hola, ${firstName}.\n\nConfirma tu correo y activa tu cuenta en EDDIP: ${data.verifyUrl}\nSi no solicitaste este correo, ignóralo.${textFooter(ctx)}`,
+  };
+}
+
 export function adminNotificationEmail(
   ctx: TemplateContext,
   data: { title: string; intro: string; rows: [string, string][]; actionPath: string; actionLabel: string }

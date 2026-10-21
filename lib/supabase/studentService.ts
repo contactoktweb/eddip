@@ -37,10 +37,13 @@ export function generateUUID(): string {
   });
 }
 
+export const EMAIL_NOT_CONFIRMED_ERROR =
+  'Tu correo aún no ha sido confirmado. Reenvía el correo de verificación y abre el enlace para activar tu cuenta.';
+
 /** Traduce los errores de Supabase Auth a mensajes claros para la persona. */
 function describeSignInError(message: string): string {
   if (/email not confirmed/i.test(message)) {
-    return 'Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada o recupera tu contraseña.';
+    return EMAIL_NOT_CONFIRMED_ERROR;
   }
   if (/rate limit|too many/i.test(message)) {
     return 'Demasiados intentos. Espera unos minutos e inténtalo nuevamente.';
@@ -116,6 +119,20 @@ export const studentService = {
       return { user: data.user, session: data.session, error: null };
     } catch {
       return { user: null, session: null, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
+    }
+  },
+
+  async resendVerificationEmail(email: string): Promise<{ success: boolean; error: string | null }> {
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return res.ok ? { success: true, error: null } : { success: false, error: data.error || 'No se pudo enviar el correo.' };
+    } catch {
+      return { success: false, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
     }
   },
 

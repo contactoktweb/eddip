@@ -5073,3 +5073,5 @@ body {
   .nav-cta.desktop-only { display: none; }
   .nav-user-link { white-space: nowrap; font-size: 13px; }
 }
+
+.auth-resend-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 14px; font-size: 13px; min-height: 40px; }
