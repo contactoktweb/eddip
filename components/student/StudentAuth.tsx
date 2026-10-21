@@ -305,27 +305,49 @@ export function StudentAuth() {
         </p>
       </div>
 
-      {/* Alerta de Error */}
-      {errorMsg && (
-        <div className="auth-alert auth-alert-error" role="alert">
-          <div className="auth-alert-icon">
-            <Icon name="close" size={16} />
+      {/* Cuenta sin confirmar: ofrece reenviar el correo de verificación */}
+      {errorMsg === EMAIL_NOT_CONFIRMED_ERROR ? (
+        <div className="auth-verify-card" role="alert">
+          <div className="auth-verify-head">
+            <span className="auth-verify-icon" aria-hidden="true">
+              <Icon name="mail" size={20} />
+            </span>
+            <div>
+              <strong>Confirma tu correo para continuar</strong>
+              <p>
+                Tu cuenta ya está creada, pero falta verificar <span className="auth-verify-email">{email.trim()}</span>.
+                Te enviaremos un enlace para activarla.
+              </p>
+            </div>
           </div>
-          <div className="auth-alert-text">
-            {errorMsg}
-            {errorMsg === EMAIL_NOT_CONFIRMED_ERROR && (
-              <button
-                type="button"
-                className="btn btn-outline auth-resend-btn"
-                onClick={handleResendVerification}
-                disabled={resendingVerification}
-              >
-                <Icon name="mail" size={15} />
-                {resendingVerification ? 'Enviando correo…' : 'Reenviar correo de verificación'}
-              </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-full auth-verify-btn"
+            onClick={handleResendVerification}
+            disabled={resendingVerification}
+          >
+            {resendingVerification ? (
+              <span className="auth-btn-loading">
+                <span className="auth-spinner-sm" />
+                Enviando correo...
+              </span>
+            ) : (
+              <>
+                <Icon name="mail" size={16} />
+                <span>Reenviar correo de verificación</span>
+              </>
             )}
-          </div>
+          </button>
         </div>
+      ) : (
+        errorMsg && (
+          <div className="auth-alert auth-alert-error" role="alert">
+            <div className="auth-alert-icon">
+              <Icon name="close" size={16} />
+            </div>
+            <div className="auth-alert-text">{errorMsg}</div>
+          </div>
+        )
       )}
 
       {/* Alerta de Éxito */}

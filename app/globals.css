@@ -5074,4 +5074,33 @@ body {
   .nav-user-link { white-space: nowrap; font-size: 13px; }
 }
 
-.auth-resend-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 14px; font-size: 13px; min-height: 40px; }
+.auth-verify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  animation: ui-fade-up 0.3s ease both;
+}
+.auth-verify-head { display: flex; align-items: flex-start; gap: 12px; }
+.auth-verify-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.auth-verify-head strong { display: block; font-size: 14.5px; color: #1e3a8a; margin-bottom: 4px; }
+.auth-verify-head p { margin: 0; font-size: 13px; line-height: 1.5; color: #1e40af; }
+.auth-verify-email { font-weight: 700; overflow-wrap: anywhere; }
+.auth-verify-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-verify-card { animation: none; }
+}
