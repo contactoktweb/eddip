@@ -580,13 +580,14 @@ export const adminService = {
 
     // 3. Persistencia en Supabase (site_content con clave 'admin_students_list')
     try {
-      await supabase.from('site_content').upsert({
+      const { error } = await supabase.from('site_content').upsert({
         key: 'admin_students_list',
         value: currentList,
         updated_at: new Date().toISOString(),
       });
+      if (error) return { success: false, error: error.message };
     } catch (err) {
-      console.warn('Error al guardar en Supabase site_content:', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Error de conexión con la base de datos.' };
     }
 
     // 4. Respaldo local
@@ -728,11 +729,11 @@ export const adminService = {
   // ==========================================
   // CERTIFICADOS Y VENTAS
   // ==========================================
-  async issueManualCertificate(cert: Certificate): Promise<boolean> {
+  async issueManualCertificate(cert: Certificate): Promise<{ success: boolean; error?: string }> {
     const lower = cert.code.trim().toLowerCase();
 
-    try {
-      await supabase.from('certificates').upsert({
+    // La tabla certificates es la fuente oficial del validador público: si falla, el certificado no existe
+    const { error: certError } = await supabase.from('certificates').upsert({
         code: cert.code,
         student_name: cert.student,
         document_id: cert.documentId || null,
@@ -742,8 +743,8 @@ export const adminService = {
         status: cert.status || 'Válido',
         issue_date: cert.date,
       });
-    } catch (e) {
-      console.warn('Aviso tabla certificates:', e);
+    if (certError) {
+      return { success: false, error: certError.message };
     }
 
     try {
@@ -783,7 +784,7 @@ export const adminService = {
     }
     setLocalData('admin_certs', allCerts);
     setLocalData('eddip_student_certificates_list', allCerts);
-    return true;
+    return { success: true };
   },
 
   /**
@@ -812,7 +813,23 @@ export const adminService = {
       code = `EDDIP-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
     } while (issuedCodes.has(code.toLowerCase()));
 
-    // 1. Registrar o actualizar a la persona en el directorio institucional
+    // 1. Emitir el certificado con la cédula visible en el diploma (paso obligatorio)
+    const certificate: Certificate = {
+      code,
+      student: fullName,
+      documentId,
+      courseSlug: data.courseSlug,
+      course: data.courseTitle,
+      hours: data.hours,
+      date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
+      status: 'Válido',
+    };
+    const issued = await this.issueManualCertificate(certificate);
+    if (!issued.success) {
+      return { success: false, error: `No fue posible emitir el certificado: ${issued.error}` };
+    }
+
+    // 2. Registrar o actualizar a la persona en el directorio institucional
     const students = await this.getAllStudents();
     const normalizeDoc = (doc?: string) => (doc || '').replace(/[\s.-]/g, '');
     const existing = students.find(
@@ -830,21 +847,11 @@ export const adminService = {
       certificatesCount: (existing?.certificatesCount || 0) + 1,
     });
     if (!studentResult.success) {
-      return { success: false, error: studentResult.error || 'No fue posible registrar los datos de la persona.' };
+      return {
+        success: false,
+        error: `El certificado ${code} fue emitido, pero no se actualizó el directorio: ${studentResult.error || 'error desconocido'}`,
+      };
     }
-
-    // 2. Emitir el certificado con la cédula visible en el diploma
-    const certificate: Certificate = {
-      code,
-      student: fullName,
-      documentId,
-      courseSlug: data.courseSlug,
-      course: data.courseTitle,
-      hours: data.hours,
-      date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
-      status: 'Válido',
-    };
-    await this.issueManualCertificate(certificate);
 
     // 3. Guardar el registro completo de la inscripción manual
     try {
