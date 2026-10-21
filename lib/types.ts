@@ -1,3 +1,11 @@
+export type StudyMaterial = {
+  id: string;
+  name: string;
+  url: string;
+  kind: 'file' | 'link';
+  mimeType?: string;
+  size?: number;
+};
 export type Lesson = {
   id: string;
   title: string;
@@ -8,6 +16,7 @@ export type Lesson = {
   videoType?: 'youtube' | 'direct';
   images?: string[];
   imageUrl?: string;
+  materials?: StudyMaterial[];
 };
 export type Module = { id:string; title:string; lessons:Lesson[] };
 export type Course = {
@@ -17,6 +26,6 @@ export type Course = {
 };
 export type Certificate = { code:string; student:string; documentId?:string; courseSlug:string; course:string; hours:number; date:string; status:string };
 export type Student = { id:string; name:string; email:string; courses:number; progress:number; certificates:number; registeredAt:string };
-export type Sale = { id:string; student:string; course:string; value:number; method:string; date:string; status:string };
+export type Sale = { id:string; student:string; course:string; value:number; method:string; date:string; status:string; email?:string; courseSlug?:string };
 export type ExamQuestion = { id:string; text:string; options:string[]; correct:number };
 export type Exam = { courseSlug:string; title:string; passingScore:number; questions:ExamQuestion[] };

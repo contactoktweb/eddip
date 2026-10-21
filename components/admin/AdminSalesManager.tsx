@@ -5,6 +5,7 @@ import type { Sale, Course } from '@/lib/types';
 import { money, baseCourses } from '@/lib/data';
 import { StatCard } from '@/components/StatCard';
 import { Icon } from '@/lib/icons';
+import { notifyStudent } from '@/lib/notifications';
 import { adminService } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
 
@@ -102,6 +103,9 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
     if (!newSaleData.student.trim()) return;
 
     const newId = `VEN-${Date.now().toString().slice(-4)}`;
+    const matchedCourse =
+      availableCourses.find(c => c.title === newSaleData.course) || baseCourses.find(c => c.title === newSaleData.course);
+    const buyerEmail = newSaleData.email?.trim().toLowerCase() || '';
     const saleToCreate: Sale = {
       id: newId,
       student: newSaleData.student.trim(),
@@ -110,6 +114,8 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
       method: newSaleData.method,
       date: newSaleData.date || new Date().toISOString().slice(0, 10),
       status: newSaleData.status,
+      ...(buyerEmail ? { email: buyerEmail } : {}),
+      ...(matchedCourse ? { courseSlug: matchedCourse.slug } : {}),
     };
 
     if (onAddSale) {
@@ -120,7 +126,6 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
 
     // Matricular al estudiante si la venta fue aprobada
     if (saleToCreate.status === 'Aprobado') {
-      const matchedCourse = availableCourses.find(c => c.title === saleToCreate.course) || baseCourses.find(c => c.title === saleToCreate.course);
       const courseSlug = matchedCourse ? matchedCourse.slug : 'derecho-de-policia';
       const cleanEmail = newSaleData.email?.trim() || `${saleToCreate.student.toLowerCase().replace(/\s+/g, '.')}@estudiante.eddip.co`;
       await adminService.enrollStudentInCourse(
@@ -132,6 +137,10 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
           documentId: newSaleData.documentId?.trim() || undefined,
         }
       );
+
+      if (buyerEmail) {
+        notifyStudent({ type: 'purchase', email: buyerEmail, saleId: newId });
+      }
     }
 
     setIsModalOpen(false);

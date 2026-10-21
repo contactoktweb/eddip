@@ -5,27 +5,34 @@ import Link from 'next/link';
 import { useDemo } from '@/app/providers';
 import { studentService } from '@/lib/supabase/studentService';
 import { Icon } from '@/lib/icons';
+import { notifyStudent } from '@/lib/notifications';
+import { LEGAL_DOCUMENT_ROUTES } from '@/lib/legalDocuments';
+import { NewPasswordForm } from './NewPasswordForm';
 
-type AuthMode = 'login' | 'register' | 'reset';
+type AuthMode = 'login' | 'register' | 'reset' | 'new-password';
 
 export function StudentAuth() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get('redirect');
   const modeParam = searchParams.get('mode');
+  const resetToken = searchParams.get('token');
   const { signInStudent, signUpStudent } = useDemo();
 
   const [mode, setMode] = useState<AuthMode>(() => {
     if (modeParam === 'register') return 'register';
     if (modeParam === 'reset') return 'reset';
+    if (modeParam === 'new-password' && resetToken) return 'new-password';
     return 'login';
   });
 
   useEffect(() => {
     if (modeParam === 'register' || modeParam === 'reset' || modeParam === 'login') {
       setMode(modeParam);
+    } else if (modeParam === 'new-password' && resetToken) {
+      setMode('new-password');
     }
-  }, [modeParam]);
+  }, [modeParam, resetToken]);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -43,7 +50,7 @@ export function StudentAuth() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [acceptTerms, setAcceptTerms] = useState(true);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const switchMode = (newMode: AuthMode) => {
     setMode(newMode);
@@ -73,9 +80,9 @@ export function StudentAuth() {
         } else {
           setSuccessMsg('¡Inicio de sesión exitoso! Redirigiendo a tu cuenta...');
           setTimeout(() => {
-            if (res.role === 'admin' || cleanEmail.toLowerCase().includes('admin') || cleanEmail.toLowerCase() === 'palenciasaid@gmail.com') {
+            if (res.role === 'admin') {
               router.push('/admin');
-            } else if (res.role === 'designer' || cleanEmail.toLowerCase().includes('disenador') || cleanEmail.toLowerCase().includes('designer')) {
+            } else if (res.role === 'designer') {
               router.push('/admin/cursos');
             } else if (redirectParam) {
               router.push(redirectParam);
@@ -133,6 +140,7 @@ export function StudentAuth() {
           setErrorMsg(res.error || 'Error al registrar la cuenta. Inténtalo nuevamente.');
         } else {
           const destination = redirectParam || '/dashboard';
+          notifyStudent({ type: 'welcome', email: cleanEmail });
 
           setSuccessMsg(
             redirectParam
@@ -231,7 +239,7 @@ export function StudentAuth() {
       </div>
 
       {/* Selector de modo Login / Registro */}
-      {mode !== 'reset' && (
+      {(mode === 'login' || mode === 'register') && (
         <div className="auth-segmented-tabs" role="tablist" aria-label="Opciones de acceso">
           <button
             type="button"
@@ -270,6 +278,8 @@ export function StudentAuth() {
             ? 'Inicia sesión en EDDIP'
             : mode === 'register'
             ? 'Crea tu cuenta institucional'
+            : mode === 'new-password'
+            ? 'Crea tu nueva contraseña'
             : 'Restablecer contraseña'}
         </h2>
         <p className="auth-subtitle">
@@ -277,7 +287,9 @@ export function StudentAuth() {
             ? 'Accede a tus asignaturas activas, evaluaciones y certificados oficiales.'
             : mode === 'register'
             ? 'Completa tus datos para crear tu cuenta de estudiante y acceder a tus cursos.'
-            : 'Ingresa tu correo institucional o personal para recibir las instrucciones de acceso seguro.'}
+            : mode === 'new-password'
+            ? 'Define una contraseña segura para volver a ingresar a tu cuenta.'
+            : 'Ingresa el correo con el que te registraste y te enviaremos un enlace para crear una nueva contraseña.'}
         </p>
       </div>
 
@@ -301,15 +313,29 @@ export function StudentAuth() {
         </div>
       )}
 
-      {/* Vista de éxito tras enviar solicitud de restablecimiento */}
-      {mode === 'reset' && resetSubmitted ? (
+      {/* Formulario de nueva contraseña desde el enlace del correo */}
+      {mode === 'new-password' && resetToken ? (
+        <NewPasswordForm
+          token={resetToken}
+          onDone={message => {
+            switchMode('login');
+            setSuccessMsg(message);
+            router.replace('/login');
+          }}
+          onRequestNewLink={() => {
+            switchMode('reset');
+            router.replace('/login?mode=reset');
+          }}
+        />
+      ) : /* Vista de éxito tras enviar solicitud de restablecimiento */
+      mode === 'reset' && resetSubmitted ? (
         <div className="auth-reset-success-card">
           <div className="auth-reset-icon-wrap">
             <Icon name="mail" size={32} />
           </div>
           <h3 className="auth-reset-title">Enlace de recuperación enviado</h3>
           <p className="auth-reset-desc">
-            Hemos enviado un correo a <strong>{email}</strong> con el enlace y las instrucciones para definir una nueva contraseña segura.
+            Si <strong>{email}</strong> está registrado en EDDIP, recibirás en unos minutos un correo con el enlace para definir una nueva contraseña.
           </p>
           <div className="auth-reset-note">
             <Icon name="shield" size={16} />
@@ -531,7 +557,11 @@ export function StudentAuth() {
                   className="auth-checkbox"
                   required
                 />
-                <span>Acepto las políticas de formación y tratamiento de datos de EDDIP.</span>
+                <span>
+                  Acepto los{' '}
+                  <Link href={LEGAL_DOCUMENT_ROUTES.termsConditions} target="_blank">términos y condiciones</Link> y la{' '}
+                  <Link href={LEGAL_DOCUMENT_ROUTES.privacyPolicy} target="_blank">política de tratamiento de datos</Link> de EDDIP.
+                </span>
               </label>
             </div>
           )}

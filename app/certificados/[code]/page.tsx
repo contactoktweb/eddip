@@ -49,7 +49,7 @@ export default function CertificateView() {
       const cObj: Certificate = {
         code: decodedCode,
         student: user.name || 'Estudiante EDDIP',
-        documentId: user.documentId || '1.032.456.789',
+        documentId: user.documentId || undefined,
         courseSlug,
         course: courseObj?.title || 'Curso EDDIP',
         hours: courseObj?.durationHours || 40,
@@ -79,7 +79,7 @@ export default function CertificateView() {
             setResolvedCert({
               code: parsed.code,
               student: parsed.studentName || parsed.student || user.name,
-              documentId: parsed.documentId || user.documentId,
+              documentId: parsed.documentId,
               courseSlug: parsed.courseSlug,
               course: parsed.courseTitle || parsed.course,
               hours: Number(parsed.hours) || 40,
@@ -100,7 +100,7 @@ export default function CertificateView() {
         setResolvedCert({
           code: found.code,
           student: found.studentName,
-          documentId: found.documentId || user.documentId,
+          documentId: found.documentId,
           courseSlug: found.courseSlug,
           course: found.courseTitle,
           hours: found.hours,
@@ -199,13 +199,10 @@ export default function CertificateView() {
   const courseMeta = courses.find(c => c.slug === cert?.courseSlug);
 
   // Resolver número de cédula o documento de identidad del estudiante
+  // Solo se muestra la cédula registrada en el certificado o la del propio titular con sesión activa
   const studentDocId =
     cert.documentId ||
-    (user.name && cert.student && user.name.toLowerCase() === cert.student.toLowerCase() && user.documentId ? user.documentId : undefined) ||
-    (cert.student.toLowerCase().includes('sebastián') ? '1.032.456.789' : undefined) ||
-    (cert.student.toLowerCase().includes('laura') ? '1.031.456.781' : undefined) ||
-    (cert.student.toLowerCase().includes('carlos') ? '1.032.456.782' : undefined) ||
-    (user.documentId ? user.documentId : '1.032.456.789');
+    (user.name && cert.student && user.name.toLowerCase() === cert.student.toLowerCase() && user.documentId ? user.documentId : undefined);
 
   const formattedDoc = studentDocId ? `C.C. ${studentDocId.replace(/^C\.?C\.?\s*/i, '').trim()}` : '';
 

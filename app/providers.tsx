@@ -21,6 +21,8 @@ export type StudentContextType = {
   certs: Certificate[];
   notes: Record<string, string>; // key: courseSlug_lessonId -> noteText
   authLoading: boolean;
+  /** true cuando ya se restauró la sesión (local y Supabase) y el rol es definitivo. */
+  sessionReady: boolean;
   login: (r: Exclude<Role, 'guest'>) => void;
   logout: () => Promise<void>;
   purchase: (slug: string) => void;
@@ -28,7 +30,7 @@ export type StudentContextType = {
   saveResult: (slug: string, result: Result) => Promise<void>;
   addCourse: (course: Course) => void;
   updateCourse: (course: Course) => void;
-  deleteCourse: (slug: string) => void;
+  deleteCourse: (slug: string) => Promise<{ success: boolean; error?: string }>;
   resetDemo: () => void;
   updateProfile: (data: Partial<StudentProfile>) => Promise<boolean>;
   saveNote: (courseSlug: string, lessonId: string, text: string) => Promise<void>;
@@ -188,12 +190,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           } catch {}
 
           const effectiveRole = meta.role || registeredRole;
-          const role: Role =
-            effectiveRole === 'admin' || email.includes('admin') || email === 'palenciasaid@gmail.com'
-              ? 'admin'
-              : effectiveRole === 'designer' || email.includes('disenador') || email.includes('designer')
-              ? 'designer'
-              : 'student';
+          // El rol proviene exclusivamente de la cuenta registrada, nunca del texto del correo
+          const role: Role = effectiveRole === 'admin' ? 'admin' : effectiveRole === 'designer' ? 'designer' : 'student';
 
           setRole(role);
           const profile = {
@@ -513,8 +511,13 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const deleteCourse = useCallback((slug: string) => {
-    setExtraCourses(v => v.filter(c => c.slug !== slug));
+  const deleteCourse = useCallback(async (slug: string) => {
+    const result = await adminService.deleteCourse(slug);
+    if (result.success) {
+      setExtraCourses(v => v.filter(c => c.slug !== slug));
+      setRemoteCourses(v => v.filter(c => c.slug !== slug));
+    }
+    return result;
   }, []);
 
   const updateProfile = useCallback(async (data: Partial<StudentProfile>): Promise<boolean> => {
@@ -626,8 +629,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       } catch {}
 
       const effectiveRole = meta.role || registeredRole;
-      const isAdmin = effectiveRole === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'palenciasaid@gmail.com';
-      const isDesigner = effectiveRole === 'designer' || cleanEmail.includes('disenador') || cleanEmail.includes('designer');
+      // El rol proviene exclusivamente de la cuenta registrada, nunca del texto del correo
+      const isAdmin = effectiveRole === 'admin';
+      const isDesigner = effectiveRole === 'designer';
       const assignedRole: Role = isAdmin ? 'admin' : (isDesigner ? 'designer' : 'student');
 
       const profile = {
@@ -830,6 +834,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         certs,
         notes,
         authLoading,
+        sessionReady: loaded && !authLoading,
         login,
         logout,
         purchase,

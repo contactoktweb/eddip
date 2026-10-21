@@ -6,8 +6,11 @@ import type { Course, Module, Lesson } from '@/lib/types';
 import { useDemo } from '@/app/providers';
 import { adminService } from '@/lib/supabase/adminService';
 import { Icon } from '@/lib/icons';
+import { useCourseCategories } from '@/lib/useSiteSettings';
 import { CourseImageSlider } from '@/components/CourseImageSlider';
 import { LessonMediaEditor } from './LessonMediaEditor';
+import { LessonMaterialsEditor } from './LessonMaterialsEditor';
+import { LessonContentField } from './LessonContentField';
 
 const slugify = (s: string) =>
   s
@@ -30,14 +33,32 @@ type Props = {
   isEditing?: boolean;
 };
 
+const DEFAULT_LESSON_MINUTES = 15;
+const DEFAULT_INSTRUCTOR_NAME = 'Equipo Académico EDDIP';
+
+const createEmptyLesson = (): Lesson => ({
+  id: `les-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  title: '',
+  minutes: DEFAULT_LESSON_MINUTES,
+  keyPoint: '',
+  content: [],
+});
+
+const createEmptyModule = (): Module => ({
+  id: `mod-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  title: '',
+  lessons: [createEmptyLesson()],
+});
+
 export function CourseContentBuilder({ initialCourse, isEditing = false }: Props) {
   const router = useRouter();
   const { addCourse, updateCourse } = useDemo();
+  const { categories } = useCourseCategories();
 
   // 1. Datos Generales
   const [title, setTitle] = useState(initialCourse?.title || '');
   const [slug, setSlug] = useState(initialCourse?.slug || '');
-  const [category, setCategory] = useState(initialCourse?.category || 'Seguridad y Policía');
+  const [category, setCategory] = useState(initialCourse?.category || '');
   const [shortDescription, setShortDescription] = useState(initialCourse?.shortDescription || '');
   const [description, setDescription] = useState(initialCourse?.description || '');
   const [price, setPrice] = useState(initialCourse?.price || 45000);
@@ -62,48 +83,16 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 2. Instructor
-  const [instructorName, setInstructorName] = useState(
-    initialCourse?.instructor.name || 'Docente Especialista EDDIP'
-  );
-  const [instructorRole, setInstructorRole] = useState(
-    initialCourse?.instructor.role || 'Experto en Derecho y Seguridad'
-  );
-  const [instructorBio, setInstructorBio] = useState(
-    initialCourse?.instructor.bio ||
-      'Docente con más de 12 años de trayectoria en formación policial, gestión pública y doctrina jurídica.'
-  );
+  const [instructorName, setInstructorName] = useState(initialCourse?.instructor.name || '');
+  const [instructorRole, setInstructorRole] = useState(initialCourse?.instructor.role || '');
+  const [instructorBio, setInstructorBio] = useState(initialCourse?.instructor.bio || '');
 
   // 3. Resultados de Aprendizaje
-  const [outcomes, setOutcomes] = useState<string[]>(
-    initialCourse?.outcomes || [
-      'Comprender el marco legal y normativo aplicable al ejercicio profesional.',
-      'Identificar los principios de razonabilidad, necesidad y proporcionalidad.',
-      'Elaborar informes y actuaciones con estricto apego al debido proceso.',
-    ]
-  );
+  const [outcomes, setOutcomes] = useState<string[]>(initialCourse?.outcomes || []);
   const [newOutcome, setNewOutcome] = useState('');
 
   // 4. Módulos y Lecciones
-  const [modules, setModules] = useState<Module[]>(
-    initialCourse?.modules || [
-      {
-        id: 'mod-1',
-        title: 'Módulo 1: Fundamentos y Marco Jurídico',
-        lessons: [
-          {
-            id: 'l-1',
-            title: 'Lección 1: Principios Constitucionales y Legales',
-            minutes: 20,
-            keyPoint: 'Toda actuación debe fundamentarse en la legalidad y el debido proceso.',
-            content: [
-              'En esta lección se establecen las bases normativas fundamentales que regulan el ejercicio de la función.',
-              'Es indispensable verificar la competencia territorial y material antes de emitir cualquier decisión o procedimiento.',
-            ],
-          },
-        ],
-      },
-    ]
-  );
+  const [modules, setModules] = useState<Module[]>(() => initialCourse?.modules || [createEmptyModule()]);
 
   // Estados de feedback
   const [isSaving, setIsSaving] = useState(false);
@@ -233,23 +222,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
 
   // Manejo de Módulos
   const addModule = () => {
-    const newModId = `mod-${Date.now()}`;
-    setModules(prev => [
-      ...prev,
-      {
-        id: newModId,
-        title: `Módulo ${prev.length + 1}: Nuevo Módulo Temático`,
-        lessons: [
-          {
-            id: `les-${Date.now()}-1`,
-            title: 'Lección 1: Introducción a la temática',
-            minutes: 15,
-            keyPoint: 'Identificar los conceptos clave de este módulo.',
-            content: ['Escribe aquí el contenido pedagógico de la lección.'],
-          },
-        ],
-      },
-    ]);
+    setModules(prev => [...prev, createEmptyModule()]);
   };
 
   const removeModule = (modIndex: number) => {
@@ -269,23 +242,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
   // Manejo de Lecciones
   const addLesson = (modIndex: number) => {
     setModules(prev =>
-      prev.map((m, i) => {
-        if (i !== modIndex) return m;
-        const newLessonId = `les-${Date.now()}`;
-        return {
-          ...m,
-          lessons: [
-            ...m.lessons,
-            {
-              id: newLessonId,
-              title: `Lección ${m.lessons.length + 1}: Título de la lección`,
-              minutes: 15,
-              keyPoint: 'Punto clave para la práctica.',
-              content: ['Contenido descriptivo de la nueva lección.'],
-            },
-          ],
-        };
-      })
+      prev.map((m, i) => (i === modIndex ? { ...m, lessons: [...m.lessons, createEmptyLesson()] } : m))
     );
   };
 
@@ -353,10 +310,29 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
 
     const courseSlug = slug || slugify(title) || `curso-${Date.now()}`;
 
+    if (!category.trim()) {
+      showToast('error', 'Selecciona la categoría académica del curso.');
+      return;
+    }
+
     const totalLessonsCount = modules.reduce((acc, m) => acc + m.lessons.length, 0);
     if (totalLessonsCount === 0) {
       showToast('error', 'Debes incluir al menos una lección en el curso.');
       return;
+    }
+
+    const untitledModule = modules.findIndex(m => !m.title.trim());
+    if (untitledModule >= 0) {
+      showToast('error', `Escribe el título del módulo ${untitledModule + 1}.`);
+      return;
+    }
+
+    for (const [mIdx, m] of modules.entries()) {
+      const untitledLesson = m.lessons.findIndex(l => !l.title.trim());
+      if (untitledLesson >= 0) {
+        showToast('error', `Escribe el título de la lección ${untitledLesson + 1} del módulo ${mIdx + 1}.`);
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -380,7 +356,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
       image: primaryImage,
       images: images.length > 0 ? images : [primaryImage],
       instructor: {
-        name: instructorName.trim(),
+        name: instructorName.trim() || DEFAULT_INSTRUCTOR_NAME,
         role: instructorRole.trim(),
         bio: instructorBio.trim(),
       },
@@ -520,13 +496,20 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                   id="courseCategory"
                   value={category}
                   onChange={e => setCategory(e.target.value)}
+                  required
                 >
-                  <option value="Seguridad y Policía">Seguridad y Policía</option>
-                  <option value="Gestión Pública">Gestión Pública</option>
-                  <option value="Área Jurídica">Área Jurídica</option>
-                  <option value="Desarrollo Profesional">Desarrollo Profesional</option>
-                  <option value="Movilidad y Seguridad Vial">Movilidad y Seguridad Vial</option>
+                  <option value="" disabled>
+                    Selecciona una categoría
+                  </option>
+                  {(category && !categories.includes(category) ? [category, ...categories] : categories).map(c => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
+                <small className="field-hint">
+                  ¿No encuentras la categoría? <Link href="/admin/cursos#categorias">Créala en Categorías de cursos</Link>.
+                </small>
               </div>
             </div>
 
@@ -643,7 +626,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                     border: `1px solid ${images.length > 1 ? '#bfdbfe' : images.length === 1 ? '#a7f3d0' : '#e2e8f0'}`,
                   }}
                 >
-                  {images.length > 1 ? `✓ Slider táctil activo (${images.length} fotos)` : images.length === 1 ? '1 foto de portada' : 'Sin fotos (gradiente)'}
+                  {images.length > 1 ? `Slider táctil activo (${images.length} fotos)` : images.length === 1 ? '1 foto de portada' : 'Sin fotos (gradiente)'}
                 </span>
               </div>
 
@@ -793,7 +776,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                       >
                         {idx === 0 && (
                           <span className="thumb-badge-primary">
-                            ★ Portada
+                            <Icon name="star" size={11} /> Portada
                           </span>
                         )}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -870,7 +853,8 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                       <input
                         value={m.title}
                         onChange={e => updateModuleTitle(mIdx, e.target.value)}
-                        placeholder="Título del módulo..."
+                        placeholder="Título del módulo, ej. Fundamentos y marco jurídico"
+                        aria-label={`Título del módulo ${mIdx + 1}`}
                         style={{
                           fontSize: 15,
                           fontWeight: 600,
@@ -916,7 +900,8 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                             <input
                               value={l.title}
                               onChange={e => updateLesson(mIdx, lIdx, 'title', e.target.value)}
-                              placeholder="Título de la lección..."
+                              placeholder="Título de la lección, ej. Principios constitucionales"
+                              aria-label={`Título de la lección ${lIdx + 1} del módulo ${mIdx + 1}`}
                               style={{
                                 fontSize: 14,
                                 fontWeight: 600,
@@ -960,21 +945,13 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                         </div>
 
                         <div className="field" style={{ margin: 0 }}>
-                          <label style={{ fontSize: 11 }}>
-                            Contenido de lectura de la lección (separa los párrafos con saltos de línea dobles)
+                          <label htmlFor={`lesson-content-${l.id}`} style={{ fontSize: 11 }}>
+                            Contenido de lectura de la lección (separa los párrafos con una línea en blanco)
                           </label>
-                          <textarea
-                            value={l.content.join('\n\n')}
-                            onChange={e =>
-                              updateLesson(
-                                mIdx,
-                                lIdx,
-                                'content',
-                                e.target.value.split(/\n\s*\n/).filter(Boolean)
-                              )
-                            }
-                            rows={3}
-                            placeholder="Escribe o pega aquí el contenido de la lección..."
+                          <LessonContentField
+                            id={`lesson-content-${l.id}`}
+                            paragraphs={l.content}
+                            onChange={paragraphs => updateLesson(mIdx, lIdx, 'content', paragraphs)}
                           />
                         </div>
 
@@ -982,6 +959,12 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                         <LessonMediaEditor
                           lesson={l}
                           onUpdate={fields => updateLessonFields(mIdx, lIdx, fields)}
+                        />
+
+                        <LessonMaterialsEditor
+                          courseSlug={slug || slugify(title)}
+                          materials={l.materials || []}
+                          onChange={materials => updateLessonFields(mIdx, lIdx, { materials })}
                         />
                       </div>
                     ))}
@@ -1011,6 +994,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                   id="instName"
                   value={instructorName}
                   onChange={e => setInstructorName(e.target.value)}
+                  placeholder="Ej. Equipo Académico EDDIP"
                 />
               </div>
 
@@ -1020,6 +1004,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                   id="instRole"
                   value={instructorRole}
                   onChange={e => setInstructorRole(e.target.value)}
+                  placeholder="Ej. Especialista en Derecho de Policía"
                 />
               </div>
             </div>
@@ -1031,6 +1016,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
                 value={instructorBio}
                 onChange={e => setInstructorBio(e.target.value)}
                 rows={2}
+                placeholder="Resume la trayectoria y experiencia del docente."
               />
             </div>
 
@@ -1180,7 +1166,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
 
           <div style={{ marginTop: 14 }}>
             <span className="cover-chip" style={{ fontSize: 10, marginBottom: 6, display: 'inline-block' }}>
-              {category}
+              {category || 'Sin categoría'}
             </span>
             <h3 style={{ fontSize: 16, lineHeight: 1.3, margin: '4px 0 8px' }}>
               {title || 'Título del programa formativo'}
@@ -1226,7 +1212,7 @@ export function CourseContentBuilder({ initialCourse, isEditing = false }: Props
               <span style={{ fontSize: 11, color: '#8b9bb4', display: 'block', marginBottom: 4 }}>
                 Docente responsable
               </span>
-              <strong style={{ fontSize: 13, display: 'block' }}>{instructorName}</strong>
+              <strong style={{ fontSize: 13, display: 'block' }}>{instructorName || DEFAULT_INSTRUCTOR_NAME}</strong>
               <span style={{ fontSize: 11, color: '#64748b' }}>{instructorRole}</span>
             </div>
           </div>

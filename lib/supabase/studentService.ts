@@ -288,16 +288,13 @@ export const studentService = {
       });
 
       if (!error && data.user) {
-        if (!data.user.user_metadata?.role) {
-          const accounts = await getRegisteredAccounts();
-          const acc = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
-          if (acc?.role) {
-            data.user.user_metadata = {
-              ...(data.user.user_metadata || {}),
-              role: acc.role,
-            };
-          }
-        }
+        // El rol asignado desde /admin/roles prevalece sobre el guardado al registrarse
+        const accounts = await getRegisteredAccounts();
+        const acc = accounts.find(a => a.email.toLowerCase().trim() === cleanEmail);
+        data.user.user_metadata = {
+          ...(data.user.user_metadata || {}),
+          role: acc?.role || data.user.user_metadata?.role || 'student',
+        };
         return { user: data.user, session: data.session, error: null };
       }
     } catch {
@@ -310,7 +307,7 @@ export const studentService = {
 
     if (account) {
       // Validar coincidencia de contraseña
-      if (account.password === cleanPass || cleanPass === '123456') {
+      if (account.password && account.password === cleanPass) {
         const authedUser = {
           id: account.id,
           email: account.email,
@@ -327,114 +324,31 @@ export const studentService = {
         } as unknown as import('@supabase/supabase-js').User;
 
         return { user: authedUser, session: null, error: null };
+      } else if (!account.password) {
+        return {
+          user: null,
+          session: null,
+          error: 'Tu cuenta aún no tiene contraseña. Usa "¿Olvidaste tu contraseña?" para crear una.',
+        };
       } else {
         return { user: null, session: null, error: 'Contraseña incorrecta. Por favor verifica tus datos e intenta nuevamente.' };
       }
     }
 
-    // 3. Validar si el estudiante ya existe en la base de datos institucional (admin_students_list)
+    // 3. Estudiantes registrados por un administrador que aún no han definido contraseña
     const students = await adminService.getAllStudents();
-    const student = students.find(s => s.email.toLowerCase().trim() === cleanEmail);
-
-    if (student) {
-      const studentUser = {
-        id: student.id,
-        email: student.email,
-        user_metadata: {
-          full_name: student.name,
-          role: student.role || 'student',
-          document_id: student.documentId || '',
-          phone: student.phone || '',
-          city: student.city || '',
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      } as unknown as import('@supabase/supabase-js').User;
-
-      return { user: studentUser, session: null, error: null };
-    }
-
-    // 4. Cuentas institucionales preconfiguradas garantizadas
-    if (
-      cleanEmail === 'palenciasaid@gmail.com' ||
-      cleanEmail === 'admin@demo.eddip.com' ||
-      cleanEmail === 'admin@eddip.edu.co' ||
-      cleanEmail.includes('admin')
-    ) {
-      if (cleanEmail === 'palenciasaid@gmail.com' && cleanPass !== 'Said3013515962//') {
-        return { user: null, session: null, error: 'Contraseña incorrecta. Por favor verifica tus datos e intenta nuevamente.' };
-      }
-      const mockAdminUser = {
-        id: cleanEmail === 'palenciasaid@gmail.com' ? '6ef2b934-5469-466d-af6d-b6e212b90f78' : 'admin-demo-user-id',
-        email: cleanEmail,
-        user_metadata: {
-          full_name: cleanEmail === 'palenciasaid@gmail.com' ? 'Said Palencia' : 'Administrador EDDIP',
-          role: 'admin',
-          document_id: cleanEmail === 'palenciasaid@gmail.com' ? '1.103.104.675' : '99.888.777',
-          phone: cleanEmail === 'palenciasaid@gmail.com' ? '301 351 5962' : '310 999 0000',
-          city: cleanEmail === 'palenciasaid@gmail.com' ? 'Colombia' : 'Bogotá D.C.',
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      } as unknown as import('@supabase/supabase-js').User;
-
-      return { user: mockAdminUser, session: null, error: null };
-    }
-
-    if (
-      cleanEmail === 'disenador@demo.eddip.com' ||
-      cleanEmail === 'disenador@eddip.edu.co' ||
-      cleanEmail.includes('disenador') ||
-      cleanEmail.includes('designer')
-    ) {
-      const mockDesignerUser = {
-        id: 'designer-demo-user-id',
-        email: cleanEmail,
-        user_metadata: {
-          full_name: 'Diseñador Instruccional',
-          role: 'designer',
-          document_id: '88.777.666',
-          phone: '312 444 5566',
-          city: 'Bogotá D.C.',
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      } as unknown as import('@supabase/supabase-js').User;
-
-      return { user: mockDesignerUser, session: null, error: null };
-    }
-
-    if (
-      cleanEmail === 'sebastian@demo.eddip.com' ||
-      cleanEmail === 'estudiante@demo.eddip.com' ||
-      cleanEmail.includes('estudiante') ||
-      cleanEmail.includes('demo')
-    ) {
-      const mockStudentUser = {
-        id: 'student-demo-user-id',
-        email: cleanEmail,
-        user_metadata: {
-          full_name: 'Sebastián Martínez',
-          role: 'student',
-          document_id: '1.032.456.789',
-          phone: '300 555 0182',
-          city: 'Bogotá D.C.',
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      } as unknown as import('@supabase/supabase-js').User;
-
-      return { user: mockStudentUser, session: null, error: null };
+    if (students.some(st => st.email.toLowerCase().trim() === cleanEmail)) {
+      return {
+        user: null,
+        session: null,
+        error: 'Tu cuenta aún no tiene contraseña. Usa "¿Olvidaste tu contraseña?" para crear una.',
+      };
     }
 
     return {
       user: null,
       session: null,
-      error: 'No encontramos una cuenta con este correo. Por favor regístrate en la pestaña "Nuevo estudiante".',
+      error: 'No encontramos una cuenta con este correo. Por favor regístrate en la pestaña "Crear cuenta".',
     };
   },
 
@@ -561,20 +475,58 @@ export const studentService = {
   },
 
   async resetPasswordForEmail(email: string): Promise<{ success: boolean; error: string | null }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return { success: false, error: 'Por favor ingresa tu correo electrónico registrado.' };
+    }
     try {
-      const cleanEmail = (email || '').trim().toLowerCase();
-      if (!cleanEmail) {
-        return { success: false, error: 'Por favor ingresa tu correo electrónico registrado.' };
-      }
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login?mode=reset` : undefined,
+      const res = await fetch('/api/auth/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
       });
-      if (error) {
-        console.warn('Supabase resetPassword error:', error.message);
-      }
-      return { success: true, error: null };
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      return res.ok ? { success: true, error: null } : { success: false, error: data.error || 'No se pudo enviar el correo.' };
     } catch {
-      return { success: true, error: null };
+      return { success: false, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
+    }
+  },
+
+  async validatePasswordResetToken(token: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/auth/password-reset/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, validateOnly: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { valid?: boolean };
+      return Boolean(data.valid);
+    } catch {
+      return false;
+    }
+  },
+
+  async confirmPasswordReset(token: string, password: string): Promise<{ success: boolean; error: string | null; email?: string }> {
+    try {
+      const res = await fetch('/api/auth/password-reset/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; email?: string };
+      if (!res.ok) return { success: false, error: data.error || 'No fue posible actualizar la contraseña.' };
+
+      // Sincroniza la copia local para que el nuevo acceso funcione de inmediato en este dispositivo
+      if (data.email) {
+        const local = getLocalData<RegisteredAccount[]>('registered_accounts', []);
+        setLocalData(
+          'registered_accounts',
+          local.map(a => (a.email.toLowerCase().trim() === data.email ? { ...a, password } : a))
+        );
+      }
+      return { success: true, error: null, email: data.email };
+    } catch {
+      return { success: false, error: 'No fue posible conectar con el servidor. Inténtalo de nuevo.' };
     }
   },
 

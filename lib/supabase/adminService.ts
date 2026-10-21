@@ -5,6 +5,19 @@ import { getRegisteredAccounts, saveRegisteredAccount, type RegisteredAccount, g
 
 const STORAGE_PREFIX = 'eddip_admin_';
 const DELETED_USERS_KEY = 'eddip_deleted_user_emails';
+const MANUAL_CERT_REGISTRATIONS_KEY = 'manual_certificate_registrations';
+
+export type ManualCertificateRegistration = {
+  fullName: string;
+  documentId: string;
+  email: string;
+  phone: string;
+  department: string;
+  city: string;
+  courseSlug: string;
+  courseTitle: string;
+  hours: number;
+};
 
 function getLocalData<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
@@ -53,6 +66,56 @@ function addDeletedEmail(email: string): void {
   }
 }
 
+/** Merges the local and remote deleted-users blacklists (remote keeps deletions consistent across devices). */
+async function fetchDeletedEmails(): Promise<Set<string>> {
+  const merged = getDeletedEmails();
+  try {
+    const { data } = await supabase
+      .from('site_content')
+      .select('value')
+      .eq('key', DELETED_USERS_KEY)
+      .maybeSingle();
+    if (Array.isArray(data?.value)) {
+      for (const email of data.value as string[]) {
+        if (typeof email === 'string') merged.add(email.toLowerCase().trim());
+      }
+    }
+  } catch {
+    // Se conserva la lista local si la consulta remota falla
+  }
+  return merged;
+}
+
+/** Removes an email from both blacklists so a re-registered person becomes visible again. */
+async function restoreDeletedEmail(email: string): Promise<void> {
+  const clean = email.toLowerCase().trim();
+  if (typeof window !== 'undefined') {
+    const local = getDeletedEmails();
+    if (local.delete(clean)) {
+      try {
+        localStorage.setItem(DELETED_USERS_KEY, JSON.stringify([...local]));
+      } catch {}
+    }
+  }
+  try {
+    const { data } = await supabase
+      .from('site_content')
+      .select('value')
+      .eq('key', DELETED_USERS_KEY)
+      .maybeSingle();
+    const remote = Array.isArray(data?.value) ? (data.value as string[]) : [];
+    if (remote.some(e => e.toLowerCase().trim() === clean)) {
+      await supabase.from('site_content').upsert({
+        key: DELETED_USERS_KEY,
+        value: remote.filter(e => e.toLowerCase().trim() !== clean),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.warn('Error restoring deleted email:', err);
+  }
+}
+
 export type EnrichedStudent = {
   id: string;
   name: string;
@@ -91,10 +154,11 @@ export const adminService = {
     const primaryImg = course.image || (course.images && course.images[0]) || '';
     const allImgs = course.images && course.images.length > 0 ? course.images : (primaryImg ? [primaryImg] : []);
 
+    // Una sola copia de respaldo de las imágenes dentro de instructor (la fuente principal es site_content)
     const instructorPayload = {
-      ...(course.instructor || {}),
-      image: primaryImg,
-      images: allImgs,
+      name: course.instructor?.name || '',
+      role: course.instructor?.role || '',
+      bio: course.instructor?.bio || '',
       courseImage: primaryImg,
       courseImages: allImgs,
     };
@@ -185,19 +249,28 @@ export const adminService = {
     return { success: true, error: null };
   },
 
-  async deleteCourse(slug: string): Promise<boolean> {
+  async deleteCourse(slug: string): Promise<{ success: boolean; error?: string }> {
+    const extraCourses = getLocalData<Course[]>('extra_courses', []);
     try {
-      await supabase.from('courses').delete().eq('slug', slug);
-      await supabase.from('site_content').delete().eq('key', `course_images_${slug}`);
-    } catch {
-      // Fallback
+      const { data, error } = await supabase.from('courses').delete().eq('slug', slug).select('slug');
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      if ((!data || data.length === 0) && !extraCourses.some(c => c.slug === slug)) {
+        return { success: false, error: 'El curso no se encontró en la base de datos. Recarga la página e inténtalo de nuevo.' };
+      }
+      await supabase
+        .from('site_content')
+        .delete()
+        .in('key', [`course_images_${slug}`, `exam_${slug}`]);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error de conexión con la base de datos.' };
     }
 
-    const extraCourses = getLocalData<Course[]>('extra_courses', []);
     const filtered = extraCourses.filter(c => c.slug !== slug);
     setLocalData('extra_courses', filtered);
     setLocalData('eddip_admin_extra_courses', filtered);
-    return true;
+    return { success: true };
   },
 
   // ==========================================
@@ -345,8 +418,9 @@ export const adminService = {
     for (const s of profileStudents) insertOrMerge(s);
     for (const s of localStudents) insertOrMerge(s);
 
-    const consolidated = Array.from(deduplicatedMap.values());
-    return consolidated;
+    // Los estudiantes eliminados por un administrador no deben reaparecer desde copias locales o perfiles
+    const deletedEmails = await fetchDeletedEmails();
+    return Array.from(deduplicatedMap.values()).filter(s => !deletedEmails.has(normalizeEmail(s.email)));
   },
 
   // ==========================================
@@ -461,6 +535,9 @@ export const adminService = {
     if (!cleanName) {
       return { success: false, error: 'El nombre completo es obligatorio.' };
     }
+
+    // Un registro explícito vuelve a habilitar a una persona eliminada previamente
+    await restoreDeletedEmail(cleanEmail);
 
     // 1. Comprobar que no haya duplicados
     const dupCheck = await this.isStudentDuplicate(cleanEmail, cleanDoc, studentData.id);
@@ -885,6 +962,107 @@ export const adminService = {
     return true;
   },
 
+  /**
+   * Inscripción para expedición manual de certificados: registra los datos generales de la persona
+   * (directorio de estudiantes + historial de inscripciones manuales) y emite el certificado.
+   */
+  async registerManualCertificate(data: ManualCertificateRegistration): Promise<{
+    success: boolean;
+    error?: string;
+    certificate?: Certificate;
+  }> {
+    const email = data.email.trim().toLowerCase();
+    const documentId = data.documentId.trim();
+    const fullName = data.fullName.trim();
+    const location = `${data.city}, ${data.department}`;
+
+    const issuedCodes = new Set<string>();
+    try {
+      const { data: rows } = await supabase.from('certificates').select('code');
+      for (const row of rows || []) issuedCodes.add(String(row.code).toLowerCase());
+    } catch {}
+
+    const year = new Date().getFullYear();
+    let code = '';
+    do {
+      code = `EDDIP-${year}-${Math.floor(100000 + Math.random() * 900000)}`;
+    } while (issuedCodes.has(code.toLowerCase()));
+
+    // 1. Registrar o actualizar a la persona en el directorio institucional
+    const students = await this.getAllStudents();
+    const normalizeDoc = (doc?: string) => (doc || '').replace(/[\s.-]/g, '');
+    const existing = students.find(
+      s => s.email.toLowerCase() === email || (documentId && normalizeDoc(s.documentId) === normalizeDoc(documentId))
+    );
+
+    const studentResult = await this.saveStudent({
+      ...(existing || {}),
+      id: existing?.id,
+      name: fullName,
+      email,
+      documentId,
+      phone: data.phone.trim(),
+      city: location,
+      certificatesCount: (existing?.certificatesCount || 0) + 1,
+    });
+    if (!studentResult.success) {
+      return { success: false, error: studentResult.error || 'No fue posible registrar los datos de la persona.' };
+    }
+
+    // 2. Emitir el certificado con la cédula visible en el diploma
+    const certificate: Certificate = {
+      code,
+      student: fullName,
+      documentId,
+      courseSlug: data.courseSlug,
+      course: data.courseTitle,
+      hours: data.hours,
+      date: new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
+      status: 'Válido',
+    };
+    await this.issueManualCertificate(certificate);
+
+    // 3. Guardar el registro completo de la inscripción manual
+    try {
+      const { data: row } = await supabase
+        .from('site_content')
+        .select('value')
+        .eq('key', MANUAL_CERT_REGISTRATIONS_KEY)
+        .maybeSingle();
+      const history = Array.isArray(row?.value) ? (row.value as unknown[]) : [];
+      const { error } = await supabase.from('site_content').upsert({
+        key: MANUAL_CERT_REGISTRATIONS_KEY,
+        value: [
+          {
+            certificateCode: code,
+            fullName,
+            documentId,
+            email,
+            phone: data.phone.trim(),
+            department: data.department,
+            city: data.city,
+            courseSlug: data.courseSlug,
+            courseTitle: data.courseTitle,
+            hours: data.hours,
+            registeredAt: new Date().toISOString(),
+          },
+          ...history,
+        ],
+        updated_at: new Date().toISOString(),
+      });
+      if (error) {
+        return { success: false, error: `El certificado ${code} fue emitido, pero no se guardó el registro: ${error.message}` };
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: `El certificado ${code} fue emitido, pero no se guardó el registro: ${err instanceof Error ? err.message : 'error de conexión'}`,
+      };
+    }
+
+    return { success: true, certificate };
+  },
+
   // ==========================================
   // VENTAS / GESTIÓN COMERCIAL SINCRONIZADA CON BASE DE DATOS REAL
   // ==========================================
@@ -1128,20 +1306,27 @@ export const adminService = {
     }
   },
 
-  async deleteStudent(studentId: string): Promise<boolean> {
+  async deleteStudent(studentId: string): Promise<{ success: boolean; error?: string }> {
     const list = await this.getAllStudents();
-    const updated = list.filter(s => s.id !== studentId);
-
-    try {
-      await supabase.from('site_content').upsert({
-        key: 'admin_students_list',
-        value: updated,
-        updated_at: new Date().toISOString(),
-      });
-      await supabase.from('profiles').delete().eq('id', studentId);
-    } catch (err) {
-      console.warn('Error deleting student from Supabase:', err);
+    const target = list.find(s => s.id === studentId);
+    if (!target) {
+      return { success: false, error: 'El estudiante ya no existe en el directorio.' };
     }
+
+    const targetEmail = target.email.toLowerCase().trim();
+    const updated = list.filter(s => s.id !== studentId && s.email.toLowerCase().trim() !== targetEmail);
+
+    const { error } = await supabase.from('site_content').upsert({
+      key: 'admin_students_list',
+      value: updated,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Elimina también la cuenta de acceso y la marca como eliminada en todos los dispositivos
+    await this.deleteUserAccount(target.email);
 
     setLocalData('custom_students', updated);
     setLocalData('eddip_admin_custom_students', updated);
@@ -1149,7 +1334,7 @@ export const adminService = {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: updated }));
     }
-    return true;
+    return { success: true };
   },
 
   // ==========================================
@@ -1222,7 +1407,7 @@ export const adminService = {
     ];
 
     // Retrieve deleted-user blacklist before merging sources
-    const deletedEmails = getDeletedEmails();
+    const deletedEmails = await fetchDeletedEmails();
 
     for (const d of defaultAccounts) {
       const key = d.email.toLowerCase().trim();
@@ -1405,6 +1590,8 @@ export const adminService = {
     if (dupCheck.isDuplicate) {
       return { success: false, error: dupCheck.message || 'Ya existe un usuario con este correo o documento.' };
     }
+
+    await restoreDeletedEmail(cleanEmail);
 
     const newAcc: RegisteredAccount = {
       id: generateUUID(),

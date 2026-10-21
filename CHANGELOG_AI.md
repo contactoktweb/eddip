@@ -1,3 +1,14 @@
+## [2026-10-21] Configuración del sitio, correos con Resend, recuperación de contraseña y correcciones de seguridad
+- **Eliminación real de cursos y estudiantes**: `deleteCourse` del provider ahora borra en Supabase (antes solo en memoria) e informa errores; el directorio de estudiantes incorpora eliminación con lista negra compartida (`eddip_deleted_user_emails`) para que no reaparezcan desde copias locales.
+- **Rendimiento de cursos**: `contentService.getCourses` selecciona solo los campos de texto de `instructor` (la consulta pasaba de ~15 MB y excedía el tiempo límite de Supabase, mostrando los cursos de respaldo del código). `getSiteContent` consulta solo sus claves.
+- **Configuración del sitio (`/admin/configuracion`)**: WhatsApp, correo de clientes, correo administrativo, redes sociales (Facebook, Instagram, TikTok) y edición de Política de privacidad / Términos (`site_content`: `siteSettings`, `privacyPolicy`, `termsConditions`).
+- **Páginas públicas**: `/ayuda` (centro de ayuda), `/politica-de-privacidad` y `/terminos-y-condiciones` renderizadas en servidor.
+- **Categorías de cursos** administrables desde `/admin/cursos` (`site_content.courseCategories`).
+- **Material de estudio por lección** (`Lesson.materials`): archivos en Supabase Storage (bucket `course-materials` mediante URL firmada, requiere `SUPABASE_SERVICE_ROLE_KEY`) o enlaces externos.
+- **Certificado manual** con cédula, correo, celular y ubicación; registro en `site_content.manual_certificate_registrations`. El diploma ya no muestra cédulas ajenas o ficticias.
+- **Correos transaccionales con Resend** (bienvenida, compra, aviso al correo administrativo) y **recuperación de contraseña** con token de un solo uso (hash SHA-256, 60 min).
+- **Seguridad**: se eliminaron la contraseña maestra `123456`, la contraseña fija en código, el acceso sin contraseña y la asignación de rol administrador por contener «admin» en el correo; el panel ya no es accesible sin sesión.
+
 ## [2026-09-29] Módulo de Gestión y Asignación de Roles en Panel de Administración (/admin/roles)
 - **Sección de Roles y Permisos en Barra Lateral de Administración** ([`components/DashboardShell.tsx`](file:///Users/keynerstebantri/Downloads/eddip-nextjs-premium/components/DashboardShell.tsx)):
   - Incorporado el elemento permanente `['/admin/roles', 'Roles y Permisos', 'shield']` en `adminNav`, posicionado estratégicamente entre *Estudiantes* y *Certificados*.

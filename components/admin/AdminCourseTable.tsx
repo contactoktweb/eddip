@@ -5,10 +5,12 @@ import type { Course } from '@/lib/types';
 import { money, allLessons } from '@/lib/data';
 import { Icon } from '@/lib/icons';
 import { useDemo } from '@/app/providers';
+import { useAdminToast } from '@/lib/useAdminToast';
+import { AdminToast } from './AdminToast';
 
 type Props = {
   courses: Course[];
-  onDeleteCourse?: (slug: string) => void;
+  onDeleteCourse?: (slug: string) => Promise<{ success: boolean; error?: string }>;
 };
 
 export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
@@ -16,6 +18,23 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
   const isDesigner = role === 'designer';
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const { toast, showToast } = useAdminToast();
+
+  const handleDelete = async (course: Course) => {
+    if (!onDeleteCourse) return;
+    if (!confirm(`¿Estás seguro de eliminar el curso "${course.title}"? Esta acción no se puede deshacer.`)) return;
+
+    setDeletingSlug(course.slug);
+    const result = await onDeleteCourse(course.slug);
+    setDeletingSlug(null);
+
+    if (result.success) {
+      showToast('success', `El curso "${course.title}" fue eliminado.`);
+    } else {
+      showToast('error', `No fue posible eliminar el curso. ${result.error ?? ''}`.trim());
+    }
+  };
 
   const categories = useMemo(() => {
     const list = Array.from(new Set(courses.map(c => c.category)));
@@ -36,6 +55,7 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <AdminToast toast={toast} />
 
       {/* Controles de catálogo */}
       <div
@@ -203,13 +223,11 @@ export function AdminCourseTable({ courses, onDeleteCourse }: Props) {
                       {!isDesigner && onDeleteCourse && (
                         <button
                           type="button"
-                          className="icon-btn"
+                          className="icon-btn icon-btn-danger"
                           title="Eliminar curso"
-                          onClick={() => {
-                            if (confirm(`¿Estás seguro de eliminar el curso "${course.title}"?`)) {
-                              onDeleteCourse(course.slug);
-                            }
-                          }}
+                          aria-label={`Eliminar curso ${course.title}`}
+                          disabled={deletingSlug === course.slug}
+                          onClick={() => handleDelete(course)}
                         >
                           <Icon name="trash" size={15} />
                         </button>

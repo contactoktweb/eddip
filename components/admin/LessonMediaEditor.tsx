@@ -194,7 +194,7 @@ export function LessonMediaEditor({ lesson, onUpdate }: Props) {
           onClick={() => setActiveTab('video')}
         >
           <Icon name="play" size={15} />
-          Videoclase {currentVideoUrl ? '✓ (Configurado)' : '(Opcional)'}
+          Videoclase {currentVideoUrl ? '(Configurado)' : '(Opcional)'}
         </button>
 
         <button
@@ -313,8 +313,8 @@ export function LessonMediaEditor({ lesson, onUpdate }: Props) {
 
               {youtubeEmbedUrl ? (
                 <div style={{ marginTop: 8 }}>
-                  <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    ✓ Video de YouTube detectado correctamente. Vista previa interactiva:
+                  <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                    <Icon name="check" size={13} /> Video de YouTube detectado correctamente. Vista previa interactiva:
                   </span>
                   <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', background: '#000' }}>
                     <iframe
@@ -327,8 +327,8 @@ export function LessonMediaEditor({ lesson, onUpdate }: Props) {
                   </div>
                 </div>
               ) : youtubeInput.trim() ? (
-                <span style={{ fontSize: 11, color: '#d97706' }}>
-                  ⚠ Por favor verifica que el enlace pertenezca a YouTube (formato https://www.youtube.com/watch?v=... o https://youtu.be/...).
+                <span style={{ fontSize: 11, color: '#d97706', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Icon name="alert" size={13} /> Por favor verifica que el enlace pertenezca a YouTube (formato https://www.youtube.com/watch?v=... o https://youtu.be/...).
                 </span>
               ) : null}
             </div>
@@ -400,8 +400,8 @@ export function LessonMediaEditor({ lesson, onUpdate }: Props) {
 
               {directVideoInput && (
                 <div style={{ marginTop: 8 }}>
-                  <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-                    ✓ Vista previa del reproductor HTML5:
+                  <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                    <Icon name="check" size={13} /> Vista previa del reproductor HTML5:
                   </span>
                   <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', background: '#000' }}>
                     <video

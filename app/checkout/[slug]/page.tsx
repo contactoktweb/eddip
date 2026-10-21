@@ -10,10 +10,14 @@ import { useDemo } from '@/app/providers';
 import { money } from '@/lib/data';
 import { Icon } from '@/lib/icons';
 import { adminService } from '@/lib/supabase/adminService';
+import { notifyStudent } from '@/lib/notifications';
 import CustomSelect from '@/components/CustomSelect';
 import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
 
 type PaymentMethod = 'pse' | 'card' | 'wallet';
+
+// Correo de respaldo usado cuando no hay datos del comprador; nunca recibe notificaciones
+const DEMO_STUDENT_EMAIL = 'estudiante@eddip.edu.co';
 
 declare global {
   interface Window {
@@ -298,6 +302,8 @@ function Checkout() {
         method: 'Bold',
         date: new Date().toISOString().slice(0, 10),
         status: 'Aprobado',
+        email: realEmail.toLowerCase(),
+        courseSlug: course.slug,
       });
 
       await adminService.enrollStudentInCourse(
@@ -314,6 +320,7 @@ function Checkout() {
 
       purchase(course.slug);
       setStage('success');
+      if (realEmail !== DEMO_STUDENT_EMAIL) notifyStudent({ type: 'purchase', email: realEmail, saleId: txId });
 
       // Limpiar query params de la URL de forma silenciosa para evitar reprocesamientos
       if (typeof window !== 'undefined' && window.history?.replaceState) {
@@ -439,6 +446,8 @@ function Checkout() {
       method: currentMethod,
       date: new Date().toISOString().slice(0, 10),
       status: 'Aprobado',
+      email: realEmail.toLowerCase(),
+      courseSlug: course.slug,
     });
 
     await adminService.enrollStudentInCourse(
@@ -455,6 +464,7 @@ function Checkout() {
 
     purchase(course.slug);
     setStage('success');
+    if (realEmail !== DEMO_STUDENT_EMAIL) notifyStudent({ type: 'purchase', email: realEmail, saleId: txId });
   };
 
   const pay = async (e: React.FormEvent) => {

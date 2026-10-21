@@ -5,10 +5,18 @@ import { Icon } from '@/lib/icons';
 
 type Props = {
   courses: Course[];
+  /** Estudiantes matriculados por slug de curso, calculado desde el directorio real. */
+  enrollmentCounts: Record<string, number>;
 };
 
-export function AdminPopularCourses({ courses }: Props) {
-  const sorted = courses.slice().sort((a, b) => b.students - a.students).slice(0, 5);
+const TOP_COURSES_LIMIT = 5;
+
+export function AdminPopularCourses({ courses, enrollmentCounts }: Props) {
+  const enrolled = (course: Course) => enrollmentCounts[course.slug] || 0;
+  const sorted = courses
+    .slice()
+    .sort((a, b) => enrolled(b) - enrolled(a) || a.title.localeCompare(b.title))
+    .slice(0, TOP_COURSES_LIMIT);
 
   return (
     <aside className="dash-card" aria-label="Cursos más populares">
@@ -61,7 +69,7 @@ export function AdminPopularCourses({ courses }: Props) {
                   {course.title}
                 </strong>
                 <span style={{ fontSize: 11, color: '#64748b' }}>
-                  {course.category} · {course.students} {course.students === 1 ? 'matriculado' : 'matriculados'}
+                  {course.category} · {enrolled(course)} {enrolled(course) === 1 ? 'matriculado' : 'matriculados'}
                 </span>
               </div>
             </div>
@@ -70,6 +78,7 @@ export function AdminPopularCourses({ courses }: Props) {
               href={`/cursos/${course.slug}`}
               className="icon-btn"
               title="Ver curso en catálogo"
+              aria-label={`Ver ${course.title} en el catálogo`}
               target="_blank"
             >
               <Icon name="search" size={14} />

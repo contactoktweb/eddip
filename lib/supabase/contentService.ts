@@ -98,6 +98,33 @@ export const defaultSiteContent: SiteContent = {
   },
 };
 
+const COURSE_LIST_COLUMNS =
+  'id,slug,title,category,short_description,description,price,duration_hours,level,rating,students,featured,gradient,outcomes,modules,' +
+  'instructor_name:instructor->>name,instructor_role:instructor->>role,instructor_bio:instructor->>bio';
+
+type CourseListRow = {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  short_description: string | null;
+  description: string | null;
+  price: number | string;
+  duration_hours: number | string;
+  level: string | null;
+  rating: number | string | null;
+  students: number | string | null;
+  featured: boolean | null;
+  gradient: string | null;
+  outcomes: string[] | string | null;
+  modules: Course['modules'] | string | null;
+  instructor_name: string | null;
+  instructor_role: string | null;
+  instructor_bio: string | null;
+};
+
+const SITE_CONTENT_KEYS = ['homeHero', 'homeStats', 'aboutHero', 'mission', 'vision', 'stats'];
+
 export const contentService = {
   /**
    * Obtiene la oferta de cursos directamente desde Supabase si la tabla existe,
@@ -105,8 +132,10 @@ export const contentService = {
    */
   async getCourses(): Promise<Course[]> {
     try {
+      // Se seleccionan solo los campos de texto del docente: el JSON completo de `instructor`
+      // guarda copias de las imágenes en base64 y multiplica el peso de la consulta.
       const [coursesRes, imagesRes] = await Promise.all([
-        supabase.from('courses').select('*').order('id', { ascending: true }),
+        supabase.from('courses').select(COURSE_LIST_COLUMNS).order('id', { ascending: true }),
         supabase.from('site_content').select('key, value').like('key', 'course_images_%'),
       ]);
 
@@ -114,7 +143,7 @@ export const contentService = {
       if (!imagesRes.error && imagesRes.data) {
         for (const row of imagesRes.data) {
           if (row.value && typeof row.value === 'object') {
-            const v = row.value as any;
+            const v = row.value as { slug?: string; image?: string; images?: string[] };
             if (v.slug) {
               siteImagesMap.set(v.slug, { image: v.image, images: v.images });
             }
@@ -123,47 +152,51 @@ export const contentService = {
       }
 
       if (!coursesRes.error && coursesRes.data && coursesRes.data.length > 0) {
-        return coursesRes.data.map((d: any) => {
-          const instructorObj = typeof d.instructor === 'string' ? JSON.parse(d.instructor) : (d.instructor || {});
+        const rows = coursesRes.data as unknown as CourseListRow[];
+
+        // Respaldo: imágenes guardadas dentro de `instructor` solo para cursos sin registro en site_content
+        const missingImages = rows.filter(r => !siteImagesMap.get(r.slug)?.images?.length).map(r => r.slug);
+        if (missingImages.length > 0) {
+          const { data: fallback } = await supabase
+            .from('courses')
+            .select('slug, course_images:instructor->courseImages, course_image:instructor->>courseImage')
+            .in('slug', missingImages);
+          for (const f of (fallback || []) as { slug: string; course_images: unknown; course_image: string | null }[]) {
+            const images = Array.isArray(f.course_images) ? (f.course_images as string[]) : [];
+            if (images.length > 0 || f.course_image) {
+              siteImagesMap.set(f.slug, { image: f.course_image || images[0], images });
+            }
+          }
+        }
+
+        return rows.map(d => {
           const sc = siteImagesMap.get(d.slug);
-
-          const resolvedImages: string[] =
-            (sc?.images && sc.images.length > 0 ? sc.images : null) ||
-            (Array.isArray(d.images) && d.images.length > 0 ? d.images : null) ||
-            (typeof d.images === 'string' ? JSON.parse(d.images) : null) ||
-            (Array.isArray(instructorObj.courseImages) && instructorObj.courseImages.length > 0 ? instructorObj.courseImages : null) ||
-            (Array.isArray(instructorObj.images) && instructorObj.images.length > 0 ? instructorObj.images : null) ||
-            (d.image ? [d.image] : null) ||
-            (instructorObj.courseImage ? [instructorObj.courseImage] : null) ||
-            [];
-
-          const resolvedImage: string =
-            sc?.image ||
-            d.image ||
-            (resolvedImages.length > 0 ? resolvedImages[0] : '') ||
-            instructorObj.courseImage ||
-            instructorObj.image ||
-            '';
+          const resolvedImages: string[] = sc?.images && sc.images.length > 0 ? sc.images : sc?.image ? [sc.image] : [];
+          const resolvedImage: string = sc?.image || resolvedImages[0] || '';
 
           return {
             id: d.id,
             slug: d.slug,
             title: d.title,
             category: d.category,
-            shortDescription: d.short_description || d.shortDescription || '',
+            shortDescription: d.short_description || '',
             description: d.description || '',
             price: Number(d.price) || 0,
-            durationHours: Number(d.duration_hours || d.durationHours) || 40,
+            durationHours: Number(d.duration_hours) || 40,
             level: d.level || 'Intermedio',
             gradient: d.gradient || 'linear-gradient(135deg, #0b62dd, #063f9b)',
-            instructor: instructorObj,
-            outcomes: typeof d.outcomes === 'string' ? JSON.parse(d.outcomes) : d.outcomes,
-            modules: typeof d.modules === 'string' ? JSON.parse(d.modules) : d.modules,
+            instructor: {
+              name: d.instructor_name || '',
+              role: d.instructor_role || '',
+              bio: d.instructor_bio || '',
+            },
+            outcomes: typeof d.outcomes === 'string' ? JSON.parse(d.outcomes) : d.outcomes || [],
+            modules: typeof d.modules === 'string' ? JSON.parse(d.modules) : d.modules || [],
             featured: Boolean(d.featured),
             students: Number(d.students) || 0,
             rating: Number(d.rating) || 4.9,
             image: resolvedImage,
-            images: resolvedImages.length > 0 ? resolvedImages : (resolvedImage ? [resolvedImage] : []),
+            images: resolvedImages,
           };
         }) as Course[];
       }
@@ -212,10 +245,11 @@ export const contentService = {
       // 3. Filas de tabla certificates
       if (!certTableRes.error && certTableRes.data && certTableRes.data.length > 0) {
         for (const d of certTableRes.data) {
+          // La tabla certificates no tiene columna de documento: se conserva la cédula registrada en site_content
           map.set(d.code.toLowerCase(), {
             code: d.code,
             student: d.student_name,
-            documentId: d.document_id || d.documentId,
+            documentId: d.document_id || d.documentId || map.get(d.code.toLowerCase())?.documentId,
             courseSlug: d.course_slug,
             course: d.course_title,
             hours: Number(d.hours) || 40,
@@ -249,7 +283,8 @@ export const contentService = {
 
       const { data, error } = await supabase
         .from('site_content')
-        .select('key, value');
+        .select('key, value')
+        .in('key', SITE_CONTENT_KEYS);
 
       if (!error && data && data.length > 0) {
         const parsed: Record<string, unknown> = {};

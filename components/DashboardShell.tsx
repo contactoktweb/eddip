@@ -22,6 +22,7 @@ const adminNav = [
   ['/admin/certificados', 'Certificados', 'award'],
   ['/admin/ventas', 'Ventas', 'dollar'],
   ['/admin/contenido', 'Contenido web', 'edit'],
+  ['/admin/configuracion', 'Configuración', 'settings'],
 ] as const;
 
 const designerNav = [
@@ -39,7 +40,7 @@ export function DashboardShell({
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const { logout, user, role } = useDemo();
+  const { logout, user, role, sessionReady } = useDemo();
 
   const isDesigner = role === 'designer';
   const isStudent = kind === 'student';
@@ -67,6 +68,7 @@ export function DashboardShell({
     path.startsWith('/admin/evaluaciones/');
 
   const isDesignerBlocked = isDesigner && kind === 'admin' && !isDesignerAllowedPath;
+  const isGuestBlocked = sessionReady && role === 'guest';
   const isStudentBlocked = role === 'student' && kind === 'admin';
   const isAccessBlocked = isDesignerBlocked || isStudentBlocked;
 
@@ -204,7 +206,23 @@ export function DashboardShell({
 
         {/* Contenido dinámico del panel o bloqueo por permisos */}
         <div style={{ padding: '28px 24px', flex: 1 }}>
-          {isStudentBlocked ? (
+          {!sessionReady ? (
+            <div className="dash-session-loading" aria-busy="true">
+              <span className="spinner" aria-hidden="true" />
+              <p>Verificando tu sesión…</p>
+            </div>
+          ) : isGuestBlocked ? (
+            <div className="panel dash-access-panel ui-fade-up">
+              <div className="dash-access-icon" aria-hidden="true">
+                <Icon name="lock" size={32} />
+              </div>
+              <h2>Inicia sesión para continuar</h2>
+              <p>Esta sección es privada. Ingresa con tu cuenta de EDDIP para acceder.</p>
+              <Link href={`/login?redirect=${encodeURIComponent(path)}`} className="btn btn-primary">
+                <Icon name="user" size={16} /> Iniciar sesión
+              </Link>
+            </div>
+          ) : isStudentBlocked ? (
             <div
               className="panel"
               style={{

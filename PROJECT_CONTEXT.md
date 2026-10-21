@@ -149,6 +149,16 @@ EDDIP es una plataforma educativa especializada en programas de formación jurí
   - `AdminContentEditor.tsx`: Panel administrativo por pestañas (Inicio, Estadísticas, Nosotros) con vista previa interactiva en tiempo real. Sincronización bidireccional inmediata con Supabase (`site_content`) y persistencia local reactiva vía `contentService.saveAllSiteContent()`.
   - Sincronización en vivo con la web pública mediante el evento reactivo `eddip_site_content_updated`, permitiendo que cambios en el Hero, CTA, estadísticas institucionales o misión/visión se reflejen al instante en todo el portal.
 
+- **Configuración del Sitio (`/admin/configuracion`)**:
+  - `AdminSiteSettings.tsx` con pestañas: canales de contacto y redes (`ContactSettingsForm.tsx`) y documentos legales editables (`LegalDocumentEditor.tsx`). Persistencia en `site_content` (`siteSettings`, `privacyPolicy`, `termsConditions`) vía `lib/supabase/settingsService.ts`; el sitio público los lee con `useSiteSettings`.
+  - Categorías de cursos administrables en `/admin/cursos` (`CourseCategoryManager.tsx`, clave `courseCategories`).
+- **Material de Estudio**: `LessonMaterialsEditor.tsx` (panel) y `LessonMaterials.tsx` (aula). Archivos en Supabase Storage (bucket público `course-materials`, URL firmada en `/api/materials/upload-url`) o enlaces externos.
+- **Correos Transaccionales (Resend)**: `lib/email/*` y `/api/notifications` (bienvenida, confirmación de compra y aviso al correo administrativo). Recuperación de contraseña en `/api/auth/password-reset` y `/api/auth/password-reset/confirm` (tokens hasheados en `site_content.password_reset_tokens`).
+- **Control de Acceso**: el rol se deriva únicamente de la cuenta registrada; `DashboardShell` bloquea el panel a visitantes sin sesión (`sessionReady`).
+
+### C. Páginas Públicas de Soporte y Legales
+- `/ayuda` (centro de ayuda con preguntas frecuentes y contacto), `/politica-de-privacidad` y `/terminos-y-condiciones` (Server Components con `revalidate = 60`).
+
 ## 4. Reglas Obligatorias del Proyecto
 - Exactamente **un solo `H1`** por página.
 - Jerarquía estricta de encabezados (`H1` -> `H2` -> `H3`).

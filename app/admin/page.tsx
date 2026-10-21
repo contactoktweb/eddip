@@ -1,10 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDemo } from '@/app/providers';
 import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
-import type { Sale, Student } from '@/lib/types';
+import { contentService } from '@/lib/supabase/contentService';
+import { certificates as seedCertificates } from '@/lib/data';
+import type { Sale } from '@/lib/types';
 import { Icon } from '@/lib/icons';
 import { AdminStatGrid } from '@/components/admin/AdminStatGrid';
 import { AdminMonthlyChart } from '@/components/admin/AdminMonthlyChart';
@@ -13,9 +15,10 @@ import { AdminRecentStudents } from '@/components/admin/AdminRecentStudents';
 
 export default function AdminHomePage() {
   const router = useRouter();
-  const { courses, certs, role } = useDemo();
-  const [studentList, setStudentList] = useState<Student[]>([]);
+  const { courses, role } = useDemo();
+  const [studentList, setStudentList] = useState<EnrichedStudent[]>([]);
   const [salesList, setSalesList] = useState<Sale[]>([]);
+  const [certificatesCount, setCertificatesCount] = useState(0);
 
   useEffect(() => {
     if (role === 'designer') {
@@ -24,22 +27,16 @@ export default function AdminHomePage() {
     }
 
     const loadStudents = () => {
-      adminService.getAllStudents().then(res => {
-        setStudentList(
-          (res || []).map(s => ({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            courses: s.coursesCount,
-            progress: s.progressAvg,
-            certificates: s.certificatesCount,
-            registeredAt: s.registeredAt,
-          }))
-        );
-      });
+      adminService.getAllStudents().then(res => setStudentList(res || []));
     };
 
     loadStudents();
+
+    // Se excluyen los certificados de ejemplo incluidos en la semilla inicial del proyecto
+    const seedCodes = new Set(seedCertificates.map(c => c.code.toLowerCase()));
+    contentService.getCertificates().then(list => {
+      setCertificatesCount(list.filter(c => !seedCodes.has(c.code.toLowerCase())).length);
+    });
 
     const loadSales = () => {
       adminService.getSalesHistory().then(res => {
@@ -61,17 +58,7 @@ export default function AdminHomePage() {
     const handleStudentsUpdate = (e: Event) => {
       const custom = e as CustomEvent<EnrichedStudent[]>;
       if (custom.detail && Array.isArray(custom.detail)) {
-        setStudentList(
-          custom.detail.map(s => ({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            courses: s.coursesCount,
-            progress: s.progressAvg,
-            certificates: s.certificatesCount,
-            registeredAt: s.registeredAt,
-          }))
-        );
+        setStudentList(custom.detail);
       } else {
         loadStudents();
       }
@@ -91,6 +78,33 @@ export default function AdminHomePage() {
   }, []);
 
   const totalSales = salesList.filter(s => s.status === 'Aprobado').reduce((a, b) => a + b.value, 0);
+
+  const enrollmentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const student of studentList) {
+      for (const enrollment of student.enrolledCourses || []) {
+        counts[enrollment.slug] = (counts[enrollment.slug] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [studentList]);
+
+  const recentStudents = useMemo(
+    () =>
+      studentList
+        .slice()
+        .sort((a, b) => (b.registeredAt || '').localeCompare(a.registeredAt || ''))
+        .map(s => ({
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          courses: s.coursesCount,
+          progress: s.progressAvg,
+          certificates: s.certificatesCount,
+          registeredAt: s.registeredAt,
+        })),
+    [studentList]
+  );
 
   return (
     <div className="dash-page">
@@ -116,17 +130,17 @@ export default function AdminHomePage() {
         totalStudents={studentList.length}
         totalCourses={courses.length}
         totalSales={totalSales}
-        totalCertificates={certs.length}
+        totalCertificates={certificatesCount}
       />
 
       {/* Gráfica y Cursos populares */}
       <div className="dash-grid">
-        <AdminMonthlyChart totalSales={totalSales} salesCount={salesList.length} />
-        <AdminPopularCourses courses={courses} />
+        <AdminMonthlyChart sales={salesList} />
+        <AdminPopularCourses courses={courses} enrollmentCounts={enrollmentCounts} />
       </div>
 
       {/* Últimos estudiantes registrados */}
-      <AdminRecentStudents students={studentList} />
+      <AdminRecentStudents students={recentStudents} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 'use client';
 import type { Lesson } from '@/lib/types';
+import { Icon } from '@/lib/icons';
 import { LessonNotesWidget } from './LessonNotesWidget';
 import { LessonMediaViewer } from './LessonMediaViewer';
+import { LessonMaterials } from './LessonMaterials';
 
 type Props = {
   courseSlug: string;
@@ -22,8 +24,8 @@ export function LessonReaderContent({
         <span className="eyebrow" style={{ margin: 0 }}>
           Lección {lessonIndex + 1} de {totalLessons}
         </span>
-        <span style={{ fontSize: 12, color: '#7a8b9e', background: '#f0f5fc', padding: '3px 9px', borderRadius: 6 }}>
-          ⏱ {lesson.minutes} minutos de lectura
+        <span style={{ fontSize: 12, color: '#7a8b9e', background: '#f0f5fc', padding: '3px 9px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <Icon name="clock" size={13} /> {lesson.minutes} minutos de lectura
         </span>
       </div>
 
@@ -52,6 +54,8 @@ export function LessonReaderContent({
           <p style={{ margin: '6px 0 0', fontSize: 14, color: '#2c4366' }}>{lesson.keyPoint}</p>
         </div>
       )}
+
+      {lesson.materials && lesson.materials.length > 0 && <LessonMaterials materials={lesson.materials} />}
 
       {/* Widget de notas de estudio sincronizadas con Supabase */}
       <LessonNotesWidget

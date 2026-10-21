@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useDemo } from '@/app/providers';
 import { Icon } from '@/lib/icons';
 import { AdminCourseTable } from '@/components/admin/AdminCourseTable';
+import { CourseCategoryManager } from '@/components/admin/CourseCategoryManager';
 
 export default function AdminCoursesPage() {
   const { courses, deleteCourse } = useDemo();
@@ -25,7 +26,10 @@ export default function AdminCoursesPage() {
         </div>
       </header>
 
-      <AdminCourseTable courses={courses} onDeleteCourse={deleteCourse} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <AdminCourseTable courses={courses} onDeleteCourse={deleteCourse} />
+        <CourseCategoryManager courses={courses} />
+      </div>
     </div>
   );
 }

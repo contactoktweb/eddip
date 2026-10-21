@@ -1,9 +1,11 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { Icon } from '@/lib/icons';
-import type { EnrichedStudent } from '@/lib/supabase/adminService';
+import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
+import { useAdminToast } from '@/lib/useAdminToast';
 import { StudentDetailModal } from './StudentDetailModal';
 import { AddStudentModal } from './AddStudentModal';
+import { AdminToast } from './AdminToast';
 
 type FilterStatus = 'all' | 'active' | 'completed' | 'zero';
 
@@ -16,6 +18,25 @@ export function StudentDirectory({ students }: Props) {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [selectedStudent, setSelectedStudent] = useState<EnrichedStudent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toast, showToast } = useAdminToast();
+
+  const handleDelete = async (student: EnrichedStudent) => {
+    const confirmed = confirm(
+      `¿Eliminar a ${student.name} (${student.email})? Se borrará del directorio y perderá el acceso a la plataforma. Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(student.id);
+    const result = await adminService.deleteStudent(student.id);
+    setDeletingId(null);
+
+    if (result.success) {
+      showToast('success', `${student.name} fue eliminado del directorio.`);
+    } else {
+      showToast('error', `No fue posible eliminar al estudiante. ${result.error ?? ''}`.trim());
+    }
+  };
 
   const filtered = useMemo(() => {
     return students.filter(s => {
@@ -60,6 +81,8 @@ export function StudentDirectory({ students }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <AdminToast toast={toast} />
+
       {/* Controles de búsqueda, filtros y exportación */}
       <div
         style={{
@@ -164,7 +187,7 @@ export function StudentDirectory({ students }: Props) {
               <th>Progreso promedio</th>
               <th>Certificados</th>
               <th>Fecha de registro</th>
-              <th style={{ textAlign: 'right' }}>Ficha académica</th>
+              <th style={{ textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -292,14 +315,26 @@ export function StudentDirectory({ students }: Props) {
                     <span style={{ fontSize: 12, color: '#64748b' }}>{s.registeredAt}</span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      className="btn btn-soft"
-                      onClick={() => setSelectedStudent(s)}
-                      style={{ fontSize: 12, padding: '6px 12px' }}
-                    >
-                      Ver ficha
-                    </button>
+                    <div className="table-actions" style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn btn-soft"
+                        onClick={() => setSelectedStudent(s)}
+                        style={{ fontSize: 12, padding: '6px 12px' }}
+                      >
+                        Ver ficha
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        title="Eliminar estudiante"
+                        aria-label={`Eliminar estudiante ${s.name}`}
+                        disabled={deletingId === s.id}
+                        onClick={() => handleDelete(s)}
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
