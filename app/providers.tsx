@@ -10,6 +10,7 @@ import { contentService } from '@/lib/supabase/contentService';
 import type { ExamSubmission, StudentProfile } from '@/lib/supabase/types';
 import type { ExamAnswers } from '@/lib/exams/examRules';
 import { normalizeRole, type AppRole } from '@/lib/auth/roles';
+import { callApi } from '@/lib/supabase/authedFetch';
 
 type Role = 'guest' | AppRole;
 type Result = { score: number; passed: boolean; correct?: number; total?: number; code?: string };
@@ -46,14 +47,24 @@ const emptyProfile = { name: '', email: '', documentId: '', phone: '', city: '' 
 
 type ProfileRow = { role: string | null; full_name: string | null; document_id: string | null; phone: string | null; city: string | null };
 
-/** El rol se lee de public.profiles (protegido por RLS y trigger); nunca de user_metadata ni de localStorage. */
-async function fetchProfileRow(userId: string): Promise<ProfileRow | null> {
+/**
+ * El rol se lee de public.profiles, nunca de user_metadata ni de localStorage. La fuente principal es
+ * el servidor (/api/auth/me verifica el token y lee el perfil); la consulta directa con RLS es el respaldo.
+ */
+async function fetchProfileRow(): Promise<ProfileRow | null> {
+  const fromServer = await callApi<ProfileRow>('/api/auth/me', { cache: 'no-store' });
+  if (fromServer.ok && fromServer.data.role) return fromServer.data;
+
   try {
-    const { data } = await supabase
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+    if (!userId) return null;
+    const { data, error } = await supabase
       .from('profiles')
       .select('role, full_name, document_id, phone, city')
       .eq('id', userId)
       .maybeSingle();
+    if (error) console.warn('No fue posible leer el perfil:', error.message);
     return (data as ProfileRow | null) ?? null;
   } catch {
     return null;
@@ -147,7 +158,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const applySession = useCallback(async (u: User): Promise<AppRole> => {
     const email = (u.email || '').trim().toLowerCase();
     const meta = u.user_metadata || {};
-    const profileRow = await fetchProfileRow(u.id);
+    const profileRow = await fetchProfileRow();
     const resolvedRole = normalizeRole(profileRow?.role);
 
     setRole(resolvedRole);
