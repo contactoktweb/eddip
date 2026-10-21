@@ -62,7 +62,7 @@ export async function findStudentOrder(admin: SupabaseClient, orderId: string, s
   return (data as PaymentOrder | null) ?? null;
 }
 
-/** Marca la orden como aprobada solo si seguía pendiente; devuelve la orden vigente. */
+/** Marca la orden como aprobada si seguía pendiente o rechazada (reintento aprobado); devuelve la orden vigente. */
 export async function approveOrder(
   admin: SupabaseClient,
   order: PaymentOrder,
@@ -79,7 +79,7 @@ export async function approveOrder(
       updated_at: now,
     })
     .eq('order_id', order.order_id)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'rejected'])
     .select('*')
     .maybeSingle();
   if (data) return data as PaymentOrder;
@@ -165,14 +165,22 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
   return { ok: true, saleId };
 }
 
-/** Marca como rechazada la venta de una orden cuyo pago Bold anuló (reverso aprobado). */
-export async function voidSaleForOrder(admin: SupabaseClient, orderId: string): Promise<void> {
-  const saleId = saleIdForOrder(orderId);
+/** Reverso aprobado en Bold: marca la venta como rechazada y retira la matrícula de la orden. */
+export async function revokeVoidedOrder(admin: SupabaseClient, order: PaymentOrder): Promise<void> {
+  const saleId = saleIdForOrder(order.order_id);
   const sales = await readContentList<Sale>(admin, SALES_KEY);
-  if (!sales.some(s => s.id === saleId)) return;
-  await writeContentValue(
-    admin,
-    SALES_KEY,
-    sales.map(s => (s.id === saleId ? { ...s, status: 'Rechazado' } : s))
-  );
+  if (sales.some(s => s.id === saleId)) {
+    await writeContentValue(
+      admin,
+      SALES_KEY,
+      sales.map(s => (s.id === saleId ? { ...s, status: 'Rechazado' } : s))
+    );
+  }
+
+  const { error } = await admin
+    .from('enrollments')
+    .delete()
+    .eq('student_id', order.student_id)
+    .eq('course_slug', order.course_slug);
+  if (error) console.error(`No fue posible retirar la matrícula de la orden ${order.order_id}:`, error.message);
 }

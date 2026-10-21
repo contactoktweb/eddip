@@ -61,13 +61,8 @@ export async function POST(request: Request, context: RouteContext) {
   if (!answers) return NextResponse.json({ error: 'Las respuestas enviadas no son válidas.' }, { status: 400 });
 
   const grade = gradeExam(exam, answers);
-  const certificate = grade.passed ? await issueCourseCertificate(admin, user, course) : null;
-  if (grade.passed && !certificate) {
-    return NextResponse.json(
-      { error: 'Aprobaste la evaluación, pero no pudimos emitir tu certificado. Inténtalo nuevamente.' },
-      { status: 500 }
-    );
-  }
+  const issue = grade.passed ? await issueCourseCertificate(admin, user, course) : null;
+  const certificate = issue?.certificate || null;
 
   const { error: resultError } = await admin.from('exam_results').insert({
     student_id: user.id,
@@ -81,5 +76,6 @@ export async function POST(request: Request, context: RouteContext) {
   });
   if (resultError) console.error('No fue posible guardar el resultado de la evaluación:', resultError.message);
 
+  if (issue?.error) return NextResponse.json({ error: issue.error }, { status: 409 });
   return NextResponse.json({ ...grade, passingScore: exam.passingScore, certificate });
 }

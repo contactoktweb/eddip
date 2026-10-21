@@ -6,7 +6,7 @@ import {
   findOrderByReference,
   fulfillApprovedOrder,
   updateOrderStatus,
-  voidSaleForOrder,
+  revokeVoidedOrder,
 } from '@/lib/payments/orders';
 
 type BoldEvent = {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     case 'VOID_APPROVED':
       await updateOrderStatus(service.admin, order.order_id, 'voided', false);
-      await voidSaleForOrder(service.admin, order.order_id);
+      await revokeVoidedOrder(service.admin, order);
       return NextResponse.json({ received: true });
     default:
       return NextResponse.json({ received: true });

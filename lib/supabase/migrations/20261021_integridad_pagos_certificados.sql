@@ -160,6 +160,33 @@ $$;
 REVOKE ALL ON FUNCTION public.validate_certificate(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.validate_certificate(TEXT) TO anon, authenticated, service_role;
 
+-- Con un certificado emitido, el nombre y la cédula del perfil solo los cambia un administrador
+-- (evita editar el perfil con los datos de un tercero para certificarlo a su nombre).
+CREATE OR REPLACE FUNCTION public.protect_profile_privileges()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF COALESCE(auth.role(), '') NOT IN ('anon', 'authenticated') OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    NEW.role := 'student';
+  ELSIF NEW.role IS DISTINCT FROM OLD.role OR NEW.email IS DISTINCT FROM OLD.email THEN
+    RAISE EXCEPTION 'Solo un administrador puede cambiar el rol o el correo de una cuenta'
+      USING ERRCODE = '42501';
+  ELSIF (NEW.full_name IS DISTINCT FROM OLD.full_name OR NEW.document_id IS DISTINCT FROM OLD.document_id)
+    AND EXISTS (SELECT 1 FROM public.certificates c WHERE c.student_id = OLD.id) THEN
+    RAISE EXCEPTION 'Tu nombre y documento ya figuran en un certificado emitido; solicita el cambio a la administración'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- -------------------------------------------------------
 -- 4. Resultados de evaluación: los registra solo el servidor al calificar; el estudiante los consulta.
 -- -------------------------------------------------------

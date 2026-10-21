@@ -107,28 +107,52 @@ const toIssuedCertificate = (row: CertificateRow): IssuedCertificate => ({
   issueDate: row.issue_date,
 });
 
+export type CertificateIssue =
+  | { certificate: IssuedCertificate; error?: never }
+  | { certificate?: never; error: string };
+
+const normalizeDocument = (doc: string) => doc.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+
 /**
  * Emite el certificado de un curso aprobado con el nombre y la cédula registrados en profiles.
- * Si la persona ya tiene un certificado válido del mismo curso, se devuelve ese.
+ * Si la persona ya tiene un certificado del mismo curso se devuelve ese; uno revocado no se reemite.
  */
 export async function issueCourseCertificate(
   admin: SupabaseClient,
   user: User,
   course: CourseRecord
-): Promise<IssuedCertificate | null> {
-  const { data: existing } = await admin
+): Promise<CertificateIssue> {
+  const { data: previous } = await admin
     .from('certificates')
     .select('code, student_name, document_id, course_slug, course_title, hours, status, issue_date')
     .eq('student_id', user.id)
-    .eq('course_slug', course.slug)
-    .eq('status', 'Válido')
-    .limit(1)
-    .maybeSingle();
-  if (existing) return toIssuedCertificate(existing as CertificateRow);
+    .eq('course_slug', course.slug);
+  const rows = (previous || []) as CertificateRow[];
+  const valid = rows.find(r => r.status === 'Válido');
+  if (valid) return { certificate: toIssuedCertificate(valid) };
+  if (rows.some(r => r.status === 'Revocado')) {
+    return { error: 'Tu certificado de este curso fue revocado. Comunícate con la administración para revisarlo.' };
+  }
 
   const { data: profile } = await admin.from('profiles').select('full_name, document_id').eq('id', user.id).maybeSingle();
   const studentName = String(profile?.full_name || '').trim() || user.email || 'Estudiante EDDIP';
   const documentId = String(profile?.document_id || '').trim() || null;
+
+  // La cédula no puede figurar ya en certificados de otra cuenta
+  if (documentId) {
+    const { data: sameDocument } = await admin
+      .from('certificates')
+      .select('student_id, document_id')
+      .neq('student_id', user.id)
+      .ilike('document_id', `%${normalizeDocument(documentId).slice(-3)}`);
+    const conflict = ((sameDocument || []) as { document_id: string | null }[]).some(
+      r => normalizeDocument(r.document_id || '') === normalizeDocument(documentId)
+    );
+    if (conflict) {
+      return { error: 'El documento de tu perfil ya está asociado a otra cuenta. Comunícate con la administración.' };
+    }
+  }
+
   const issueDate = new Intl.DateTimeFormat('es-CO', {
     day: '2-digit',
     month: 'long',
@@ -152,12 +176,12 @@ export async function issueCourseCertificate(
       })
       .select('code, student_name, document_id, course_slug, course_title, hours, status, issue_date')
       .single();
-    if (!error && data) return toIssuedCertificate(data as CertificateRow);
+    if (!error && data) return { certificate: toIssuedCertificate(data as CertificateRow) };
     // 23505: código repetido; se reintenta con uno nuevo
     if (error?.code !== '23505') {
       console.error('No fue posible emitir el certificado:', error?.message);
-      return null;
+      break;
     }
   }
-  return null;
+  return { error: 'Aprobaste la evaluación, pero no pudimos emitir tu certificado. Inténtalo nuevamente.' };
 }
