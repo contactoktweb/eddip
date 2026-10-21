@@ -1,4 +1,10 @@
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+const SENDER_DISPLAY_NAME = 'NOTIFICACIONES EDDIP';
+
+/** Agrega el nombre visible del remitente si RESEND_FROM_EMAIL solo trae la dirección. */
+function formatSender(from: string): string {
+  return from.includes('<') ? from : `${SENDER_DISPLAY_NAME} <${from.trim()}>`;
+}
 
 export type EmailMessage = {
   to: string | string[];
@@ -31,7 +37,7 @@ export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from,
+        from: formatSender(from),
         to: Array.isArray(message.to) ? message.to : [message.to],
         subject: message.subject,
         html: message.html,
