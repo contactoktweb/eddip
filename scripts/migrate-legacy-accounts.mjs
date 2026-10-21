@@ -8,6 +8,7 @@
 //   node --env-file=.env.local scripts/migrate-legacy-accounts.mjs              -> simulación, no modifica nada
 //   node --env-file=.env.local scripts/migrate-legacy-accounts.mjs --apply      -> crea las cuentas
 //   node --env-file=.env.local scripts/migrate-legacy-accounts.mjs --apply --send-reset [--site-url=https://...]
+//   --skip=correo1,correo2  -> omite cuentas que no deben migrarse (por ejemplo, cuentas de prueba sin buzón real)
 import { randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
@@ -20,6 +21,12 @@ const apply = args.has('--apply');
 const sendReset = args.has('--send-reset');
 const siteUrlArg = process.argv.find(a => a.startsWith('--site-url='))?.split('=')[1];
 const siteUrl = (siteUrlArg || process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const skipped = new Set(
+  (process.argv.find(a => a.startsWith('--skip='))?.slice('--skip='.length) || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -77,6 +84,10 @@ async function main() {
   for (const account of legacy) {
     const email = normalize(account?.email);
     if (!email || !email.includes('@') || seen.has(email)) continue;
+    if (skipped.has(email)) {
+      console.log(`  [omitida] ${email}`);
+      continue;
+    }
     seen.add(email);
     if (account.role === 'admin' || account.role === 'designer') staffRoles.push(`${email} (${account.role})`);
     if (existing.has(email)) exposed.push({ email, id: existing.get(email) });
