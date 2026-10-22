@@ -13,6 +13,7 @@ import { studentService } from '@/lib/supabase/studentService';
 import { callApi } from '@/lib/supabase/authedFetch';
 import { normalizeCouponCode, quoteCoursePrice, scholarshipPercentFor } from '@/lib/payments/pricing';
 import { notifyStudent } from '@/lib/notifications';
+import { safeSetItem } from '@/lib/safeStorage';
 import CustomSelect from '@/components/CustomSelect';
 import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
 
@@ -357,10 +358,9 @@ function Checkout() {
 
       setConfirmedCustomer(customerToSave);
 
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('eddip_checkout_customer', JSON.stringify(customerToSave));
-        localStorage.setItem('eddip_student_profile', JSON.stringify(customerToSave));
-      }
+      // Copia local de comodidad: si el navegador no tiene espacio, el pago continúa igual
+      safeSetItem('eddip_checkout_customer', JSON.stringify(customerToSave), 'session');
+      safeSetItem('eddip_student_profile', JSON.stringify(customerToSave));
 
       await updateProfile({
         fullName: customerToSave.name,
