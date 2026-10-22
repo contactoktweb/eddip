@@ -219,35 +219,16 @@ export const adminService = {
       console.warn('Error al registrar imágenes en site_content:', e);
     }
 
-    // 3. Respaldo persistente en LocalStorage unificado
-    const enrichedCourse: Course = {
-      ...course,
-      image: primaryImg,
-      images: allImgs,
-      instructor: instructorPayload,
-    };
-
-    const extraCourses = getLocalData<Course[]>('extra_courses', []);
-    const existsIndex = extraCourses.findIndex(c => c.slug === course.slug || c.id === course.id);
-    if (existsIndex >= 0) {
-      extraCourses[existsIndex] = enrichedCourse;
-    } else {
-      extraCourses.unshift(enrichedCourse);
-    }
-    setLocalData('extra_courses', extraCourses);
-    setLocalData('eddip_admin_extra_courses', extraCourses);
-
     return { success: true, error: null };
   },
 
   async deleteCourse(slug: string): Promise<{ success: boolean; error?: string }> {
-    const extraCourses = getLocalData<Course[]>('extra_courses', []);
     try {
       const { data, error } = await supabase.from('courses').delete().eq('slug', slug).select('slug');
       if (error) {
         return { success: false, error: error.message };
       }
-      if ((!data || data.length === 0) && !extraCourses.some(c => c.slug === slug)) {
+      if (!data || data.length === 0) {
         return { success: false, error: 'El curso no se encontró en la base de datos. Recarga la página e inténtalo de nuevo.' };
       }
       await supabase
@@ -258,9 +239,6 @@ export const adminService = {
       return { success: false, error: err instanceof Error ? err.message : 'Error de conexión con la base de datos.' };
     }
 
-    const filtered = extraCourses.filter(c => c.slug !== slug);
-    setLocalData('extra_courses', filtered);
-    setLocalData('eddip_admin_extra_courses', filtered);
     return { success: true };
   },
 

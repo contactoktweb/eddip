@@ -11,6 +11,7 @@ import type { ExamSubmission, StudentProfile } from '@/lib/supabase/types';
 import type { ExamAnswers } from '@/lib/exams/examRules';
 import { normalizeRole, type AppRole } from '@/lib/auth/roles';
 import { callApi } from '@/lib/supabase/authedFetch';
+import { clearLegacyStorage, safeSetItem } from '@/lib/safeStorage';
 
 type Role = 'guest' | AppRole;
 type Result = { score: number; passed: boolean; correct?: number; total?: number; code?: string };
@@ -41,7 +42,6 @@ export type StudentContextType = {
 };
 
 const C = createContext<StudentContextType | null>(null);
-const KEY = 'eddip-demo-v2';
 
 const emptyProfile = { name: '', email: '', documentId: '', phone: '', city: '' };
 
@@ -110,39 +110,10 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // 1. Cursos creados desde el panel de administración guardados en este navegador
+  // 1. Libera las copias heredadas de cursos que versiones anteriores guardaban en el navegador
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      let loadedExtra: Course[] = [];
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (Array.isArray(s.extraCourses)) loadedExtra = s.extraCourses;
-      }
-
-      const adminRaw = localStorage.getItem('eddip_admin_extra_courses') || localStorage.getItem('extra_courses');
-      if (adminRaw) {
-        try {
-          const adminExtra: Course[] = JSON.parse(adminRaw);
-          if (Array.isArray(adminExtra)) {
-            const map = new Map<string, Course>();
-            for (const c of adminExtra) map.set(c.slug, c);
-            for (const c of loadedExtra) {
-              if (!map.has(c.slug)) map.set(c.slug, c);
-            }
-            loadedExtra = Array.from(map.values());
-          }
-        } catch {}
-      }
-
-      if (loadedExtra.length > 0) {
-        setExtraCourses(loadedExtra);
-      }
-    } catch (e) {
-      console.warn('LocalStorage error', e);
-    } finally {
-      setLoaded(true);
-    }
+    clearLegacyStorage();
+    setLoaded(true);
   }, []);
 
   const resetSessionState = useCallback(() => {
@@ -222,29 +193,15 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applySession, resetSessionState]);
 
-  // 3. Persistir progreso local (el rol nunca se guarda en el navegador)
+  // 3. Persistir progreso local (el rol y los cursos nunca se guardan en el navegador)
   useEffect(() => {
-    if (!loaded) return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ extraCourses }));
-
-      if (userProfile?.email) {
-        const cleanEmail = userProfile.email.trim().toLowerCase();
-        localStorage.setItem(
-          `eddip_user_${cleanEmail}`,
-          JSON.stringify({
-            userProfile,
-            purchased,
-            completed,
-            results,
-            notes,
-          })
-        );
-      }
-    } catch {
-      // Ignore quota exceeded
-    }
-  }, [loaded, userProfile, purchased, completed, results, extraCourses, notes]);
+    if (!loaded || !userProfile?.email) return;
+    const cleanEmail = userProfile.email.trim().toLowerCase();
+    safeSetItem(
+      `eddip_user_${cleanEmail}`,
+      JSON.stringify({ userProfile, purchased, completed, results, notes })
+    );
+  }, [loaded, userProfile, purchased, completed, results, notes]);
 
   const logout = useCallback(async () => {
     try {
@@ -354,11 +311,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         phone: data.phone || prev.phone,
         city: data.city || prev.city,
       };
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('eddip_student_profile', JSON.stringify(updated));
-        } catch {}
-      }
+      safeSetItem('eddip_student_profile', JSON.stringify(updated));
       return updated;
     });
 
