@@ -5,6 +5,7 @@ import { Icon } from '@/lib/icons';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Footer } from '@/components/Footer';
 import { StudentAuth } from '@/components/student/StudentAuth';
+import { BRAND_LONG_NAME } from '@/lib/brand';
 
 export default function LoginPage() {
   return (
@@ -24,7 +25,7 @@ export default function LoginPage() {
 
               <div className="auth-art-badge">
                 <Icon name="shield" size={14} />
-                <span>Educación Superior y Continua</span>
+                <span>{BRAND_LONG_NAME}</span>
               </div>
 
               <h1 className="auth-art-title">

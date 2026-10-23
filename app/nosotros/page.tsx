@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { BRAND_OFFICIAL_NAME } from '@/lib/brand';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -170,7 +171,7 @@ export default function AboutPage() {
                   fontWeight: 700,
                 }}
               >
-                Escuela de Educación Superior y Continua
+                {BRAND_OFFICIAL_NAME}
               </span>
               <p
                 style={{

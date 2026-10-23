@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Icon } from '@/lib/icons';
 import { Logo } from './Logo';
+import { BRAND_OFFICIAL_NAME } from '@/lib/brand';
 import { useDemo } from '@/app/providers';
 
 const studentNav = [
@@ -324,7 +325,7 @@ export function DashboardShell({
             marginTop: 'auto',
           }}
         >
-          <span>© {new Date().getFullYear()} EDDIP. Todos los derechos reservados.</span>
+          <span>© {new Date().getFullYear()} {BRAND_OFFICIAL_NAME}. Todos los derechos reservados.</span>
           <a
             href="https://www.kytcode.lat"
             target="_blank"

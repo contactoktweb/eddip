@@ -10,9 +10,10 @@ import { HomeStatsSection } from '@/components/HomeStatsSection';
 import { QrVisual } from '@/components/QrVisual';
 import { Icon } from '@/lib/icons';
 import { baseCourses } from '@/lib/data';
+import { BRAND_OFFICIAL_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'EDDIP · Educación online para profesionales que transforman el mundo',
+  title: `${BRAND_OFFICIAL_NAME} · Cursos virtuales con certificado verificable`,
   description: 'Capacítate con cursos especializados en Seguridad y Policía, Área Jurídica, Gestión Pública y Desarrollo Profesional. Certificados verificables con código QR.',
 };
 
@@ -204,7 +205,7 @@ export default function Home() {
             <div className="certificate-mock" aria-label="Ejemplo de certificado oficial EDDIP">
               <div className="certificate-paper">
                 <div className="cert-brand">
-                  <Image src="/eddip-logo.png" alt="EDDIP" width={34} height={34} />
+                  <Image src="/eddip-logo.png" alt={`Logo de ${BRAND_OFFICIAL_NAME}`} width={34} height={34} />
                   <strong>EDDIP</strong>
                 </div>
 
