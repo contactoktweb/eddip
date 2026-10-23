@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Sale } from '@/lib/types';
-import { STUDENT_DIRECTORY_KEY, createAuthAccount, findProfileByEmail, normalizeEmail } from '@/lib/auth/accounts';
+import { STUDENT_DIRECTORY_KEY, createAuthAccount, normalizeEmail } from '@/lib/auth/accounts';
 import { ACCOUNT_SETUP_TTL_MINUTES, createResetToken } from '@/lib/auth/passwordReset';
 import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
-import { readContentList, writeContentValue } from '@/lib/supabase/server';
+import { readContentList, readContentListForUpdate, writeContentValue } from '@/lib/supabase/server';
 import { isEmailConfigured, sendEmail } from '@/lib/email/resend';
 import { accountSetupEmail } from '@/lib/email/templates';
 import { getEmailContext } from '@/lib/email/context';
@@ -47,6 +47,9 @@ export type EnrollmentRequest = StudentProfileInput & {
 };
 
 const normalizeDocument = (doc?: string | null) => (doc || '').replace(/[\s.-]/g, '');
+const PROFILE_COLUMNS = 'id, email, full_name, document_id, phone, city, role, created_at';
+/** Un texto vacío no reemplaza datos existentes al completar una ficha. */
+const nonEmpty = (value?: string) => (value && value.trim() ? value : undefined);
 
 async function loadCourses(admin: SupabaseClient): Promise<Map<string, CourseRow>> {
   const { data } = await admin.from('courses').select('slug, title, price');
@@ -58,13 +61,15 @@ async function migrateDirectoryEnrollments(
   admin: SupabaseClient,
   directory: EnrichedStudent[],
   profilesByEmail: Map<string, ProfileRow>,
-  enrolled: Set<string>
+  enrolled: Set<string>,
+  validSlugs: Set<string>
 ): Promise<EnrollmentRow[]> {
   const missing: { student_id: string; course_slug: string }[] = [];
   for (const entry of directory) {
     const profile = profilesByEmail.get(normalizeEmail(entry.email || ''));
     if (!profile) continue;
     for (const course of entry.enrolledCourses || []) {
+      if (!validSlugs.has(course.slug)) continue;
       const key = `${profile.id}:${course.slug}`;
       if (!enrolled.has(key)) {
         enrolled.add(key);
@@ -95,7 +100,9 @@ export async function listStudents(admin: SupabaseClient): Promise<EnrichedStude
   const profilesByEmail = new Map(profiles.map(p => [normalizeEmail(p.email), p]));
   const enrollments = (enrollmentsRes.data as EnrollmentRow[] | null) || [];
   const enrolledKeys = new Set(enrollments.map(e => `${e.student_id}:${e.course_slug}`));
-  enrollments.push(...(await migrateDirectoryEnrollments(admin, directory, profilesByEmail, enrolledKeys)));
+  enrollments.push(
+    ...(await migrateDirectoryEnrollments(admin, directory, profilesByEmail, enrolledKeys, new Set(courses.keys())))
+  );
   const certificates = (certificatesRes.data as CertificateRow[] | null) || [];
   const directoryByEmail = new Map(directory.map(d => [normalizeEmail(d.email || ''), d]));
 
@@ -198,13 +205,16 @@ export async function updateStudentProfile(
     .maybeSingle();
   const profile = data as ProfileRow | null;
 
-  const directory = await readContentList<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
+  const directory = await readContentListForUpdate<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
   const dirIndex = directory.findIndex(d => d.id === studentId || (profile && normalizeEmail(d.email) === normalizeEmail(profile.email)));
   if (!profile && dirIndex < 0) return { error: 'No encontramos a este estudiante.' };
 
   if (profile) {
     const error = await updateProfileFields(admin, profile, input);
-    if (error) return { error };
+    if (error) {
+      console.error('No fue posible actualizar la ficha del estudiante:', error);
+      return { error: 'No fue posible actualizar la ficha. Inténtalo nuevamente.' };
+    }
   }
 
   if (dirIndex >= 0) {
@@ -236,8 +246,21 @@ export async function enrollStudent(
   const selected = [...new Set(request.courseSlugs)].map(slug => courses.get(slug)).filter((c): c is CourseRow => Boolean(c));
   if (selected.length === 0) return { error: 'Selecciona al menos un curso válido.', status: 400 };
 
-  let profile = (await findProfileByEmail(admin, email)) as ProfileRow | null;
+  const { data: existingProfile } = await admin.from('profiles').select(PROFILE_COLUMNS).eq('email', email).maybeSingle();
+  let profile = (existingProfile as ProfileRow | null) ?? null;
   let accountCreated = false;
+
+  // La cédula no puede pertenecer a otra cuenta: evita matricular a la persona equivocada
+  const requestedDoc = normalizeDocument(request.documentId);
+  if (requestedDoc.length > 0 && (!profile || normalizeDocument(profile.document_id) !== requestedDoc)) {
+    const { data: withDocument } = await admin.from('profiles').select('email, document_id').not('document_id', 'is', null);
+    const owner = (withDocument || []).find(
+      p => normalizeDocument(p.document_id as string) === requestedDoc && normalizeEmail(String(p.email || '')) !== email
+    );
+    if (owner) {
+      return { error: `La cédula ${request.documentId?.trim()} ya pertenece a otra cuenta registrada con un correo distinto.`, status: 409 };
+    }
+  }
 
   if (!profile) {
     const fullName = request.fullName?.trim();
@@ -255,7 +278,7 @@ export async function enrollStudent(
     accountCreated = true;
     const { data } = await admin
       .from('profiles')
-      .select('id, email, full_name, document_id, phone, city, role, created_at')
+      .select(PROFILE_COLUMNS)
       .eq('id', userId)
       .maybeSingle();
     profile = (data as ProfileRow | null) ?? {
@@ -271,10 +294,10 @@ export async function enrollStudent(
   } else {
     // Completa solo los datos que la ficha aún no tiene
     await updateProfileFields(admin, profile, {
-      fullName: profile.full_name ? undefined : request.fullName,
-      documentId: profile.document_id ? undefined : request.documentId,
-      phone: profile.phone ? undefined : request.phone,
-      city: profile.city ? undefined : request.city,
+      fullName: profile.full_name ? undefined : nonEmpty(request.fullName),
+      documentId: profile.document_id ? undefined : nonEmpty(request.documentId),
+      phone: profile.phone ? undefined : nonEmpty(request.phone),
+      city: profile.city ? undefined : nonEmpty(request.city),
     });
   }
 
@@ -283,12 +306,17 @@ export async function enrollStudent(
     selected.map(c => ({ student_id: student.id, course_slug: c.slug })),
     { onConflict: 'student_id,course_slug' }
   );
-  if (enrollError) return { error: `No fue posible registrar la matrícula: ${enrollError.message}`, status: 500 };
+  if (enrollError) {
+    console.error('No fue posible registrar la matrícula:', enrollError.message);
+    return { error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.', status: 500 };
+  }
 
   const name = student.full_name || request.fullName?.trim() || email;
-  let directory = await readContentList<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
+  let directory = await readContentListForUpdate<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
   for (const course of selected) {
-    directory = applyEnrollmentToDirectory(directory, {
+    directory = applyEnrollmentToDirectory(
+      directory,
+      {
       studentId: student.id,
       name,
       email,
@@ -297,14 +325,16 @@ export async function enrollStudent(
       documentId: student.document_id || request.documentId,
       phone: student.phone || request.phone,
       city: student.city || request.city,
-    }).list.map(d => (normalizeEmail(d.email) === email ? { ...d, id: student.id } : d));
+      },
+      { matchByEmailOnly: true }
+    ).list.map(d => (normalizeEmail(d.email) === email ? { ...d, id: student.id } : d));
   }
   await writeContentValue(admin, STUDENT_DIRECTORY_KEY, directory);
 
   const ctx = await getEmailContext(siteRequest);
 
   if (request.sale) {
-    const sales = await readContentList<Sale>(admin, SALES_KEY);
+    const sales = await readContentListForUpdate<Sale>(admin, SALES_KEY);
     const stamp = Date.now().toString(36).toUpperCase();
     const newSales: Sale[] = selected.map((course, index) => ({
       id: `VEN-${stamp}-${index + 1}`,

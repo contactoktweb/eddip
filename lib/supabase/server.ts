@@ -57,6 +57,16 @@ export async function readContentList<T>(client: SupabaseClient, key: string): P
   return Array.isArray(data?.value) ? (data.value as T[]) : [];
 }
 
+/**
+ * Lectura previa a reescribir una lista completa: si la consulta falla lanza un error en lugar de
+ * devolver una lista vacía, para no sobrescribir todos los registros con solo el nuevo.
+ */
+export async function readContentListForUpdate<T>(client: SupabaseClient, key: string): Promise<T[]> {
+  const { data, error } = await client.from('site_content').select('value').eq('key', key).maybeSingle();
+  if (error) throw new Error(`No fue posible leer ${key}: ${error.message}`);
+  return Array.isArray(data?.value) ? (data.value as T[]) : [];
+}
+
 export async function writeContentValue(client: SupabaseClient, key: string, value: unknown): Promise<boolean> {
   const { error } = await client
     .from('site_content')

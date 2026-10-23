@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { STUDENT_DIRECTORY_KEY } from '@/lib/auth/accounts';
 import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
-import { readContentList, writeContentValue } from '@/lib/supabase/server';
+import { readContentListForUpdate, writeContentValue } from '@/lib/supabase/server';
 import type { Sale } from '@/lib/types';
 import { sendPurchaseNotifications } from '@/lib/email/notifications';
 
@@ -119,7 +119,7 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
   const email = (profile?.email || '').toLowerCase();
   const fullName = profile?.full_name?.trim() || email || 'Estudiante EDDIP';
 
-  const sales = await readContentList<Sale>(admin, SALES_KEY);
+  const sales = await readContentListForUpdate<Sale>(admin, SALES_KEY);
   let sale = sales.find(s => s.id === saleId);
   if (!sale) {
     sale = {
@@ -138,7 +138,7 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
   const approvedSale = sale;
 
   if (email) {
-    const directory = await readContentList<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
+    const directory = await readContentListForUpdate<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
     const { list } = applyEnrollmentToDirectory(directory, {
       studentId: order.student_id,
       name: fullName,
@@ -178,7 +178,7 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
 /** Reverso aprobado en Bold: marca la venta como rechazada y retira la matrícula de la orden. */
 export async function revokeVoidedOrder(admin: SupabaseClient, order: PaymentOrder): Promise<void> {
   const saleId = saleIdForOrder(order.order_id);
-  const sales = await readContentList<Sale>(admin, SALES_KEY);
+  const sales = await readContentListForUpdate<Sale>(admin, SALES_KEY);
   if (sales.some(s => s.id === saleId)) {
     await writeContentValue(
       admin,

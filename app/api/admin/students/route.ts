@@ -10,6 +10,9 @@ const MAX_COURSES_PER_REQUEST = 30;
 const MAX_SALE_VALUE = 100_000_000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+const isValidIsoDate = (value: string) =>
+  DATE_PATTERN.test(value) && !Number.isNaN(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().startsWith(value);
+
 /** Directorio unificado de estudiantes (perfiles, matrículas y certificados). Solo administradores. */
 export async function GET(request: Request) {
   const auth = await requireSession(request, ['admin']);
@@ -51,23 +54,29 @@ export async function POST(request: Request) {
       const value = Number(rawValues[slug]);
       if (Number.isFinite(value) && value >= 0 && value <= MAX_SALE_VALUE) values[slug] = Math.round(value);
     }
-    const date = typeof rawSale.date === 'string' && DATE_PATTERN.test(rawSale.date) ? rawSale.date : undefined;
+    const date = typeof rawSale.date === 'string' && isValidIsoDate(rawSale.date) ? rawSale.date : undefined;
     sale = { method: rawSale.method, values, date };
   }
 
-  const result = await enrollStudent(
-    auth.session.admin,
-    {
-      email,
-      fullName: readText(body, 'fullName', 120),
-      documentId: readText(body, 'documentId', 40),
-      phone: readText(body, 'phone', 40),
-      city: readText(body, 'city', 120),
-      courseSlugs,
-      sale,
-    },
-    request
-  );
+  let result: Awaited<ReturnType<typeof enrollStudent>>;
+  try {
+    result = await enrollStudent(
+      auth.session.admin,
+      {
+        email,
+        fullName: readText(body, 'fullName', 120),
+        documentId: readText(body, 'documentId', 40),
+        phone: readText(body, 'phone', 40),
+        city: readText(body, 'city', 120),
+        courseSlugs,
+        sale,
+      },
+      request
+    );
+  } catch (err) {
+    console.error('Error al matricular desde el panel:', err);
+    return NextResponse.json({ error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
+  }
 
   if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });
   return NextResponse.json({ success: true, studentId: result.studentId, accountCreated: result.accountCreated });
