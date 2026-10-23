@@ -4,6 +4,8 @@ import { Icon } from '@/lib/icons';
 import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
 import type { Course } from '@/lib/types';
+import { MANUAL_PAYMENT_METHODS } from '@/lib/admin/paymentMethods';
+import { CourseMultiSelect } from './CourseMultiSelect';
 
 type Props = {
   isOpen: boolean;
@@ -19,7 +21,9 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
-  const [selectedCourseSlug, setSelectedCourseSlug] = useState('');
+  const [selectedCourseSlugs, setSelectedCourseSlugs] = useState<string[]>([]);
+  const [registerSale, setRegisterSale] = useState(false);
+  const [saleMethod, setSaleMethod] = useState<string>(MANUAL_PAYMENT_METHODS[3].value);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -70,58 +74,65 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         return;
       }
 
-      // 2. Preparar curso inicial si fue seleccionado
-      const enrolledCourses: EnrichedStudent['enrolledCourses'] = [];
-      if (selectedCourseSlug) {
-        const foundCourse = courses.find(c => c.slug === selectedCourseSlug);
-        if (foundCourse) {
-          enrolledCourses.push({
-            slug: foundCourse.slug,
-            title: foundCourse.title,
-            progress: 0,
-            completedLessons: [],
-            totalLessons: foundCourse.modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 1,
-          });
+      const wantsEnrollment = assignedRole === 'student' && selectedCourseSlugs.length > 0;
+
+      if (wantsEnrollment) {
+        // 2a. Crea la cuenta, la matricula en la base de datos y le envía el enlace para crear su contraseña
+        const chosen = courses.filter(c => selectedCourseSlugs.includes(c.slug));
+        const enrolled = await adminService.enrollStudentInCourses({
+          email: cleanEmail,
+          fullName: cleanName,
+          documentId: cleanDoc,
+          phone: phone.trim(),
+          city: city.trim(),
+          courseSlugs: selectedCourseSlugs,
+          sale: registerSale
+            ? { method: saleMethod, values: Object.fromEntries(chosen.map(c => [c.slug, c.price || 0])) }
+            : undefined,
+        });
+        if (!enrolled.success) {
+          setErrorMsg(enrolled.error || 'No se pudo registrar al estudiante.');
+          setLoading(false);
+          return;
         }
-      }
+      } else {
+        // 2b. Solo crea la cuenta con el rol indicado
+        const account = await adminService.createUserWithRole({
+          fullName: cleanName,
+          email: cleanEmail,
+          role: assignedRole,
+          documentId: cleanDoc,
+          phone: phone.trim(),
+          city: city.trim() || 'Colombia',
+        });
+        if (!account.success) {
+          setErrorMsg(account.error || 'No se pudo crear la cuenta de acceso.');
+          setLoading(false);
+          return;
+        }
 
-      // 3. Crear la cuenta de acceso en Supabase Auth; la persona define su contraseña con "¿Olvidaste tu contraseña?"
-      const account = await adminService.createUserWithRole({
-        fullName: cleanName,
-        email: cleanEmail,
-        role: assignedRole,
-        documentId: cleanDoc,
-        phone: phone.trim(),
-        city: city.trim() || 'Colombia',
-      });
-      if (!account.success) {
-        setErrorMsg(account.error || 'No se pudo crear la cuenta de acceso.');
-        setLoading(false);
-        return;
-      }
-
-      // 4. Guardar en el directorio institucional
-      const res = await adminService.saveStudent({
-        id: account.id,
-        name: cleanName,
-        email: cleanEmail,
-        documentId: cleanDoc,
-        phone: phone.trim() || undefined,
-        city: city.trim() || 'Colombia',
-        coursesCount: enrolledCourses.length,
-        progressAvg: 0,
-        certificatesCount: 0,
-        registeredAt: new Date().toISOString().slice(0, 10),
-        status: 'Activo',
-        role: assignedRole,
-        enrolledCourses,
-        examScores: [],
-      });
-
-      if (!res.success) {
-        setErrorMsg(res.error || 'No se pudo guardar el usuario en la base de datos.');
-        setLoading(false);
-        return;
+        const res = await adminService.saveStudent({
+          id: account.id,
+          name: cleanName,
+          email: cleanEmail,
+          documentId: cleanDoc,
+          phone: phone.trim() || undefined,
+          city: city.trim() || 'Colombia',
+          coursesCount: 0,
+          progressAvg: 0,
+          certificatesCount: 0,
+          registeredAt: new Date().toISOString().slice(0, 10),
+          status: 'Activo',
+          role: assignedRole,
+          enrolledCourses: [],
+          examScores: [],
+        });
+        if (!res.success) {
+          setErrorMsg(res.error || 'No se pudo guardar el usuario en la base de datos.');
+          setLoading(false);
+          return;
+        }
+        if (res.student && onStudentAdded) onStudentAdded(res.student);
       }
 
       const roleText =
@@ -131,11 +142,11 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
           ? 'Diseñador Instruccional'
           : 'Estudiante';
 
-      setSuccessMsg(`¡Usuario registrado correctamente con rol de ${roleText} en EDDIP!`);
-
-      if (res.student && onStudentAdded) {
-        onStudentAdded(res.student);
-      }
+      setSuccessMsg(
+        wantsEnrollment
+          ? `Estudiante registrado y matriculado en ${selectedCourseSlugs.length} ${selectedCourseSlugs.length === 1 ? 'curso' : 'cursos'}. Le enviamos un correo para crear su contraseña.`
+          : `Usuario registrado correctamente con rol de ${roleText}.`
+      );
 
       setTimeout(() => {
         // Limpiar campos
@@ -144,7 +155,8 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
         setEmail('');
         setPhone('');
         setCity('');
-        setSelectedCourseSlug('');
+        setSelectedCourseSlugs([]);
+        setRegisterSale(false);
         setAssignedRole('student');
         onClose();
       }, 1200);
@@ -446,35 +458,49 @@ export function AddStudentModal({ isOpen, onClose, onStudentAdded }: Props) {
             </small>
           </div>
 
-          {/* Curso a matricular */}
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-              Matrícula Inicial en Programa (Opcional)
-            </label>
-            <select
-              value={selectedCourseSlug}
-              onChange={e => setSelectedCourseSlug(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: '1px solid var(--line)',
-                fontSize: 13,
-                outline: 'none',
-                background: '#fff',
-              }}
-            >
-              <option value="">-- Sin matrícula inicial (0 cursos) --</option>
-              {courses.map(c => (
-                <option key={c.slug} value={c.slug}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
-            <small style={{ color: '#64748b', fontSize: 11, marginTop: 4, display: 'block' }}>
-              Puedes inscribir al estudiante en un curso desde el momento de su registro.
-            </small>
-          </div>
+          {/* Cursos a matricular */}
+          {assignedRole === 'student' && (
+            <div>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                Cursos a matricular (opcional)
+              </span>
+              <CourseMultiSelect
+                courses={courses}
+                selected={selectedCourseSlugs}
+                onChange={setSelectedCourseSlugs}
+                idPrefix="new-student-course"
+              />
+              <small style={{ color: '#64748b', fontSize: 11, marginTop: 6, display: 'block' }}>
+                Los cursos quedan habilitados de inmediato y el estudiante recibe un correo para crear su contraseña.
+              </small>
+
+              {selectedCourseSlugs.length > 0 && (
+                <>
+                  <label className="auth-checkbox-label" style={{ marginTop: 12 }}>
+                    <input
+                      type="checkbox"
+                      className="auth-checkbox"
+                      checked={registerSale}
+                      onChange={e => setRegisterSale(e.target.checked)}
+                    />
+                    <span>Registrar la venta de estos cursos y enviar el comprobante</span>
+                  </label>
+                  {registerSale && (
+                    <div className="field" style={{ marginTop: 8 }}>
+                      <label htmlFor="new-student-sale-method">Medio de pago</label>
+                      <select id="new-student-sale-method" value={saleMethod} onChange={e => setSaleMethod(e.target.value)}>
+                        {MANUAL_PAYMENT_METHODS.map(m => (
+                          <option key={m.value} value={m.value}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Acciones */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>

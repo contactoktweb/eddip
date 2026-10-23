@@ -2,8 +2,9 @@ import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { STUDENT_DIRECTORY_KEY } from '@/lib/auth/accounts';
 import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
-import { readContentList, writeContentValue } from '@/lib/supabase/server';
+import { readContentListForUpdate, writeContentValue } from '@/lib/supabase/server';
 import type { Sale } from '@/lib/types';
+import { sendPurchaseNotifications } from '@/lib/email/notifications';
 
 /**
  * Órdenes de pago (tabla payment_orders, escrita solo con service role). Una orden aprobada
@@ -118,9 +119,10 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
   const email = (profile?.email || '').toLowerCase();
   const fullName = profile?.full_name?.trim() || email || 'Estudiante EDDIP';
 
-  const sales = await readContentList<Sale>(admin, SALES_KEY);
-  if (!sales.some(s => s.id === saleId)) {
-    const sale: Sale = {
+  const sales = await readContentListForUpdate<Sale>(admin, SALES_KEY);
+  let sale = sales.find(s => s.id === saleId);
+  if (!sale) {
+    sale = {
       id: saleId,
       student: fullName,
       course: order.course_title,
@@ -133,9 +135,10 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
     };
     if (!(await writeContentValue(admin, SALES_KEY, [sale, ...sales]))) return { ok: false, saleId };
   }
+  const approvedSale = sale;
 
   if (email) {
-    const directory = await readContentList<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
+    const directory = await readContentListForUpdate<EnrichedStudent>(admin, STUDENT_DIRECTORY_KEY);
     const { list } = applyEnrollmentToDirectory(directory, {
       studentId: order.student_id,
       name: fullName,
@@ -162,13 +165,20 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
     .update({ fulfilled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('order_id', order.order_id);
 
+  // El comprobante y el aviso a la administración salen desde el servidor, aunque el navegador ya esté cerrado
+  try {
+    await sendPurchaseNotifications(approvedSale);
+  } catch (err) {
+    console.error(`No fue posible notificar la venta ${saleId}:`, err);
+  }
+
   return { ok: true, saleId };
 }
 
 /** Reverso aprobado en Bold: marca la venta como rechazada y retira la matrícula de la orden. */
 export async function revokeVoidedOrder(admin: SupabaseClient, order: PaymentOrder): Promise<void> {
   const saleId = saleIdForOrder(order.order_id);
-  const sales = await readContentList<Sale>(admin, SALES_KEY);
+  const sales = await readContentListForUpdate<Sale>(admin, SALES_KEY);
   if (sales.some(s => s.id === saleId)) {
     await writeContentValue(
       admin,

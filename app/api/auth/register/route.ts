@@ -3,6 +3,8 @@ import { readJsonBody, readText } from '@/lib/api/body';
 import { MIN_PASSWORD_LENGTH, createAuthAccount, findDuplicateAccount, normalizeEmail } from '@/lib/auth/accounts';
 import { requireServiceClient } from '@/lib/auth/session';
 import { isValidEmail } from '@/lib/siteSettings';
+import { sendWelcomeNotifications } from '@/lib/email/notifications';
+import { getEmailContext } from '@/lib/email/context';
 
 const MAX_PASSWORD_LENGTH = 72;
 
@@ -48,6 +50,13 @@ export async function POST(request: Request) {
     role: 'student',
   });
   if (created.error) return NextResponse.json({ error: created.error }, { status: created.status });
+
+  // Bienvenida al estudiante y aviso a la administración desde el servidor
+  try {
+    await sendWelcomeNotifications(email, await getEmailContext(request));
+  } catch (err) {
+    console.error('No fue posible enviar la bienvenida:', err);
+  }
 
   return NextResponse.json({ success: true });
 }

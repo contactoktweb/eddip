@@ -5,9 +5,9 @@ import type { Sale, Course } from '@/lib/types';
 import { money, baseCourses } from '@/lib/data';
 import { StatCard } from '@/components/StatCard';
 import { Icon } from '@/lib/icons';
-import { notifyStudent } from '@/lib/notifications';
 import { adminService } from '@/lib/supabase/adminService';
 import { contentService } from '@/lib/supabase/contentService';
+import { CourseMultiSelect } from './CourseMultiSelect';
 
 type Props = {
   sales: Sale[];
@@ -39,8 +39,8 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
     student: '',
     email: '',
     documentId: '',
-    course: baseCourses[0]?.title || 'Derecho de Policía',
-    value: baseCourses[0]?.price || 45000,
+    courseSlugs: [] as string[],
+    value: 0,
     method: 'Bold',
     status: 'Aprobado',
     date: new Date().toISOString().slice(0, 10),
@@ -97,64 +97,83 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
     showToast(`Estado de la transacción ${saleId} actualizado a "${newStatus}"`);
   };
 
-  // Creación de nueva venta
-  const handleCreateSale = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSaleData.student.trim()) return;
+  const [saleFormError, setSaleFormError] = useState<string | null>(null);
+  const [savingSale, setSavingSale] = useState(false);
+  const selectedSaleCourses = availableCourses.filter(c => newSaleData.courseSlugs.includes(c.slug));
+  const isSingleCourseSale = selectedSaleCourses.length === 1;
+  const saleTotal = isSingleCourseSale
+    ? Number(newSaleData.value) || 0
+    : selectedSaleCourses.reduce((sum, c) => sum + (c.price || 0), 0);
 
-    const newId = `VEN-${Date.now().toString().slice(-4)}`;
-    const matchedCourse =
-      availableCourses.find(c => c.title === newSaleData.course) || baseCourses.find(c => c.title === newSaleData.course);
-    const buyerEmail = newSaleData.email?.trim().toLowerCase() || '';
-    const saleToCreate: Sale = {
-      id: newId,
-      student: newSaleData.student.trim(),
-      course: newSaleData.course,
-      value: Number(newSaleData.value) || 0,
-      method: newSaleData.method,
-      date: newSaleData.date || new Date().toISOString().slice(0, 10),
-      status: newSaleData.status,
-      ...(buyerEmail ? { email: buyerEmail } : {}),
-      ...(matchedCourse ? { courseSlug: matchedCourse.slug } : {}),
-    };
-
-    if (onAddSale) {
-      await onAddSale(saleToCreate);
-    } else {
-      await adminService.recordSale(saleToCreate);
-    }
-
-    // Matricular al estudiante si la venta fue aprobada
-    if (saleToCreate.status === 'Aprobado') {
-      const courseSlug = matchedCourse ? matchedCourse.slug : 'derecho-de-policia';
-      const cleanEmail = newSaleData.email?.trim() || `${saleToCreate.student.toLowerCase().replace(/\s+/g, '.')}@estudiante.eddip.co`;
-      await adminService.enrollStudentInCourse(
-        saleToCreate.student,
-        cleanEmail,
-        courseSlug,
-        saleToCreate.course,
-        {
-          documentId: newSaleData.documentId?.trim() || undefined,
-        }
-      );
-
-      if (buyerEmail) {
-        notifyStudent({ type: 'purchase', email: buyerEmail, saleId: newId });
-      }
-    }
-
-    setIsModalOpen(false);
+  const resetSaleForm = () =>
     setNewSaleData({
       student: '',
       email: '',
       documentId: '',
-      course: availableCourses[0]?.title || baseCourses[0]?.title || 'Derecho de Policía',
-      value: availableCourses[0]?.price || baseCourses[0]?.price || 45000,
+      courseSlugs: [],
+      value: 0,
       method: 'Bold',
       status: 'Aprobado',
       date: new Date().toISOString().slice(0, 10),
     });
-    showToast(`Venta ${newId} registrada y sincronizada exitosamente`);
+
+  // Creación de nueva venta (uno o varios cursos por persona)
+  const handleCreateSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaleFormError(null);
+    const studentName = newSaleData.student.trim();
+    const buyerEmail = newSaleData.email.trim().toLowerCase();
+    if (!studentName) return setSaleFormError('Ingresa el nombre del estudiante.');
+    if (selectedSaleCourses.length === 0) return setSaleFormError('Selecciona al menos un curso.');
+
+    const values = Object.fromEntries(
+      selectedSaleCourses.map(c => [c.slug, isSingleCourseSale ? Number(newSaleData.value) || 0 : c.price || 0])
+    );
+
+    setSavingSale(true);
+    if (newSaleData.status === 'Aprobado') {
+      // Venta aprobada: matricula al estudiante en la base de datos, registra cada venta y envía el comprobante
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+        setSavingSale(false);
+        return setSaleFormError('El correo del estudiante es obligatorio para matricularlo y enviarle el comprobante.');
+      }
+      const result = await adminService.enrollStudentInCourses({
+        email: buyerEmail,
+        fullName: studentName,
+        documentId: newSaleData.documentId.trim(),
+        courseSlugs: selectedSaleCourses.map(c => c.slug),
+        sale: { method: newSaleData.method, values, date: newSaleData.date },
+      });
+      setSavingSale(false);
+      if (!result.success) return setSaleFormError(result.error || 'No fue posible registrar la venta.');
+    } else {
+      // Venta pendiente o rechazada: se registra sin matricular
+      const stamp = Date.now().toString(36).toUpperCase();
+      for (const [index, course] of selectedSaleCourses.entries()) {
+        const sale: Sale = {
+          id: `VEN-${stamp}-${index + 1}`,
+          student: studentName,
+          course: course.title,
+          value: values[course.slug],
+          method: newSaleData.method,
+          date: newSaleData.date || new Date().toISOString().slice(0, 10),
+          status: newSaleData.status,
+          ...(buyerEmail ? { email: buyerEmail } : {}),
+          courseSlug: course.slug,
+        };
+        if (onAddSale) await onAddSale(sale);
+        else await adminService.recordSale(sale);
+      }
+      setSavingSale(false);
+    }
+
+    setIsModalOpen(false);
+    resetSaleForm();
+    showToast(
+      selectedSaleCourses.length > 1
+        ? `${selectedSaleCourses.length} ventas registradas para ${studentName}`
+        : `Venta registrada para ${studentName}`
+    );
   };
 
   // Exportar reporte CSV
@@ -453,10 +472,10 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        <option value="Aprobado">✓ Aprobado</option>
-                        <option value="Pendiente">⏳ Pendiente</option>
-                        <option value="Rechazado">✕ Rechazado</option>
-                        <option value="Reembolsado">↩ Reembolsado</option>
+                        <option value="Aprobado">Aprobado</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Rechazado">Rechazado</option>
+                        <option value="Reembolsado">Reembolsado</option>
                       </select>
                     </td>
                   </tr>
@@ -593,46 +612,31 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                  Programa o Curso Adquirido *
-                </label>
-                <select
-                  value={newSaleData.course}
-                  onChange={e => {
-                    const c = availableCourses.find(bc => bc.title === e.target.value) || baseCourses.find(bc => bc.title === e.target.value);
-                    setNewSaleData({
-                      ...newSaleData,
-                      course: e.target.value,
-                      value: c ? c.price : newSaleData.value,
-                    });
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Cursos o certificados adquiridos *
+                </span>
+                <CourseMultiSelect
+                  courses={availableCourses}
+                  selected={newSaleData.courseSlugs}
+                  onChange={slugs => {
+                    const single = slugs.length === 1 ? availableCourses.find(c => c.slug === slugs[0]) : undefined;
+                    setNewSaleData({ ...newSaleData, courseSlugs: slugs, value: single ? single.price : 0 });
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 10,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13.5,
-                    background: '#fff',
-                    outline: 'none',
-                  }}
-                >
-                  {availableCourses.map(c => (
-                    <option key={c.id || c.slug} value={c.title}>
-                      {c.title} — {money(c.price)}
-                    </option>
-                  ))}
-                </select>
+                  idPrefix="manual-sale-course"
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    Monto Cobrado (COP) *
+                  <label htmlFor="manual-sale-value" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    {isSingleCourseSale ? 'Monto cobrado (COP) *' : 'Total de la venta (COP)'}
                   </label>
                   <input
+                    id="manual-sale-value"
                     type="number"
-                    required
-                    value={newSaleData.value}
+                    min={0}
+                    value={isSingleCourseSale ? newSaleData.value : saleTotal}
+                    disabled={!isSingleCourseSale}
                     onChange={e => setNewSaleData({ ...newSaleData, value: Number(e.target.value) })}
                     style={{
                       width: '100%',
@@ -643,6 +647,9 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
                       outline: 'none',
                     }}
                   />
+                  {selectedSaleCourses.length > 1 && (
+                    <small style={{ fontSize: 11, color: '#64748b' }}>Se registra una venta por curso con su precio de catálogo.</small>
+                  )}
                 </div>
 
                 <div>
@@ -715,6 +722,12 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
                 </div>
               </div>
 
+              {saleFormError && (
+                <p className="form-submit-error" role="alert">
+                  <Icon name="alert" size={16} /> {saleFormError}
+                </p>
+              )}
+
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
                 <button
                   type="button"
@@ -724,8 +737,8 @@ export function AdminSalesManager({ sales, onUpdateStatus, onAddSale, onDeleteSa
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 22px' }}>
-                  <Icon name="check" size={15} /> Guardar Venta
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 22px' }} disabled={savingSale}>
+                  <Icon name="check" size={15} /> {savingSale ? 'Guardando…' : 'Guardar venta'}
                 </button>
               </div>
             </form>

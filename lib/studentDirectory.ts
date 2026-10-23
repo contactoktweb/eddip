@@ -47,10 +47,11 @@ const normalizeDocument = (doc?: string) => (doc || '').replace(/[\s.-]/g, '');
  */
 export function applyEnrollmentToDirectory(
   list: EnrichedStudent[],
-  enrollment: DirectoryEnrollment
+  enrollment: DirectoryEnrollment,
+  options: { matchByEmailOnly?: boolean } = {}
 ): { list: EnrichedStudent[]; student: EnrichedStudent } {
   const email = enrollment.email.trim().toLowerCase();
-  const doc = normalizeDocument(enrollment.documentId);
+  const doc = options.matchByEmailOnly ? '' : normalizeDocument(enrollment.documentId);
   const index = list.findIndex(
     s => s.email.toLowerCase() === email || (doc.length > 0 && normalizeDocument(s.documentId) === doc)
   );

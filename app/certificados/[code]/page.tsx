@@ -1,5 +1,6 @@
 'use client';
 import { useParams } from 'next/navigation';
+import { BRAND_LONG_NAME, BRAND_OFFICIAL_NAME } from '@/lib/brand';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -257,13 +258,13 @@ export default function CertificateView() {
                     marginBottom: 16,
                   }}
                 >
-                  <Image src="/eddip-logo.png" alt="Logo oficial EDDIP" width={64} height={64} priority />
+                  <Image src="/eddip-logo.png" alt={`Logo oficial de ${BRAND_OFFICIAL_NAME}`} width={64} height={64} priority />
                   <div style={{ textAlign: 'left' }}>
                     <strong style={{ fontSize: 22, color: '#071F49', letterSpacing: 1, display: 'block' }}>
                       EDDIP
                     </strong>
                     <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>
-                      Educación Superior y Continua
+                      {BRAND_LONG_NAME}
                     </span>
                   </div>
                 </div>
@@ -283,7 +284,7 @@ export default function CertificateView() {
                 </div>
 
                 <p className="certificate-intro" style={{ fontSize: 15, color: '#475569', margin: '0 0 6px' }}>
-                  El Consejo Académico y la Dirección General de EDDIP certifican que:
+                  El Consejo Académico y la Dirección General de {BRAND_OFFICIAL_NAME} certifican que:
                 </p>
 
                 {/* Nombre del Estudiante */}

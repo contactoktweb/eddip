@@ -4,6 +4,7 @@ import { FooterSocialLinks } from './FooterSocialLinks';
 import { FooterHelpCard } from './FooterHelpCard';
 import { FooterCategoryLinks } from './FooterCategoryLinks';
 import { LEGAL_DOCUMENT_ROUTES } from '@/lib/legalDocuments';
+import { BRAND_OFFICIAL_NAME } from '@/lib/brand';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -15,7 +16,7 @@ export function Footer() {
         <div className="footer-brand-col">
           <Logo />
           <p>
-            Plataforma de educación online especializada para profesionales que transforman el mundo.
+            {BRAND_OFFICIAL_NAME}. Plataforma de educación online especializada para profesionales que transforman el mundo.
           </p>
           <FooterSocialLinks />
         </div>
@@ -59,7 +60,7 @@ export function Footer() {
       <div className="container footer-bottom-wrap">
         <div className="footer-bottom-inner">
           <p className="copyright-text">
-            © {currentYear} EDDIP. Todos los derechos reservados.
+            © {currentYear} {BRAND_OFFICIAL_NAME}. Todos los derechos reservados.
           </p>
 
           <div className="footer-credits">

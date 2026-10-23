@@ -10,7 +10,7 @@ export default function AdminStudentsPage() {
   useEffect(() => {
     async function loadStudents() {
       try {
-        const list = await adminService.getAllStudents();
+        const list = await adminService.fetchStudents();
         setStudentList(list);
       } catch (err) {
         console.warn('Error loading students:', err);
@@ -20,13 +20,9 @@ export default function AdminStudentsPage() {
     }
     loadStudents();
 
-    const handleUpdate = (e: Event) => {
-      const custom = e as CustomEvent<EnrichedStudent[]>;
-      if (custom.detail && Array.isArray(custom.detail)) {
-        setStudentList(custom.detail);
-      } else {
-        loadStudents();
-      }
+    // Siempre se recarga desde el servidor para mostrar matrículas y certificados reales
+    const handleUpdate = () => {
+      loadStudents();
     };
 
     window.addEventListener('eddip_students_updated', handleUpdate);

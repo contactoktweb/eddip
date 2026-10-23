@@ -6,11 +6,12 @@ import CustomSelect from '@/components/CustomSelect';
 import { COLOMBIA_DEPARTMENTS } from '@/lib/colombiaPlaces';
 import { adminService } from '@/lib/supabase/adminService';
 import { isValidEmail } from '@/lib/siteSettings';
+import { CourseMultiSelect } from './CourseMultiSelect';
 
 type Props = {
   courses: Course[];
   onClose: () => void;
-  onIssued: (certificate: Certificate) => void;
+  onIssued: (certificates: Certificate[]) => void;
 };
 
 type FormState = {
@@ -20,7 +21,7 @@ type FormState = {
   phone: string;
   department: string;
   city: string;
-  courseSlug: string;
+  courseSlugs: string[];
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -28,14 +29,14 @@ type FormErrors = Partial<Record<keyof FormState, string>>;
 const MIN_DOCUMENT_DIGITS = 5;
 const MIN_PHONE_DIGITS = 10;
 
-const emptyForm = (courseSlug: string): FormState => ({
+const emptyForm = (): FormState => ({
   fullName: '',
   documentId: '',
   email: '',
   phone: '',
   department: '',
   city: '',
-  courseSlug,
+  courseSlugs: [],
 });
 
 function validate(form: FormState): FormErrors {
@@ -46,12 +47,12 @@ function validate(form: FormState): FormErrors {
   if (form.phone.replace(/\D/g, '').length < MIN_PHONE_DIGITS) errors.phone = 'Ingresa un número de celular de 10 dígitos.';
   if (!form.department) errors.department = 'Selecciona el departamento.';
   if (!form.city) errors.city = 'Selecciona la ciudad o municipio.';
-  if (!form.courseSlug) errors.courseSlug = 'Selecciona el programa a certificar.';
+  if (form.courseSlugs.length === 0) errors.courseSlugs = 'Selecciona al menos un programa a certificar.';
   return errors;
 }
 
 export function ManualCertificateForm({ courses, onClose, onIssued }: Props) {
-  const [form, setForm] = useState<FormState>(() => emptyForm(courses[0]?.slug || ''));
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -67,7 +68,7 @@ export function ManualCertificateForm({ courses, onClose, onIssued }: Props) {
     () => COLOMBIA_DEPARTMENTS.find(d => d.name === form.department)?.cities || [],
     [form.department]
   );
-  const selectedCourse = courses.find(c => c.slug === form.courseSlug);
+  const selectedCourses = courses.filter(c => form.courseSlugs.includes(c.slug));
 
   const update = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm(prev => ({ ...prev, [field]: value, ...(field === 'department' ? { city: '' } : {}) }));
@@ -78,28 +79,36 @@ export function ManualCertificateForm({ courses, onClose, onIssued }: Props) {
     e.preventDefault();
     const found = validate(form);
     setErrors(found);
-    if (Object.keys(found).length > 0 || !selectedCourse) return;
+    if (Object.keys(found).length > 0 || selectedCourses.length === 0) return;
 
     setSaving(true);
     setSubmitError(null);
-    const result = await adminService.registerManualCertificate({
-      fullName: form.fullName,
-      documentId: form.documentId,
-      email: form.email,
-      phone: form.phone,
-      department: form.department,
-      city: form.city,
-      courseSlug: selectedCourse.slug,
-      courseTitle: selectedCourse.title,
-      hours: selectedCourse.durationHours,
-    });
-    setSaving(false);
-
-    if (result.success && result.certificate) {
-      onIssued(result.certificate);
-    } else {
-      setSubmitError(result.error || 'No fue posible emitir el certificado.');
+    // Un certificado por programa; se detiene en el primer error para no emitir duplicados al reintentar
+    const issued: Certificate[] = [];
+    for (const course of selectedCourses) {
+      const result = await adminService.registerManualCertificate({
+        fullName: form.fullName,
+        documentId: form.documentId,
+        email: form.email,
+        phone: form.phone,
+        department: form.department,
+        city: form.city,
+        courseSlug: course.slug,
+        courseTitle: course.title,
+        hours: course.durationHours,
+      });
+      if (!result.success || !result.certificate) {
+        setSaving(false);
+        setSubmitError(
+          `${issued.length > 0 ? `Se emitieron ${issued.length} certificado(s). ` : ''}${result.error || `No fue posible emitir el certificado de "${course.title}".`}`
+        );
+        if (issued.length > 0) onIssued(issued);
+        return;
+      }
+      issued.push(result.certificate);
     }
+    setSaving(false);
+    onIssued(issued);
   };
 
   const fieldError = (field: keyof FormState) =>
@@ -162,20 +171,14 @@ export function ManualCertificateForm({ courses, onClose, onIssued }: Props) {
             </div>
 
             <div className="field">
-              <label htmlFor="manual-course">Programa a certificar *</label>
-              <select
-                id="manual-course"
-                value={form.courseSlug}
-                onChange={e => update('courseSlug', e.target.value)}
-                aria-invalid={Boolean(errors.courseSlug)}
-              >
-                {courses.map(c => (
-                  <option key={c.id} value={c.slug}>
-                    {c.title} ({c.durationHours} h)
-                  </option>
-                ))}
-              </select>
-              {fieldError('courseSlug')}
+              <span className="field-label">Programas a certificar * (puedes elegir varios)</span>
+              <CourseMultiSelect
+                courses={courses}
+                selected={form.courseSlugs}
+                onChange={slugs => update('courseSlugs', slugs)}
+                idPrefix="manual-cert-course"
+              />
+              {fieldError('courseSlugs')}
             </div>
           </fieldset>
 
@@ -253,7 +256,11 @@ export function ManualCertificateForm({ courses, onClose, onIssued }: Props) {
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               <Icon name="award" size={16} />
-              {saving ? 'Registrando y emitiendo…' : 'Registrar y emitir certificado'}
+              {saving
+                ? 'Registrando y emitiendo…'
+                : selectedCourses.length > 1
+                ? `Registrar y emitir ${selectedCourses.length} certificados`
+                : 'Registrar y emitir certificado'}
             </button>
           </div>
         </form>

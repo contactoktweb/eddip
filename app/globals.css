@@ -5104,3 +5104,91 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .auth-verify-card { animation: none; }
 }
+
+/* Ficha del estudiante: edición y asignación de cursos */
+.student-meta-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.student-meta-item svg { flex-shrink: 0; color: #94a3b8; }
+
+.student-panel-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.student-panel-actions .btn { font-size: 13px; padding: 9px 16px; }
+
+.student-panel-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+  font-weight: 600;
+  animation: ui-fade-up 0.3s ease both;
+}
+
+.student-panel-form { margin-bottom: 20px; }
+
+.course-multiselect {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.course-multiselect-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.course-multiselect-item:hover { border-color: #bfd8f8; }
+.course-multiselect-item:has(input:checked) { border-color: var(--blue); background: var(--blue-3); }
+.course-multiselect-item.is-owned { cursor: not-allowed; opacity: 0.6; }
+.course-multiselect-item input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; }
+.course-multiselect-text { display: flex; flex-direction: column; min-width: 0; }
+.course-multiselect-text strong { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
+.course-multiselect-text small { font-size: 11.5px; color: #64748b; }
+
+@media (max-width: 620px) {
+  .course-multiselect { grid-template-columns: 1fr; }
+  .student-panel-actions .btn { flex: 1; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-panel-notice { animation: none; }
+  .course-multiselect-item { transition: none; }
+}
+
+.field-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 7px; color: #43536a; }
+
+/* Pagos en línea (Bold) */
+.online-orders-help { font-size: 12.5px; color: #64748b; margin: -6px 0 14px; }
+.order-status { display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.order-status-pending { background: #fef3c7; color: #92400e; }
+.order-status-approved { background: #ecfdf5; color: #047857; }
+.order-status-rejected { background: #fef2f2; color: #b91c1c; }
+
+.student-account-alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+.student-account-alert svg { flex-shrink: 0; margin-top: 2px; }
+.student-account-alert strong { display: block; font-size: 13.5px; }
+.student-account-alert p { margin: 4px 0 10px; font-size: 12.5px; color: #92400e; }
+.student-account-alert .btn { font-size: 12.5px; padding: 8px 14px; }

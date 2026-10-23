@@ -1,4 +1,5 @@
 import type { SiteSettings } from '@/lib/siteSettings';
+import { BRAND_LONG_NAME, BRAND_OFFICIAL_NAME } from '@/lib/brand';
 import { buildWhatsappUrl, formatWhatsappDisplay } from '@/lib/siteSettings';
 
 type TemplateContext = {
@@ -51,7 +52,7 @@ function layout(ctx: TemplateContext, preheader: string, bodyHtml: string): stri
 
   return `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EDDIP</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(BRAND_OFFICIAL_NAME)}</title></head>
 <body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif">
   <span style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</span>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:32px 12px">
@@ -59,10 +60,10 @@ function layout(ctx: TemplateContext, preheader: string, bodyHtml: string): stri
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e7edf5">
         <tr><td style="background:linear-gradient(135deg,${BRAND_NAVY},#073B9D);padding:28px 32px" align="left">
           <a href="${escapeHtml(ctx.siteUrl)}" style="text-decoration:none">
-            <img src="${escapeHtml(logoUrl)}" width="52" height="52" alt="Logo de EDDIP" style="display:inline-block;vertical-align:middle;border-radius:12px;border:0">
+            <img src="${escapeHtml(logoUrl)}" width="52" height="52" alt="Logo de ${escapeHtml(BRAND_OFFICIAL_NAME)}" style="display:inline-block;vertical-align:middle;border-radius:12px;border:0">
             <span style="display:inline-block;vertical-align:middle;margin-left:12px;font-size:20px;font-weight:800;color:#ffffff;letter-spacing:.04em">EDDIP</span>
           </a>
-          <div style="margin-top:6px;font-size:12px;color:#bcd3f5">Educación Superior y Continua</div>
+          <div style="margin-top:6px;font-size:12px;color:#bcd3f5">${escapeHtml(BRAND_LONG_NAME)}</div>
         </td></tr>
         <tr><td style="padding:34px 32px 10px;color:#33445c;font-size:15px;line-height:1.65">
           ${bodyHtml}
@@ -71,7 +72,7 @@ function layout(ctx: TemplateContext, preheader: string, bodyHtml: string): stri
           ¿Necesitas ayuda? Escríbenos por WhatsApp al
           <a href="${escapeHtml(buildWhatsappUrl(ctx.settings))}" style="color:${BRAND_BLUE};font-weight:700">${escapeHtml(whatsapp)}</a>
           o al correo <a href="mailto:${escapeHtml(ctx.settings.contactEmail)}" style="color:${BRAND_BLUE};font-weight:700">${escapeHtml(ctx.settings.contactEmail)}</a>.
-          <br><br>© ${year} EDDIP. Todos los derechos reservados.
+          <br><br>© ${year} ${escapeHtml(BRAND_OFFICIAL_NAME)}. Todos los derechos reservados.
         </td></tr>
       </table>
     </td></tr>
@@ -81,19 +82,19 @@ function layout(ctx: TemplateContext, preheader: string, bodyHtml: string): stri
 }
 
 function textFooter(ctx: TemplateContext): string {
-  return `\n\n¿Necesitas ayuda? WhatsApp ${formatWhatsappDisplay(ctx.settings.whatsappNumber)} · ${ctx.settings.contactEmail}\n© ${new Date().getFullYear()} EDDIP`;
+  return `\n\n¿Necesitas ayuda? WhatsApp ${formatWhatsappDisplay(ctx.settings.whatsappNumber)} · ${ctx.settings.contactEmail}\n© ${new Date().getFullYear()} ${BRAND_OFFICIAL_NAME}`;
 }
 
 export function welcomeEmail(ctx: TemplateContext, student: { name: string }): RenderedEmail {
   const firstName = student.name.split(' ')[0] || student.name;
   const dashboardUrl = `${ctx.siteUrl}/dashboard`;
   return {
-    subject: '¡Bienvenido a EDDIP! Tu cuenta está activa',
+    subject: `¡Bienvenido a ${BRAND_OFFICIAL_NAME}! Tu cuenta está activa`,
     html: layout(
       ctx,
       'Tu cuenta de estudiante en EDDIP fue creada con éxito.',
       `<h1 style="margin:0 0 14px;font-size:24px;color:${BRAND_NAVY}">¡Hola, ${escapeHtml(firstName)}!</h1>
-       <p style="margin:0 0 12px">Tu cuenta de estudiante en <strong>EDDIP</strong> fue creada con éxito. Desde tu panel podrás inscribirte en cursos, avanzar lección a lección, presentar evaluaciones y descargar tus certificados verificables.</p>
+       <p style="margin:0 0 12px">Tu cuenta de estudiante en <strong>${escapeHtml(BRAND_OFFICIAL_NAME)}</strong> fue creada con éxito. Desde tu panel podrás inscribirte en cursos, avanzar lección a lección, presentar evaluaciones y descargar tus certificados verificables.</p>
        ${button(dashboardUrl, 'Ingresar a mi panel')}
        <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">Si no creaste esta cuenta, comunícate con nosotros para revisarlo.</p>`
     ),
@@ -130,12 +131,12 @@ export function purchaseEmail(
 export function passwordResetEmail(ctx: TemplateContext, data: { name: string; resetUrl: string; expiresInMinutes: number }): RenderedEmail {
   const firstName = data.name.split(' ')[0] || data.name;
   return {
-    subject: 'Restablece tu contraseña de EDDIP',
+    subject: `Restablece tu contraseña · ${BRAND_OFFICIAL_NAME}`,
     html: layout(
       ctx,
       'Usa este enlace para crear una nueva contraseña.',
       `<h1 style="margin:0 0 14px;font-size:24px;color:${BRAND_NAVY}">Restablecer contraseña</h1>
-       <p style="margin:0 0 12px">Hola, ${escapeHtml(firstName)}. Recibimos una solicitud para restablecer la contraseña de tu cuenta en EDDIP. Haz clic en el botón para crear una nueva.</p>
+       <p style="margin:0 0 12px">Hola, ${escapeHtml(firstName)}. Recibimos una solicitud para restablecer la contraseña de tu cuenta en ${escapeHtml(BRAND_OFFICIAL_NAME)}. Haz clic en el botón para crear una nueva.</p>
        ${button(data.resetUrl, 'Crear nueva contraseña')}
        <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">El enlace vence en ${data.expiresInMinutes} minutos y solo puede usarse una vez. Si no solicitaste este cambio, ignora este correo: tu contraseña actual seguirá funcionando.</p>`
     ),
@@ -146,7 +147,7 @@ export function passwordResetEmail(ctx: TemplateContext, data: { name: string; r
 export function emailVerificationEmail(ctx: TemplateContext, data: { name: string; verifyUrl: string }): RenderedEmail {
   const firstName = data.name.split(' ')[0] || data.name;
   return {
-    subject: 'Confirma tu correo en EDDIP',
+    subject: `Confirma tu correo · ${BRAND_OFFICIAL_NAME}`,
     html: layout(
       ctx,
       'Confirma tu correo para activar tu cuenta.',
@@ -156,6 +157,31 @@ export function emailVerificationEmail(ctx: TemplateContext, data: { name: strin
        <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">El enlace solo puede usarse una vez. Si no solicitaste este correo, puedes ignorarlo.</p>`
     ),
     text: `Hola, ${firstName}.\n\nConfirma tu correo y activa tu cuenta en EDDIP: ${data.verifyUrl}\nSi no solicitaste este correo, ignóralo.${textFooter(ctx)}`,
+  };
+}
+
+export function accountSetupEmail(
+  ctx: TemplateContext,
+  data: { name: string; setupUrl: string; courses: string[]; expiresInDays: number }
+): RenderedEmail {
+  const firstName = data.name.split(' ')[0] || data.name;
+  const coursesHtml = data.courses.length
+    ? `<p style="margin:0 0 8px">Ya tienes acceso a:</p><ul style="margin:0 0 12px;padding-left:20px">${data.courses
+        .map(c => `<li style="margin-bottom:4px"><strong>${escapeHtml(c)}</strong></li>`)
+        .join('')}</ul>`
+    : '';
+  return {
+    subject: `Tu cuenta está lista · ${BRAND_OFFICIAL_NAME}`,
+    html: layout(
+      ctx,
+      'Crea tu contraseña para ingresar a tus cursos.',
+      `<h1 style="margin:0 0 14px;font-size:24px;color:${BRAND_NAVY}">¡Hola, ${escapeHtml(firstName)}!</h1>
+       <p style="margin:0 0 12px">El equipo de ${escapeHtml(BRAND_OFFICIAL_NAME)} creó tu cuenta de estudiante. Para ingresar, crea tu contraseña con el botón.</p>
+       ${coursesHtml}
+       ${button(data.setupUrl, 'Crear mi contraseña')}
+       <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">El enlace vence en ${data.expiresInDays} días. Si vence, usa «¿Olvidaste tu contraseña?» en la página de inicio de sesión.</p>`
+    ),
+    text: `Hola, ${firstName}.\n\nTu cuenta de estudiante fue creada${data.courses.length ? ` con acceso a: ${data.courses.join(', ')}` : ''}.\nCrea tu contraseña aquí: ${data.setupUrl}${textFooter(ctx)}`,
   };
 }
 
