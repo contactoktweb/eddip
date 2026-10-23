@@ -137,6 +137,10 @@ async function restoreDeletedEmail(email: string): Promise<void> {
   }
 }
 
+function notifyStudentsChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eddip_students_updated'));
+}
+
 export const adminService = {
   // ==========================================
   // CURSOS Y CONTENIDO
@@ -245,6 +249,48 @@ export const adminService = {
   // ==========================================
   // ESTUDIANTES / DIRECTORIO SINCRONIZADO CON BASE DE DATOS REAL
   // ==========================================
+  /** Directorio unificado desde el servidor (perfiles, matrículas y certificados de la base de datos). */
+  async fetchStudents(): Promise<EnrichedStudent[]> {
+    const res = await callApi<{ students?: EnrichedStudent[] }>('/api/admin/students', { cache: 'no-store' });
+    if (res.ok && Array.isArray(res.data.students)) return res.data.students;
+    return this.getAllStudents();
+  },
+
+  /** Matricula en uno o varios cursos (crea la cuenta si no existe) y, opcionalmente, registra la venta. */
+  async enrollStudentInCourses(payload: {
+    email: string;
+    fullName?: string;
+    documentId?: string;
+    phone?: string;
+    city?: string;
+    courseSlugs: string[];
+    sale?: { method: string; values: Record<string, number> };
+  }): Promise<{ success: boolean; error?: string; accountCreated?: boolean }> {
+    const res = await callApi<{ accountCreated?: boolean }>('/api/admin/students', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { success: false, error: res.data.error || 'No fue posible registrar la matrícula.' };
+    notifyStudentsChanged();
+    if (payload.sale && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('eddip_sales_updated'));
+    }
+    return { success: true, accountCreated: res.data.accountCreated };
+  },
+
+  async updateStudentProfile(
+    studentId: string,
+    data: { fullName: string; documentId: string; phone: string; city: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    const res = await callApi(`/api/admin/students/${encodeURIComponent(studentId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { success: false, error: res.data.error || 'No fue posible actualizar la ficha.' };
+    notifyStudentsChanged();
+    return { success: true };
+  },
+
   async getAllStudents(): Promise<EnrichedStudent[]> {
     // 1. Helper para descartar datos mock o semillas heredadas de pruebas de demostración
     const isMockSeed = (s: Partial<EnrichedStudent>) => {

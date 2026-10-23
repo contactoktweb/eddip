@@ -27,7 +27,7 @@ export default function AdminHomePage() {
     }
 
     const loadStudents = () => {
-      adminService.getAllStudents().then(res => setStudentList(res || []));
+      adminService.fetchStudents().then(res => setStudentList(res || []));
     };
 
     loadStudents();
@@ -55,13 +55,8 @@ export default function AdminHomePage() {
       }
     };
 
-    const handleStudentsUpdate = (e: Event) => {
-      const custom = e as CustomEvent<EnrichedStudent[]>;
-      if (custom.detail && Array.isArray(custom.detail)) {
-        setStudentList(custom.detail);
-      } else {
-        loadStudents();
-      }
+    const handleStudentsUpdate = () => {
+      loadStudents();
     };
 
     window.addEventListener('eddip_sales_updated', handleSalesUpdate);

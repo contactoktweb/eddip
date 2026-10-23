@@ -160,6 +160,31 @@ export function emailVerificationEmail(ctx: TemplateContext, data: { name: strin
   };
 }
 
+export function accountSetupEmail(
+  ctx: TemplateContext,
+  data: { name: string; setupUrl: string; courses: string[]; expiresInDays: number }
+): RenderedEmail {
+  const firstName = data.name.split(' ')[0] || data.name;
+  const coursesHtml = data.courses.length
+    ? `<p style="margin:0 0 8px">Ya tienes acceso a:</p><ul style="margin:0 0 12px;padding-left:20px">${data.courses
+        .map(c => `<li style="margin-bottom:4px"><strong>${escapeHtml(c)}</strong></li>`)
+        .join('')}</ul>`
+    : '';
+  return {
+    subject: `Tu cuenta está lista · ${BRAND_OFFICIAL_NAME}`,
+    html: layout(
+      ctx,
+      'Crea tu contraseña para ingresar a tus cursos.',
+      `<h1 style="margin:0 0 14px;font-size:24px;color:${BRAND_NAVY}">¡Hola, ${escapeHtml(firstName)}!</h1>
+       <p style="margin:0 0 12px">El equipo de ${escapeHtml(BRAND_OFFICIAL_NAME)} creó tu cuenta de estudiante. Para ingresar, crea tu contraseña con el botón.</p>
+       ${coursesHtml}
+       ${button(data.setupUrl, 'Crear mi contraseña')}
+       <p style="margin:16px 0 0;font-size:13px;color:${TEXT_MUTED}">El enlace vence en ${data.expiresInDays} días. Si vence, usa «¿Olvidaste tu contraseña?» en la página de inicio de sesión.</p>`
+    ),
+    text: `Hola, ${firstName}.\n\nTu cuenta de estudiante fue creada${data.courses.length ? ` con acceso a: ${data.courses.join(', ')}` : ''}.\nCrea tu contraseña aquí: ${data.setupUrl}${textFooter(ctx)}`,
+  };
+}
+
 export function adminNotificationEmail(
   ctx: TemplateContext,
   data: { title: string; intro: string; rows: [string, string][]; actionPath: string; actionLabel: string }

@@ -6,6 +6,8 @@ export { MIN_PASSWORD_LENGTH } from '@/lib/auth/accounts';
 
 const RESET_TOKENS_KEY = 'password_reset_tokens';
 export const RESET_TOKEN_TTL_MINUTES = 60;
+/** Vigencia del enlace para que una cuenta creada por un administrador defina su contraseña. */
+export const ACCOUNT_SETUP_TTL_MINUTES = 7 * 24 * 60;
 
 type StoredResetToken = { hash: string; email: string; expiresAt: string };
 
@@ -36,9 +38,9 @@ export async function findAccountHolder(email: string): Promise<AccountHolder | 
 }
 
 /** Crea un token de un solo uso; en la base de datos solo se guarda su hash. */
-export async function createResetToken(email: string): Promise<string | null> {
+export async function createResetToken(email: string, ttlMinutes = RESET_TOKEN_TTL_MINUTES): Promise<string | null> {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
   const clean = normalizeEmail(email);
   const tokens = (await readTokens()).filter(t => t.email !== clean);
   const saved = await writeSiteContent(RESET_TOKENS_KEY, [...tokens, { hash: hashToken(token), email: clean, expiresAt }]);
