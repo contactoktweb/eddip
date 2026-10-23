@@ -4,19 +4,23 @@ import { readSiteContent, writeSiteContent } from '@/lib/supabase/server';
 const NOTIFICATION_LOG_KEY = 'notification_log';
 const NOTIFICATION_LOG_LIMIT = 500;
 
-/** URL pública del sitio para enlaces e imágenes de los correos. */
-export function resolveSiteUrl(request: Request): string {
+const DEFAULT_SITE_URL = 'https://www.eddip.com.co';
+
+/** URL pública del sitio para enlaces e imágenes de los correos (sin petición, p. ej. el webhook de Bold). */
+export function resolveSiteUrl(request?: Request): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
-  return new URL(request.url).origin;
+  return request ? new URL(request.url).origin : DEFAULT_SITE_URL;
 }
 
-export async function getEmailContext(request: Request) {
+export async function getEmailContext(request?: Request) {
   return {
     siteUrl: resolveSiteUrl(request),
     settings: mergeSiteSettings(await readSiteContent(SITE_SETTINGS_KEY)),
   };
 }
+
+export type EmailContext = Awaited<ReturnType<typeof getEmailContext>>;
 
 /** Evita enviar dos veces la misma notificación (por ejemplo, al recargar la página de confirmación). */
 export async function wasNotificationSent(id: string): Promise<boolean> {

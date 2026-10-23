@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { Sale } from '@/lib/types';
 import { createServerSupabase, readSiteContent } from '@/lib/supabase/server';
-import { isEmailConfigured, sendEmail } from '@/lib/email/resend';
-import { adminNotificationEmail, purchaseEmail, welcomeEmail } from '@/lib/email/templates';
-import { getEmailContext, markNotificationSent, wasNotificationSent } from '@/lib/email/context';
+import { isEmailConfigured } from '@/lib/email/resend';
+import { sendPurchaseNotifications, sendWelcomeNotifications } from '@/lib/email/notifications';
+import { getEmailContext, wasNotificationSent } from '@/lib/email/context';
 
 type RegisteredProfile = { full_name: string | null; document_id: string | null; phone: string | null; city: string | null; created_at: string | null };
 
@@ -64,28 +64,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No hay un registro reciente para este correo.' }, { status: 404 });
     }
 
-    const name = user.full_name || payload.email;
-    const result = await sendEmail({ to: payload.email, replyTo: ctx.settings.contactEmail, ...welcomeEmail(ctx, { name }) });
-    if (!result.sent) return NextResponse.json({ sent: false, error: result.error }, { status: 502 });
-
-    await markNotificationSent(notificationId);
-    await sendEmail({
-      to: ctx.settings.adminEmail,
-      ...adminNotificationEmail(ctx, {
-        title: 'Nuevo estudiante registrado',
-        intro: 'Se registró una nueva cuenta de estudiante en la plataforma.',
-        rows: [
-          ['Nombre', name],
-          ['Correo', payload.email],
-          ['Documento', user.document_id || 'No registrado'],
-          ['Celular', user.phone || 'No registrado'],
-          ['Ciudad', user.city || 'No registrada'],
-        ],
-        actionPath: '/admin/estudiantes',
-        actionLabel: 'Ver directorio de estudiantes',
-      }),
-    });
-    return NextResponse.json({ sent: true });
+    const result = await sendWelcomeNotifications(payload.email, ctx);
+    if (!result.sent && result.error !== 'duplicate') {
+      return NextResponse.json({ sent: false, error: result.error }, { status: 502 });
+    }
+    return NextResponse.json({ sent: result.sent });
   }
 
   const notificationId = `purchase:${payload.saleId}`;
@@ -103,39 +86,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No se encontró una compra aprobada para este correo.' }, { status: 404 });
   }
 
-  const date = new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(saleTime));
-  const result = await sendEmail({
-    to: payload.email,
-    replyTo: ctx.settings.contactEmail,
-    ...purchaseEmail(ctx, {
-      name: sale.student,
-      courseTitle: sale.course,
-      courseSlug: sale.courseSlug,
-      value: sale.value,
-      method: sale.method,
-      saleId: sale.id,
-      date,
-    }),
-  });
-  if (!result.sent) return NextResponse.json({ sent: false, error: result.error }, { status: 502 });
-
-  await markNotificationSent(notificationId);
-  await sendEmail({
-    to: ctx.settings.adminEmail,
-    ...adminNotificationEmail(ctx, {
-      title: 'Nueva compra aprobada',
-      intro: 'Se aprobó una nueva inscripción pagada en la plataforma.',
-      rows: [
-        ['Estudiante', sale.student],
-        ['Correo', payload.email],
-        ['Curso', sale.course],
-        ['Valor', new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(sale.value)],
-        ['Medio de pago', sale.method],
-        ['Referencia', sale.id],
-      ],
-      actionPath: '/admin/ventas',
-      actionLabel: 'Ver ventas',
-    }),
-  });
+  await sendPurchaseNotifications(sale, ctx);
   return NextResponse.json({ sent: true });
 }
