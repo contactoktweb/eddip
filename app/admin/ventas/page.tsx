@@ -3,9 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminService } from '@/lib/supabase/adminService';
 import type { Sale } from '@/lib/types';
+import { OnlineOrdersPanel } from '@/components/admin/OnlineOrdersPanel';
+import { AdminToast } from '@/components/admin/AdminToast';
+import { useAdminToast } from '@/lib/useAdminToast';
 import { AdminSalesManager } from '@/components/admin/AdminSalesManager';
 
 export default function AdminSalesPage() {
+  const { toast, showToast } = useAdminToast();
   const [salesList, setSalesList] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +85,11 @@ export default function AdminSalesPage() {
           onDeleteSale={handleDeleteSale}
         />
       )}
+
+      <div style={{ marginTop: 24 }}>
+        <OnlineOrdersPanel onNotify={message => showToast('success', message)} />
+      </div>
+      <AdminToast toast={toast} />
     </div>
   );
 }
