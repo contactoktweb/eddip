@@ -43,7 +43,7 @@ export type EnrollmentRequest = StudentProfileInput & {
   email: string;
   courseSlugs: string[];
   /** Registra una venta aprobada por cada curso (medio de pago y valor por curso). */
-  sale?: { method: string; values: Record<string, number> };
+  sale?: { method: string; values: Record<string, number>; date?: string };
 };
 
 const normalizeDocument = (doc?: string | null) => (doc || '').replace(/[\s.-]/g, '');
@@ -312,7 +312,7 @@ export async function enrollStudent(
       course: course.title,
       value: Math.max(0, Math.round(request.sale!.values[course.slug] ?? Number(course.price) ?? 0)),
       method: request.sale!.method,
-      date: new Date().toISOString().slice(0, 10),
+      date: request.sale!.date || new Date().toISOString().slice(0, 10),
       status: 'Aprobado',
       email,
       courseSlug: course.slug,

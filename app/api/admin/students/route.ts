@@ -8,6 +8,7 @@ import { enrollStudent, listStudents } from '@/lib/admin/studentRecords';
 
 const MAX_COURSES_PER_REQUEST = 30;
 const MAX_SALE_VALUE = 100_000_000;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Directorio unificado de estudiantes (perfiles, matrículas y certificados). Solo administradores. */
 export async function GET(request: Request) {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Selecciona al menos un curso.' }, { status: 400 });
   }
 
-  let sale: { method: string; values: Record<string, number> } | undefined;
+  let sale: { method: string; values: Record<string, number>; date?: string } | undefined;
   if (body.sale && typeof body.sale === 'object') {
     const rawSale = body.sale as Record<string, unknown>;
     if (!isManualPaymentMethod(rawSale.method)) {
@@ -50,7 +51,8 @@ export async function POST(request: Request) {
       const value = Number(rawValues[slug]);
       if (Number.isFinite(value) && value >= 0 && value <= MAX_SALE_VALUE) values[slug] = Math.round(value);
     }
-    sale = { method: rawSale.method, values };
+    const date = typeof rawSale.date === 'string' && DATE_PATTERN.test(rawSale.date) ? rawSale.date : undefined;
+    sale = { method: rawSale.method, values, date };
   }
 
   const result = await enrollStudent(

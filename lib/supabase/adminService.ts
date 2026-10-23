@@ -2,7 +2,7 @@ import { supabase } from './client';
 import type { Course, Exam, Certificate, Sale } from '@/lib/types';
 import { baseCourses, certificates, exams as baseExams } from '@/lib/data';
 import { callApi } from './authedFetch';
-import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentDirectory';
+import type { EnrichedStudent } from '@/lib/studentDirectory';
 import type { AppRole } from '@/lib/auth/roles';
 
 export type { EnrichedStudent } from '@/lib/studentDirectory';
@@ -264,7 +264,7 @@ export const adminService = {
     phone?: string;
     city?: string;
     courseSlugs: string[];
-    sale?: { method: string; values: Record<string, number> };
+    sale?: { method: string; values: Record<string, number>; date?: string };
   }): Promise<{ success: boolean; error?: string; accountCreated?: boolean }> {
     const res = await callApi<{ accountCreated?: boolean }>('/api/admin/students', {
       method: 'POST',
@@ -1059,47 +1059,6 @@ export const adminService = {
       } catch {}
     }
     return true;
-  },
-
-  async enrollStudentInCourse(
-    studentName: string,
-    studentEmail: string,
-    courseSlug: string,
-    courseTitle: string,
-    extraData?: { documentId?: string; phone?: string; city?: string }
-  ): Promise<void> {
-    const { list: studentsList, student } = applyEnrollmentToDirectory(await this.getAllStudents(), {
-      name: studentName,
-      email: studentEmail,
-      courseSlug,
-      courseTitle,
-      ...extraData,
-    });
-
-    try {
-      await supabase.from('site_content').upsert({
-        key: 'admin_students_list',
-        value: studentsList,
-        updated_at: new Date().toISOString(),
-      });
-      if (isUuid(student.id)) {
-        await supabase
-          .from('enrollments')
-          .upsert({ student_id: student.id, course_slug: courseSlug }, { onConflict: 'student_id,course_slug' });
-      }
-    } catch (err) {
-      console.warn('Error saving enrollment to Supabase:', err);
-    }
-
-    setLocalData('custom_students', studentsList);
-    setLocalData('eddip_admin_custom_students', studentsList);
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('eddip_students_updated', { detail: studentsList }));
-      try {
-        localStorage.setItem('eddip_students_ping', Date.now().toString());
-      } catch {}
-    }
   },
 
   async deleteStudent(studentId: string): Promise<{ success: boolean; error?: string }> {
