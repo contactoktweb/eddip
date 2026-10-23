@@ -34,10 +34,15 @@ export function AdminCertificatesTable({ certificates, courses, loading = false 
     );
   }, [certsList, searchTerm]);
 
-  const handleIssued = (certificate: Certificate) => {
-    setCertsList(prev => [certificate, ...prev]);
+  const handleIssued = (issued: Certificate[]) => {
+    setCertsList(prev => [...issued, ...prev]);
     setIsModalOpen(false);
-    showToast('success', `Certificado ${certificate.code} emitido para ${certificate.student}.`);
+    showToast(
+      'success',
+      issued.length > 1
+        ? `${issued.length} certificados emitidos para ${issued[0].student}.`
+        : `Certificado ${issued[0].code} emitido para ${issued[0].student}.`
+    );
   };
 
   return (

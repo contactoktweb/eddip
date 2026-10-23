@@ -5167,3 +5167,5 @@ body {
   .student-panel-notice { animation: none; }
   .course-multiselect-item { transition: none; }
 }
+
+.field-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 7px; color: #43536a; }
