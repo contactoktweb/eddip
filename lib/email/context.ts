@@ -4,13 +4,33 @@ import { readSiteContent, writeSiteContent } from '@/lib/supabase/server';
 const NOTIFICATION_LOG_KEY = 'notification_log';
 const NOTIFICATION_LOG_LIMIT = 500;
 
-const DEFAULT_SITE_URL = 'https://www.eddip.com.co';
+/** Sitio de respaldo en Vercel, siempre disponible aunque el dominio principal apunte a otro hosting. */
+const FALLBACK_SITE_URL = 'https://eddip.vercel.app';
+const KNOWN_SITE_ORIGINS = ['https://www.eddip.com.co', 'https://eddip.com.co', FALLBACK_SITE_URL];
 
-/** URL pública del sitio para enlaces e imágenes de los correos (sin petición, p. ej. el webhook de Bold). */
+const toOrigin = (value?: string) => {
+  try {
+    return value ? new URL(value.trim()).origin : '';
+  } catch {
+    return '';
+  }
+};
+
+/** Dominios desde los que se aceptan enlaces en los correos (evita enlaces hacia hosts no autorizados). */
+function allowedSiteOrigins(): Set<string> {
+  const extra = (process.env.SITE_URL_ALLOWLIST || '').split(',');
+  return new Set([...KNOWN_SITE_ORIGINS, process.env.NEXT_PUBLIC_SITE_URL, ...extra].map(toOrigin).filter(Boolean));
+}
+
+/**
+ * URL pública para enlaces e imágenes de los correos. Se usa el dominio desde el que la persona hizo
+ * la solicitud (principal o respaldo) si está autorizado; sin petición (webhook de Bold) se usa
+ * NEXT_PUBLIC_SITE_URL o, si no existe, el sitio de respaldo.
+ */
 export function resolveSiteUrl(request?: Request): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configured) return configured.replace(/\/$/, '');
-  return request ? new URL(request.url).origin : DEFAULT_SITE_URL;
+  const requestOrigin = request ? toOrigin(request.url) : '';
+  if (requestOrigin && allowedSiteOrigins().has(requestOrigin)) return requestOrigin;
+  return toOrigin(process.env.NEXT_PUBLIC_SITE_URL) || FALLBACK_SITE_URL;
 }
 
 export async function getEmailContext(request?: Request) {

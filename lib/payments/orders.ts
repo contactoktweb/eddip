@@ -5,6 +5,7 @@ import { applyEnrollmentToDirectory, type EnrichedStudent } from '@/lib/studentD
 import { readContentListForUpdate, writeContentValue } from '@/lib/supabase/server';
 import type { Sale } from '@/lib/types';
 import { sendPurchaseNotifications } from '@/lib/email/notifications';
+import { getEmailContext } from '@/lib/email/context';
 
 /**
  * Órdenes de pago (tabla payment_orders, escrita solo con service role). Una orden aprobada
@@ -105,7 +106,11 @@ type ProfileRow = { email: string | null; full_name: string | null; document_id:
  * Registra la venta, el directorio y la matrícula de una orden aprobada. Es idempotente:
  * puede ejecutarse desde el webhook y desde la verificación del navegador sin duplicar registros.
  */
-export async function fulfillApprovedOrder(admin: SupabaseClient, order: PaymentOrder): Promise<{ ok: boolean; saleId: string }> {
+export async function fulfillApprovedOrder(
+  admin: SupabaseClient,
+  order: PaymentOrder,
+  siteRequest?: Request
+): Promise<{ ok: boolean; saleId: string }> {
   const saleId = saleIdForOrder(order.order_id);
   if (order.status !== 'approved') return { ok: false, saleId };
   if (order.fulfilled_at) return { ok: true, saleId };
@@ -167,7 +172,7 @@ export async function fulfillApprovedOrder(admin: SupabaseClient, order: Payment
 
   // El comprobante y el aviso a la administración salen desde el servidor, aunque el navegador ya esté cerrado
   try {
-    await sendPurchaseNotifications(approvedSale);
+    await sendPurchaseNotifications(approvedSale, await getEmailContext(siteRequest));
   } catch (err) {
     console.error(`No fue posible notificar la venta ${saleId}:`, err);
   }
