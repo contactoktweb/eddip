@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: order.status, message: 'La orden no está aprobada.' });
   }
 
-  const result = await fulfillApprovedOrder(admin, order);
+  const result = await fulfillApprovedOrder(admin, order, request);
   if (!result.ok) return NextResponse.json({ error: 'El pago está aprobado, pero no se pudo activar la matrícula.' }, { status: 500 });
   return NextResponse.json({ status: 'approved', message: 'Pago aprobado: matrícula activa y comprobante enviado.' });
 }

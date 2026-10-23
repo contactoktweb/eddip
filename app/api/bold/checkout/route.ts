@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       console.error('No fue posible registrar la orden sin costo:', error?.message);
       return NextResponse.json({ error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
     }
-    const result = await fulfillApprovedOrder(admin, data as PaymentOrder);
+    const result = await fulfillApprovedOrder(admin, data as PaymentOrder, request);
     if (!result.ok) return NextResponse.json({ error: 'No fue posible registrar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
     return NextResponse.json({ success: true, free: true, orderId, saleId: result.saleId });
   }

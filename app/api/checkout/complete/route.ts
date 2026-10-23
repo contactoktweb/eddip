@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     order = await approveOrder(admin, order, { providerPaymentId: voucher.transactionId, paymentMethod: voucher.paymentMethod });
   }
 
-  const result = await fulfillApprovedOrder(admin, order);
+  const result = await fulfillApprovedOrder(admin, order, request);
   if (!result.ok) {
     return NextResponse.json({ error: 'Tu pago fue aprobado, pero no pudimos activar la matrícula. Inténtalo nuevamente.' }, { status: 500 });
   }
