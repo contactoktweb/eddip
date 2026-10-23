@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/lib/icons';
-import type { EnrichedStudent } from '@/lib/supabase/adminService';
+import { adminService, type EnrichedStudent } from '@/lib/supabase/adminService';
 import { StudentProfileEditor } from './StudentProfileEditor';
 import { StudentCourseAssigner } from './StudentCourseAssigner';
 
@@ -13,10 +13,35 @@ type Props = {
 
 type PanelMode = 'view' | 'edit' | 'assign';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function StudentDetailModal({ student: initialStudent, onClose }: Props) {
   const [student, setStudent] = useState<EnrichedStudent>(initialStudent);
   const [mode, setMode] = useState<PanelMode>('view');
   const [notice, setNotice] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  // Registrado solo en el directorio del panel: tiene cursos asignados pero aún no puede iniciar sesión
+  const hasAccount = UUID_PATTERN.test(student.id);
+
+  const handleActivateAccount = async () => {
+    setActivating(true);
+    setActivationError(null);
+    const result = await adminService.enrollStudentInCourses({
+      email: student.email,
+      fullName: student.name,
+      documentId: student.documentId,
+      phone: student.phone,
+      city: student.city,
+      courseSlugs: student.enrolledCourses.map(c => c.slug),
+    });
+    setActivating(false);
+    if (!result.success) {
+      setActivationError(result.error || 'No fue posible crear la cuenta.');
+      return;
+    }
+    setNotice('Cuenta creada y cursos activados. Le enviamos un correo para crear su contraseña.');
+  };
 
   const handleProfileSaved = (changes: Pick<EnrichedStudent, 'name' | 'documentId' | 'phone' | 'city'>) => {
     setStudent(prev => ({ ...prev, ...changes }));
@@ -162,6 +187,20 @@ export function StudentDetailModal({ student: initialStudent, onClose }: Props) 
             </div>
           </div>
         </div>
+
+        {!hasAccount && student.enrolledCourses.length > 0 && !notice && (
+          <div className="student-account-alert" role="alert">
+            <Icon name="alert" size={18} />
+            <div>
+              <strong>Esta persona aún no tiene cuenta para ingresar.</strong>
+              <p>Sus cursos están registrados en el panel, pero no puede verlos hasta que se cree su cuenta.</p>
+              {activationError && <p className="field-error">{activationError}</p>}
+              <button type="button" className="btn btn-primary" onClick={handleActivateAccount} disabled={activating}>
+                <Icon name="user" size={15} /> {activating ? 'Creando cuenta…' : 'Crear cuenta y activar cursos'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Acciones de la ficha */}
         {mode === 'view' && (
